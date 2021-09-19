@@ -183,7 +183,6 @@ compat_map = map
 compat_numeric_types = (int, float, complex)
 compat_str = str
 compat_xpath = lambda xpath: xpath
-compat_zip = zip
 
 compat_collections_abc = collections.abc
 compat_HTMLParser = html.parser.HTMLParser
@@ -297,7 +296,6 @@ __all__ = [
     'compat_urlretrieve',
     'compat_xml_parse_error',
     'compat_xpath',
-    'compat_zip',
     'windows_enable_vt_mode',
     'workaround_optparse_bug9161',
 ]
