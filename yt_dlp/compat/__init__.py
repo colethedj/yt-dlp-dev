@@ -82,11 +82,6 @@ else:
     compat_realpath = os.path.realpath
 
 
-def compat_print(s):
-    assert isinstance(s, compat_str)
-    print(s)
-
-
 # Fix https://github.com/ytdl-org/youtube-dl/issues/4223
 # See http://bugs.python.org/issue9161 for what is broken
 def workaround_optparse_bug9161():
@@ -274,7 +269,6 @@ __all__ = [
     'compat_ord',
     'compat_os_name',
     'compat_parse_qs',
-    'compat_print',
     'compat_pycrypto_AES',
     'compat_realpath',
     'compat_setenv',
