@@ -15,7 +15,6 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from yt_dlp.compat import (
-    compat_basestring,
     compat_getpass,
     compat_print,
     compat_urllib_request,
@@ -51,7 +50,7 @@ class GitHubReleaser(object):
             'Type your GitHub PAT (personal access token) and press [Return]: ')
 
     def _call(self, req):
-        if isinstance(req, compat_basestring):
+        if isinstance(req, str):
             req = sanitized_Request(req)
         req.add_header('Authorization', 'token %s' % self._token)
         response = self._opener.open(req).read().decode('utf-8')

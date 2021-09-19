@@ -31,7 +31,6 @@ from enum import Enum
 from string import ascii_letters
 
 from .compat import (
-    compat_basestring,
     compat_get_terminal_size,
     compat_kwargs,
     compat_numeric_types,
@@ -3553,7 +3552,7 @@ class YoutubeDL(object):
 
     def urlopen(self, req):
         """ Start an HTTP download """
-        if isinstance(req, compat_basestring):
+        if isinstance(req, str):
             req = sanitized_Request(req)
         return self._opener.open(req, timeout=self._socket_timeout)
 

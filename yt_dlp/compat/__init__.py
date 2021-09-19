@@ -179,7 +179,6 @@ def windows_enable_vt_mode():  # TODO: Do this the proper way https://bugs.pytho
 
 #  Deprecated
 
-compat_basestring = str
 compat_chr = chr
 compat_filter = filter
 compat_input = input
@@ -247,7 +246,6 @@ __all__ = [
     'compat_Struct',
     'compat_asyncio_run',
     'compat_b64decode',
-    'compat_basestring',
     'compat_chr',
     'compat_collections_abc',
     'compat_cookiejar',

@@ -44,7 +44,6 @@ from .compat import (
     compat_HTMLParseError,
     compat_HTMLParser,
     compat_HTTPError,
-    compat_basestring,
     compat_chr,
     compat_cookiejar,
     compat_ctypes_WINFUNCTYPE,
@@ -2547,7 +2546,7 @@ def strftime_or_none(timestamp, date_format, default=None):
 
 
 def parse_duration(s):
-    if not isinstance(s, compat_basestring):
+    if not isinstance(s, str):
         return None
     s = s.strip()
     if not s:
@@ -3062,7 +3061,7 @@ TV_PARENTAL_GUIDELINES = {
 def parse_age_limit(s):
     if type(s) == int:
         return s if 0 <= s <= 21 else None
-    if not isinstance(s, compat_basestring):
+    if not isinstance(s, str):
         return None
     m = re.match(r'^(?P<age>\d{1,2})\+?$', s)
     if m:
