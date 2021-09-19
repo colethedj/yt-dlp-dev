@@ -16,7 +16,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from yt_dlp.compat import (
     compat_getpass,
-    compat_print,
     compat_urllib_request,
 )
 from yt_dlp.utils import (
@@ -40,12 +39,12 @@ class GitHubReleaser(object):
             info = netrc.netrc().authenticators(self._NETRC_MACHINE)
             if info is not None:
                 self._token = info[2]
-                compat_print('Using GitHub credentials found in .netrc...')
+                print('Using GitHub credentials found in .netrc...')
                 return
             else:
-                compat_print('No GitHub credentials found in .netrc')
+                print('No GitHub credentials found in .netrc')
         except (IOError, netrc.NetrcParseError):
-            compat_print('Unable to parse .netrc')
+            print('Unable to parse .netrc')
         self._token = compat_getpass(
             'Type your GitHub PAT (personal access token) and press [Return]: ')
 
@@ -103,7 +102,7 @@ def main():
     release_id = new_release['id']
 
     for asset in os.listdir(build_path):
-        compat_print('Uploading %s...' % asset)
+        print('Uploading %s...' % asset)
         releaser.create_asset(release_id, os.path.join(build_path, asset))
 
 
