@@ -4249,7 +4249,7 @@ class YoutubeTabIE(YoutubeBaseInfoExtractor):
             'parent': parent or 'root'
         }
 
-    def _comment_entries(self, root_continuation_data, channel_id, parent=None, comment_counts=None):
+    def _comment_entries(self, root_continuation_data, channel_id, parent=None, comment_counts=None, endpoint='browse'):
 
         def extract_header(contents):
             _total_comments = 0
@@ -4307,7 +4307,7 @@ class YoutubeTabIE(YoutubeBaseInfoExtractor):
                 if comment_replies_renderer:
                     comment_counts[2] += 1
                     comment_entries_iter = self._comment_entries(
-                        comment_replies_renderer, channel_id, parent=comment.get('id'), comment_counts=comment_counts)
+                        comment_replies_renderer, channel_id, parent=comment.get('id'), comment_counts=comment_counts, endpoint='comment/get_comment_replies')
 
                     for reply_comment in comment_entries_iter:
                         yield reply_comment
@@ -4347,7 +4347,7 @@ class YoutubeTabIE(YoutubeBaseInfoExtractor):
 
             response = self._extract_response(
                 item_id=None, query=continuation,
-                ep='browse', headers=headers, note=note_prefix,
+                ep=endpoint, headers=headers, note=note_prefix,
                 check_get_keys=('onResponseReceivedEndpoints'))
             if not response:
                 break
