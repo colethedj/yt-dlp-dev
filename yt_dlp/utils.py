@@ -4854,7 +4854,7 @@ def iri_to_uri(iri):
 def to_high_limit_path(path):
     if sys.platform in ['win32', 'cygwin']:
         # Work around MAX_PATH limitation on Windows. The maximum allowed length for the individual path segments may still be quite limited.
-        return r'\\?\ '.rstrip() + os.path.abspath(path)
+        return '\\\\?\\' + os.path.abspath(path)
 
     return path
 
