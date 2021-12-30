@@ -13,7 +13,6 @@ import http.cookiejar
 import http.cookies
 import http.server
 import itertools
-import optparse
 import os
 import re
 import shlex
@@ -80,27 +79,6 @@ if compat_os_name == 'nt' and sys.version_info < (3, 8):
         return path
 else:
     compat_realpath = os.path.realpath
-
-
-# Fix https://github.com/ytdl-org/youtube-dl/issues/4223
-# See http://bugs.python.org/issue9161 for what is broken
-def workaround_optparse_bug9161():
-    op = optparse.OptionParser()
-    og = optparse.OptionGroup(op, 'foo')
-    try:
-        og.add_option('-t')
-    except TypeError:
-        real_add_option = optparse.OptionGroup.add_option
-
-        def _compat_add_option(self, *args, **kwargs):
-            enc = lambda v: (
-                v.encode('ascii', 'replace') if isinstance(v, compat_str)
-                else v)
-            bargs = [enc(a) for a in args]
-            bkwargs = dict(
-                (k, enc(v)) for k, v in kwargs.items())
-            return real_add_option(self, *bargs, **bkwargs)
-        optparse.OptionGroup.add_option = _compat_add_option
 
 
 try:
@@ -297,5 +275,4 @@ __all__ = [
     'compat_xml_parse_error',
     'compat_xpath',
     'windows_enable_vt_mode',
-    'workaround_optparse_bug9161',
 ]
