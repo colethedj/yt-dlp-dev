@@ -20,7 +20,6 @@ from .compat import (
     compat_getpass,
     compat_os_name,
     compat_shlex_quote,
-    workaround_optparse_bug9161,
 )
 from .cookies import SUPPORTED_BROWSERS, SUPPORTED_KEYRINGS
 from .utils import (
@@ -67,8 +66,6 @@ def _real_main(argv=None):
     if sys.platform == 'win32':
         # https://github.com/ytdl-org/youtube-dl/issues/820
         codecs.register(lambda name: codecs.lookup('utf-8') if name == 'cp65001' else None)
-
-    workaround_optparse_bug9161()
 
     setproctitle('yt-dlp')
 
