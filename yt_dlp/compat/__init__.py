@@ -156,7 +156,6 @@ compat_chr = chr
 compat_filter = filter
 compat_input = input
 compat_integer_types = (int, )
-compat_kwargs = lambda kwargs: kwargs
 compat_map = map
 compat_numeric_types = (int, float, complex)
 compat_str = str
@@ -240,7 +239,6 @@ __all__ = [
     'compat_input',
     'compat_integer_types',
     'compat_itertools_count',
-    'compat_kwargs',
     'compat_map',
     'compat_numeric_types',
     'compat_ord',
