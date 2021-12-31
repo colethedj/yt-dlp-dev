@@ -54,7 +54,6 @@ from .compat import (
     compat_http_client,
     compat_integer_types,
     compat_numeric_types,
-    compat_kwargs,
     compat_os_name,
     compat_parse_qs,
     compat_shlex_split,
@@ -1176,7 +1175,7 @@ class XAttrUnavailableError(YoutubeDLError):
 
 
 def _create_http_connection(ydl_handler, http_class, is_https, *args, **kwargs):
-    hc = http_class(*args, **compat_kwargs(kwargs))
+    hc = http_class(*args, **kwargs)
     source_address = ydl_handler._params.get('source_address')
 
     if source_address is not None:

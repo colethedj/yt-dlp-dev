@@ -32,7 +32,6 @@ from string import ascii_letters
 
 from .compat import (
     compat_get_terminal_size,
-    compat_kwargs,
     compat_numeric_types,
     compat_os_name,
     compat_pycrypto_AES,
@@ -665,7 +664,7 @@ class YoutubeDL(object):
             pp_def = dict(pp_def_raw)
             when = pp_def.pop('when', 'post_process')
             self.add_post_processor(
-                get_postprocessor(pp_def.pop('key'))(self, **compat_kwargs(pp_def)),
+                get_postprocessor(pp_def.pop('key'))(self, **pp_def),
                 when=when)
 
         def preload_download_archive(fn):
