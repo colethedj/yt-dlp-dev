@@ -71,7 +71,6 @@ from .compat import (
     compat_urllib_parse_unquote_plus,
     compat_urllib_request,
     compat_urlparse,
-    compat_xpath,
 )
 
 from .socks import (
@@ -324,7 +323,7 @@ def xpath_with_ns(path, ns_map):
 
 def xpath_element(node, xpath, name=None, fatal=False, default=NO_DEFAULT):
     def _find_xpath(xpath):
-        return node.find(compat_xpath(xpath))
+        return node.find(xpath)
 
     if isinstance(xpath, (str, compat_str)):
         n = _find_xpath(xpath)

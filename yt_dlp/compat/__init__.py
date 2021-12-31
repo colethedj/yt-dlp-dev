@@ -159,7 +159,6 @@ compat_integer_types = (int, )
 compat_map = map
 compat_numeric_types = (int, float, complex)
 compat_str = str
-compat_xpath = lambda xpath: xpath
 
 compat_collections_abc = collections.abc
 compat_HTMLParser = html.parser.HTMLParser
@@ -271,6 +270,5 @@ __all__ = [
     'compat_urlparse',
     'compat_urlretrieve',
     'compat_xml_parse_error',
-    'compat_xpath',
     'windows_enable_vt_mode',
 ]
