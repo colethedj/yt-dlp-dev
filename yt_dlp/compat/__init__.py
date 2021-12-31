@@ -24,7 +24,6 @@ import sys
 import tokenize
 import urllib
 import xml.etree.ElementTree as etree
-from subprocess import DEVNULL
 
 
 # HTMLParseError has been deprecated in Python 3.3 and removed in
@@ -184,7 +183,6 @@ compat_shlex_split = shlex.split
 compat_socket_create_connection = socket.create_connection
 compat_struct_pack = struct.pack
 compat_struct_unpack = struct.unpack
-compat_subprocess_get_DEVNULL = lambda: DEVNULL
 compat_tokenize_tokenize = tokenize.tokenize
 compat_urllib_error = urllib.error
 compat_urllib_parse = urllib.parse
@@ -252,7 +250,6 @@ __all__ = [
     'compat_str',
     'compat_struct_pack',
     'compat_struct_unpack',
-    'compat_subprocess_get_DEVNULL',
     'compat_tokenize_tokenize',
     'compat_urllib_error',
     'compat_urllib_parse',
