@@ -3,7 +3,6 @@
 import asyncio
 import base64
 import collections
-import ctypes
 import getpass
 import html
 import html.parser
@@ -31,12 +30,6 @@ import xml.etree.ElementTree as etree
 # and uniform cross-version exception handling
 class compat_HTMLParseError(Exception):
     pass
-
-
-# compat_ctypes_WINFUNCTYPE = ctypes.WINFUNCTYPE
-# will not work since ctypes.WINFUNCTYPE does not exist in UNIX machines
-def compat_ctypes_WINFUNCTYPE(*args, **kwargs):
-    return ctypes.WINFUNCTYPE(*args, **kwargs)
 
 
 class _TreeBuilder(etree.TreeBuilder):
@@ -220,7 +213,6 @@ __all__ = [
     'compat_cookiejar_Cookie',
     'compat_cookies',
     'compat_cookies_SimpleCookie',
-    'compat_ctypes_WINFUNCTYPE',
     'compat_etree_Element',
     'compat_etree_fromstring',
     'compat_etree_register_namespace',
