@@ -15,7 +15,6 @@ import os.path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname((os.path.abspath(__file__)))))
 from yt_dlp.compat import (
-    compat_input,
     compat_http_server,
     compat_str,
     compat_urlparse,
@@ -239,7 +238,7 @@ def main(args=None):
     srv = BuildHTTPServer((host, port), BuildHTTPRequestHandler)
     thr = threading.Thread(target=srv.serve_forever)
     thr.start()
-    compat_input('Press ENTER to shut down')
+    input('Press ENTER to shut down')
     srv.shutdown()
     thr.join()
 
