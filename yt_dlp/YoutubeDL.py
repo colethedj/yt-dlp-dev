@@ -3634,7 +3634,12 @@ class YoutubeDL(object):
     def _setup_pool(self):
         if self.params.get('debug_printtraffic'):
             urllib3.add_stderr_logger()
-        self._pool = YoutubeDLPoolManager()
+
+        opts_cookiesfrombrowser = self.params.get('cookiesfrombrowser')
+        opts_cookiefile = self.params.get('cookiefile')
+        self.cookiejar = load_cookies(opts_cookiefile, opts_cookiesfrombrowser, self)
+
+        self._pool = YoutubeDLPoolManager(cookiejar=self.cookiejar)
 
     def _setup_opener(self):
         timeout_val = self.params.get('socket_timeout')

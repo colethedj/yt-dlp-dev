@@ -41,6 +41,7 @@ import zlib
 import mimetypes
 
 import urllib3
+from urllib3 import Retry
 
 from .compat import (
     compat_HTMLParseError,
@@ -2863,9 +2864,10 @@ class YoutubeDLPoolManager(urllib3.PoolManager):
     # We'll likely need some generic DLPHTTPError in which we translate different libraries HTTP Errors into such
     # Possibly for the response too
     # urllib3.response.HTTPResponse is mostly backwards compatible http.client.HTTPResponse
-    def __init__(self, headers=None, **kwargs):
+    def __init__(self, headers=None, cookiejar=None, **kwargs):
         # TODO: this just sets up basic headers
         headers = {**(headers or {}), **std_headers}
+        self.cookiejar = cookiejar
         super().__init__(headers=headers, **kwargs)
 
     def urlopen(self, method, url, redirect=True, **kw):
@@ -2885,14 +2887,24 @@ class YoutubeDLPoolManager(urllib3.PoolManager):
     def urllib3_open(self, url_or_request, timeout):
         if isinstance(url_or_request, str):
             url_or_request = compat_urllib_request.Request(url_or_request)
-        return self.urlopen(
+        if self.cookiejar:
+            self.cookiejar.add_cookie_header(url_or_request)
+        # Remove headers not meant to be forwarded to different host
+        retries = Retry(
+            total=sys.maxsize, redirect=10,remove_headers_on_redirect=url_or_request.unredirected_hdrs.keys())
+
+        res = self.urlopen(
             url_or_request.get_method(),
             url_or_request.get_full_url(),
-            headers=url_or_request.headers,
+            headers=merge_dicts(url_or_request.headers, url_or_request.unredirected_hdrs),
             body=url_or_request.data,
             preload_content=False,
             timeout=timeout,
+            retries=retries
         )
+        if self.cookiejar:
+            self.cookiejar.extract_cookies(res, url_or_request)
+        return res
 
 
 class YoutubeDLHandler(compat_urllib_request.HTTPHandler):
