@@ -2852,6 +2852,7 @@ def handle_youtubedl_headers(headers):
 
     return filtered_headers
 
+
 class YoutubeDLPoolManager(urllib3.PoolManager):
     """
     Pool Manager
@@ -2861,6 +2862,8 @@ class YoutubeDLPoolManager(urllib3.PoolManager):
     """
 
     # TODO:
+    # Likely not use a custom pool manager for everything we've done here
+    # For proxies will need to use urllib3.SocksProxyManager
     # We'll likely need some generic DLPHTTPError in which we translate different libraries HTTP Errors into such
     # Possibly for the response too
     # urllib3.response.HTTPResponse is mostly backwards compatible http.client.HTTPResponse
@@ -2875,7 +2878,7 @@ class YoutubeDLPoolManager(urllib3.PoolManager):
         kw['headers'] = merge_dicts(kw.get('headers', {}), self.headers)
         kw['request_url'] = url
         res = super().urlopen(method, url, redirect, **kw)
-        # However it doesn't raise any HTTP Error...
+        # However, it doesn't raise any HTTP Error...
         if res.status >= 400:
             raise compat_HTTPError(
                 url=res.geturl(), code=res.status, msg=res.reason, hdrs=res.headers, fp=res)
@@ -2891,7 +2894,7 @@ class YoutubeDLPoolManager(urllib3.PoolManager):
             self.cookiejar.add_cookie_header(url_or_request)
         # Remove headers not meant to be forwarded to different host
         retries = Retry(
-            total=sys.maxsize, redirect=10,remove_headers_on_redirect=url_or_request.unredirected_hdrs.keys())
+            total=sys.maxsize, redirect=10, remove_headers_on_redirect=url_or_request.unredirected_hdrs.keys())
 
         res = self.urlopen(
             url_or_request.get_method(),
