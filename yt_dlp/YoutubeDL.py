@@ -44,7 +44,7 @@ from .compat import (
     compat_urllib_error,
     compat_urllib_request,
     compat_urllib_request_DataHandler,
-    windows_enable_vt_mode,
+    windows_enable_vt_mode, compat_HTTPError,
 )
 from .cookies import load_cookies
 from .utils import (
@@ -3510,22 +3510,37 @@ class YoutubeDL(object):
     def list_subtitles(self, video_id, subtitles, name='subtitles'):
         self.__list_table(video_id, name, self.render_subtitles_table, video_id, subtitles)
 
-    def urlopen(self, req):
+    def urlopen(self, req: compat_urllib_request.Request):
         """ Start an HTTP download """
         # Believe we will need to support translating request objects here
         if isinstance(req, compat_basestring):
             req = sanitized_Request(req)
 
-       # return self._opener.open(req, timeout=self._socket_timeout)
+        #return self._opener.open(req, timeout=self._socket_timeout)
 
-        return self._pool.urlopen(
+        # TODO:
+        # We'll likely need some generic DLPHTTPError in which we translate different libraries HTTP Errors into such
+        # Possibly for the response too
+        # urllib3.response.HTTPResponse is mostly backwards compatible http.client.HTTPResponse
+        res = self._pool.urlopen(
             req.get_method(),
             req.get_full_url(),
             headers=req.headers,
             body=req.data,
-            preload_content=False
+            preload_content=False,
+            timeout=self._socket_timeout,
+            request_url=req.get_full_url()
         )
 
+        # However it doesn't raise any HTTP Error...
+        if res.status >= 400:
+           raise compat_HTTPError(
+               url=res.geturl(), code=res.status, msg=res.reason, hdrs=res.headers, fp=res)
+        # some extractors access res.url when should be using res.geturl()
+        res.url = res.geturl()
+        return res
+       #  req.origin_req_host
+        # req.unverifiable
 
     def print_debug_header(self):
         if not self.params.get('verbose'):

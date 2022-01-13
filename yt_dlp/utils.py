@@ -2863,6 +2863,11 @@ class YoutubeDLPoolManager(urllib3.PoolManager):
         headers = {**(headers or {}), **std_headers}
         super().__init__(headers=headers, **kwargs)
 
+    def urlopen(self, method, url, redirect=True, **kw):
+        kw['headers'] = merge_dicts(kw.get('headers', {}), self.headers)
+        res = super().urlopen(method, url, redirect, **kw)
+        return res
+
 
 class YoutubeDLHandler(compat_urllib_request.HTTPHandler):
     """Handler for HTTP requests and responses.
