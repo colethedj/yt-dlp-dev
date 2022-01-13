@@ -2858,14 +2858,28 @@ class YoutubeDLPoolManager(urllib3.PoolManager):
     Automatically adds headers
 
     """
+
+    # TODO:
+    # We'll likely need some generic DLPHTTPError in which we translate different libraries HTTP Errors into such
+    # Possibly for the response too
+    # urllib3.response.HTTPResponse is mostly backwards compatible http.client.HTTPResponse
     def __init__(self, headers=None, **kwargs):
         # TODO: this just sets up basic headers
         headers = {**(headers or {}), **std_headers}
         super().__init__(headers=headers, **kwargs)
 
     def urlopen(self, method, url, redirect=True, **kw):
+        kw = kw.copy()
         kw['headers'] = merge_dicts(kw.get('headers', {}), self.headers)
+        kw['request_url'] = url
         res = super().urlopen(method, url, redirect, **kw)
+        # However it doesn't raise any HTTP Error...
+        if res.status >= 400:
+            raise compat_HTTPError(
+                url=res.geturl(), code=res.status, msg=res.reason, hdrs=res.headers, fp=res)
+        # some extractors access res.url when should be using res.geturl()
+        if not hasattr(res, 'url') or not res.url:
+            res.url = res.geturl()
         return res
 
 

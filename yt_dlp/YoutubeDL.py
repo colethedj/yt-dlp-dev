@@ -3518,26 +3518,15 @@ class YoutubeDL(object):
 
         #return self._opener.open(req, timeout=self._socket_timeout)
 
-        # TODO:
-        # We'll likely need some generic DLPHTTPError in which we translate different libraries HTTP Errors into such
-        # Possibly for the response too
-        # urllib3.response.HTTPResponse is mostly backwards compatible http.client.HTTPResponse
-        res = self._pool.urlopen(
+        res =  self._pool.urlopen(
             req.get_method(),
             req.get_full_url(),
             headers=req.headers,
             body=req.data,
             preload_content=False,
             timeout=self._socket_timeout,
-            request_url=req.get_full_url()
-        )
 
-        # However it doesn't raise any HTTP Error...
-        if res.status >= 400:
-           raise compat_HTTPError(
-               url=res.geturl(), code=res.status, msg=res.reason, hdrs=res.headers, fp=res)
-        # some extractors access res.url when should be using res.geturl()
-        res.url = res.geturl()
+        )
         return res
        #  req.origin_req_host
         # req.unverifiable
