@@ -26,6 +26,7 @@ import tokenize
 import traceback
 import random
 import unicodedata
+import urllib3
 
 from enum import Enum
 from string import ascii_letters
@@ -125,7 +126,7 @@ from .utils import (
     write_string,
     YoutubeDLCookieProcessor,
     YoutubeDLHandler,
-    YoutubeDLRedirectHandler,
+    YoutubeDLRedirectHandler, YoutubeDLPoolManager,
 )
 from .cache import Cache
 from .minicurses import format_text
@@ -539,7 +540,7 @@ class YoutubeDL(object):
         self._err_file = sys.stderr
         self.params = params
         self.cache = Cache(self)
-
+        self._pool: YoutubeDLPoolManager
         windows_enable_vt_mode()
         self._allow_colors = {
             'screen': not self.params.get('no_color') and supports_terminal_sequences(self._screen_file),
@@ -639,7 +640,7 @@ class YoutubeDL(object):
             else self.build_format_selector(self.params['format']))
 
         self._setup_opener()
-
+        self._setup_pool()
         if auto_init:
             if auto_init != 'no_verbose_header':
                 self.print_debug_header()
@@ -3511,9 +3512,20 @@ class YoutubeDL(object):
 
     def urlopen(self, req):
         """ Start an HTTP download """
+        # Believe we will need to support translating request objects here
         if isinstance(req, compat_basestring):
             req = sanitized_Request(req)
-        return self._opener.open(req, timeout=self._socket_timeout)
+
+       # return self._opener.open(req, timeout=self._socket_timeout)
+
+        return self._pool.urlopen(
+            req.get_method(),
+            req.get_full_url(),
+            headers=req.headers,
+            body=req.data,
+            preload_content=False
+        )
+
 
     def print_debug_header(self):
         if not self.params.get('verbose'):
@@ -3628,6 +3640,11 @@ class YoutubeDL(object):
                     'You are using an outdated version (newest version: %s)! '
                     'See https://yt-dl.org/update if you need help updating.' %
                     latest_version)
+
+    def _setup_pool(self):
+        if self.params.get('debug_printtraffic'):
+            urllib3.add_stderr_logger()
+        self._pool = YoutubeDLPoolManager()
 
     def _setup_opener(self):
         timeout_val = self.params.get('socket_timeout')

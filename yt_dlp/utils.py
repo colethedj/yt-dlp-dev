@@ -40,6 +40,8 @@ import xml.etree.ElementTree
 import zlib
 import mimetypes
 
+import urllib3
+
 from .compat import (
     compat_HTMLParseError,
     compat_HTMLParser,
@@ -2848,6 +2850,18 @@ def handle_youtubedl_headers(headers):
         del filtered_headers['Youtubedl-no-compression']
 
     return filtered_headers
+
+class YoutubeDLPoolManager(urllib3.PoolManager):
+    """
+    Pool Manager
+
+    Automatically adds headers
+
+    """
+    def __init__(self, headers=None, **kwargs):
+        # TODO: this just sets up basic headers
+        headers = {**(headers or {}), **std_headers}
+        super().__init__(headers=headers, **kwargs)
 
 
 class YoutubeDLHandler(compat_urllib_request.HTTPHandler):
