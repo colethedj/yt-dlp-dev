@@ -3510,26 +3510,12 @@ class YoutubeDL(object):
     def list_subtitles(self, video_id, subtitles, name='subtitles'):
         self.__list_table(video_id, name, self.render_subtitles_table, video_id, subtitles)
 
-    def urlopen(self, req: compat_urllib_request.Request):
-        """ Start an HTTP download """
-        # Believe we will need to support translating request objects here
+    def urlopen(self, req):
         if isinstance(req, compat_basestring):
             req = sanitized_Request(req)
+        return self._pool.urllib3_open(req, timeout=self._socket_timeout)
 
         #return self._opener.open(req, timeout=self._socket_timeout)
-
-        res =  self._pool.urlopen(
-            req.get_method(),
-            req.get_full_url(),
-            headers=req.headers,
-            body=req.data,
-            preload_content=False,
-            timeout=self._socket_timeout,
-
-        )
-        return res
-       #  req.origin_req_host
-        # req.unverifiable
 
     def print_debug_header(self):
         if not self.params.get('verbose'):

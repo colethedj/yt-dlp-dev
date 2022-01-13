@@ -2882,6 +2882,18 @@ class YoutubeDLPoolManager(urllib3.PoolManager):
             res.url = res.geturl()
         return res
 
+    def urllib3_open(self, url_or_request, timeout):
+        if isinstance(url_or_request, str):
+            url_or_request = compat_urllib_request.Request(url_or_request)
+        return self.urlopen(
+            url_or_request.get_method(),
+            url_or_request.get_full_url(),
+            headers=url_or_request.headers,
+            body=url_or_request.data,
+            preload_content=False,
+            timeout=timeout,
+        )
+
 
 class YoutubeDLHandler(compat_urllib_request.HTTPHandler):
     """Handler for HTTP requests and responses.
