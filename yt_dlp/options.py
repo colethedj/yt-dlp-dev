@@ -323,7 +323,7 @@ def create_parser():
                 'filename', 'format-sort', 'abort-on-error', 'format-spec', 'no-playlist-metafiles',
                 'multistreams', 'no-live-chat', 'playlist-index', 'list-formats', 'no-direct-merge',
                 'no-youtube-channel-redirect', 'no-youtube-unavailable-videos', 'no-attach-info-json', 'embed-metadata',
-                'embed-thumbnail-atomicparsley', 'seperate-video-versions', 'no-clean-infojson', 'no-keep-subs',
+                'embed-thumbnail-atomicparsley', 'seperate-video-versions', 'no-clean-infojson', 'no-keep-subs', 'no-urllib3'
             }, 'aliases': {
                 'youtube-dl': ['-multistreams', 'all'],
                 'youtube-dlc': ['-no-youtube-channel-redirect', '-no-live-chat', 'all'],

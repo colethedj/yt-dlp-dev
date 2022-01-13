@@ -72,6 +72,7 @@ from .utils import (
     formatSeconds,
     GeoRestrictedError,
     get_domain,
+    has_urllib3,
     HEADRequest,
     int_or_none,
     iri_to_uri,
@@ -639,8 +640,10 @@ class YoutubeDL(object):
             else self.params['format'] if callable(self.params['format'])
             else self.build_format_selector(self.params['format']))
 
+        self._pool = self._opener = None
         self._setup_opener()
-        self._setup_pool()
+        if has_urllib3 and 'no-urllib3' not in self.params.get('compat_opts', []):
+            self._setup_pool()
         if auto_init:
             if auto_init != 'no_verbose_header':
                 self.print_debug_header()
@@ -3513,9 +3516,11 @@ class YoutubeDL(object):
     def urlopen(self, req):
         if isinstance(req, compat_basestring):
             req = sanitized_Request(req)
-        return self._pool.urllib3_open(req, timeout=self._socket_timeout)
 
-        #return self._opener.open(req, timeout=self._socket_timeout)
+        if self._pool:
+            self.write_debug('Using urllib3', only_once=True)
+            return self._pool.urllib3_open(req, timeout=self._socket_timeout)
+        return self._opener.open(req, timeout=self._socket_timeout)
 
     def print_debug_header(self):
         if not self.params.get('verbose'):
@@ -3603,6 +3608,7 @@ class YoutubeDL(object):
         from .downloader.websocket import has_websockets
         from .postprocessor.embedthumbnail import has_mutagen
         from .cookies import SQLITE_AVAILABLE, SECRETSTORAGE_AVAILABLE
+        from .utils import has_urllib3
 
         lib_str = join_nonempty(
             compat_pycrypto_AES and compat_pycrypto_AES.__name__.split('.')[0],
@@ -3610,6 +3616,7 @@ class YoutubeDL(object):
             has_mutagen and 'mutagen',
             SQLITE_AVAILABLE and 'sqlite',
             has_websockets and 'websockets',
+            has_urllib3 and 'urllib3',
             delim=', ') or 'none'
         write_debug('Optional libraries: %s' % lib_str)
 

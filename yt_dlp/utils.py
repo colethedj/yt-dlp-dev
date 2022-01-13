@@ -84,6 +84,12 @@ from .socks import (
     sockssocket,
 )
 
+try:
+    import urllib3
+    has_urllib3 = True
+except ImportError:
+    has_urllib3 = False
+
 
 def register_socks_protocols():
     # "Register" SOCKS protocols
