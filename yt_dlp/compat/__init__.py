@@ -138,7 +138,6 @@ def windows_enable_vt_mode():  # TODO: Do this the proper way https://bugs.pytho
 compat_chr = chr
 compat_filter = filter
 compat_map = map
-compat_numeric_types = (int, float, complex)
 compat_str = str
 
 compat_collections_abc = collections.abc
@@ -214,7 +213,6 @@ __all__ = [
     'compat_http_server',
     'compat_itertools_count',
     'compat_map',
-    'compat_numeric_types',
     'compat_ord',
     'compat_os_name',
     'compat_parse_qs',
