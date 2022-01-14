@@ -143,7 +143,6 @@ compat_str = str
 compat_collections_abc = collections.abc
 compat_HTMLParser = html.parser.HTMLParser
 compat_HTTPError = urllib.error.HTTPError
-compat_Struct = struct.Struct
 compat_b64decode = base64.b64decode
 compat_cookiejar = http.cookiejar
 compat_cookiejar_Cookie = compat_cookiejar.Cookie
@@ -190,7 +189,6 @@ __all__ = [
     'compat_HTMLParseError',
     'compat_HTMLParser',
     'compat_HTTPError',
-    'compat_Struct',
     'compat_asyncio_run',
     'compat_b64decode',
     'compat_chr',
