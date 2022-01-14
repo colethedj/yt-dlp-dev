@@ -1972,35 +1972,17 @@ else:
             raise IOError(UNSUPPORTED_MSG)
 
 
-class locked_file(object):
-    def __init__(self, filename, mode, encoding=None):
-        assert mode in ['r', 'a', 'w']
-        self.f = io.open(filename, mode, encoding=encoding)
-        self.mode = mode
-
-    def __enter__(self):
-        exclusive = self.mode != 'r'
+@contextlib.contextmanager
+def locked_file(filename, mode, encoding=None):
+    f = open(filename, mode, encoding=encoding)
+    try:
+        _lock_file(f, mode != 'r')
         try:
-            _lock_file(self.f, exclusive)
-        except IOError:
-            self.f.close()
-            raise
-        return self
-
-    def __exit__(self, etype, value, traceback):
-        try:
-            _unlock_file(self.f)
+            yield f
         finally:
-            self.f.close()
-
-    def __iter__(self):
-        return iter(self.f)
-
-    def write(self, *args):
-        return self.f.write(*args)
-
-    def read(self, *args):
-        return self.f.read(*args)
+            _unlock_file(f)
+    finally:
+        f.close()
 
 
 def get_filesystem_encoding():
