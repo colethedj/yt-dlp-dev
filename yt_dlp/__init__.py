@@ -5,7 +5,6 @@ f'You are using an unsupported version of Python. Only Python versions 3.6 and a
 
 __license__ = 'Public Domain'
 
-import codecs
 import io
 import itertools
 import os
@@ -62,11 +61,6 @@ from .YoutubeDL import YoutubeDL
 
 
 def _real_main(argv=None):
-    # Compatibility fixes for Windows
-    if sys.platform == 'win32':
-        # https://github.com/ytdl-org/youtube-dl/issues/820
-        codecs.register(lambda name: codecs.lookup('utf-8') if name == 'cp65001' else None)
-
     setproctitle('yt-dlp')
 
     parser, opts, args = parseOpts(argv)
