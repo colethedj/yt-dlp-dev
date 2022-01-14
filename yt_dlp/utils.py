@@ -40,9 +40,6 @@ import xml.etree.ElementTree
 import zlib
 import mimetypes
 
-import urllib3
-from urllib3 import Retry
-
 from .compat import (
     compat_HTMLParseError,
     compat_HTMLParser,
@@ -66,6 +63,7 @@ from .compat import (
     compat_str,
     compat_struct_pack,
     compat_struct_unpack,
+    compat_urllib3,
     compat_urllib_error,
     compat_urllib_parse,
     compat_urllib_parse_urlencode,
@@ -83,12 +81,6 @@ from .socks import (
     ProxyType,
     sockssocket,
 )
-
-try:
-    import urllib3
-    has_urllib3 = True
-except ImportError:
-    has_urllib3 = False
 
 
 def register_socks_protocols():
@@ -2858,62 +2850,64 @@ def handle_youtubedl_headers(headers):
 
     return filtered_headers
 
+if compat_urllib3 is not None:
+    class YoutubeDLPoolManager(compat_urllib3.PoolManager):
+        """
+        Pool Manager
 
-class YoutubeDLPoolManager(urllib3.PoolManager):
-    """
-    Pool Manager
+        Automatically adds headers
 
-    Automatically adds headers
+        """
 
-    """
+        # TODO:
+        # Likely not use a custom pool manager for everything we've done here
+        # For proxies will need to use urllib3.SocksProxyManager
+        # We'll likely need some generic DLPHTTPError in which we translate different libraries HTTP Errors into such
+        # Possibly for the response too
+        # urllib3.response.HTTPResponse is mostly backwards compatible http.client.HTTPResponse
+        def __init__(self, headers=None, cookiejar=None, **kwargs):
+            # TODO: this just sets up basic headers
+            headers = {**(headers or {}), **std_headers}
+            self.cookiejar = cookiejar
+            super().__init__(headers=headers, **kwargs)
 
-    # TODO:
-    # Likely not use a custom pool manager for everything we've done here
-    # For proxies will need to use urllib3.SocksProxyManager
-    # We'll likely need some generic DLPHTTPError in which we translate different libraries HTTP Errors into such
-    # Possibly for the response too
-    # urllib3.response.HTTPResponse is mostly backwards compatible http.client.HTTPResponse
-    def __init__(self, headers=None, cookiejar=None, **kwargs):
-        # TODO: this just sets up basic headers
-        headers = {**(headers or {}), **std_headers}
-        self.cookiejar = cookiejar
-        super().__init__(headers=headers, **kwargs)
+        def urlopen(self, method, url, redirect=True, **kw):
+            kw = kw.copy()
+            kw['headers'] = merge_dicts(kw.get('headers', {}), self.headers)
+            kw['request_url'] = url
+            res = super().urlopen(method, url, redirect, **kw)
+            # However, it doesn't raise any HTTP Error...
+            if res.status >= 400:
+                raise compat_HTTPError(
+                    url=res.geturl(), code=res.status, msg=res.reason, hdrs=res.headers, fp=res)
+            # some extractors access res.url when should be using res.geturl()
+            if not hasattr(res, 'url') or not res.url:
+                res.url = res.geturl()
+            return res
 
-    def urlopen(self, method, url, redirect=True, **kw):
-        kw = kw.copy()
-        kw['headers'] = merge_dicts(kw.get('headers', {}), self.headers)
-        kw['request_url'] = url
-        res = super().urlopen(method, url, redirect, **kw)
-        # However, it doesn't raise any HTTP Error...
-        if res.status >= 400:
-            raise compat_HTTPError(
-                url=res.geturl(), code=res.status, msg=res.reason, hdrs=res.headers, fp=res)
-        # some extractors access res.url when should be using res.geturl()
-        if not hasattr(res, 'url') or not res.url:
-            res.url = res.geturl()
-        return res
+        def urllib3_open(self, url_or_request, timeout):
+            if isinstance(url_or_request, str):
+                url_or_request = compat_urllib_request.Request(url_or_request)
+            if self.cookiejar:
+                self.cookiejar.add_cookie_header(url_or_request)
+            # Remove headers not meant to be forwarded to different host
+            retries = compat_urllib3.Retry(
+                total=sys.maxsize, redirect=10, remove_headers_on_redirect=url_or_request.unredirected_hdrs.keys())
 
-    def urllib3_open(self, url_or_request, timeout):
-        if isinstance(url_or_request, str):
-            url_or_request = compat_urllib_request.Request(url_or_request)
-        if self.cookiejar:
-            self.cookiejar.add_cookie_header(url_or_request)
-        # Remove headers not meant to be forwarded to different host
-        retries = Retry(
-            total=sys.maxsize, redirect=10, remove_headers_on_redirect=url_or_request.unredirected_hdrs.keys())
-
-        res = self.urlopen(
-            url_or_request.get_method(),
-            url_or_request.get_full_url(),
-            headers=merge_dicts(url_or_request.headers, url_or_request.unredirected_hdrs),
-            body=url_or_request.data,
-            preload_content=False,
-            timeout=timeout,
-            retries=retries
-        )
-        if self.cookiejar:
-            self.cookiejar.extract_cookies(res, url_or_request)
-        return res
+            res = self.urlopen(
+                url_or_request.get_method(),
+                url_or_request.get_full_url(),
+                headers=merge_dicts(url_or_request.headers, url_or_request.unredirected_hdrs),
+                body=url_or_request.data,
+                preload_content=False,
+                timeout=timeout,
+                retries=retries
+            )
+            if self.cookiejar:
+                self.cookiejar.extract_cookies(res, url_or_request)
+            return res
+else:
+    YoutubeDLPoolManager = None
 
 
 class YoutubeDLHandler(compat_urllib_request.HTTPHandler):

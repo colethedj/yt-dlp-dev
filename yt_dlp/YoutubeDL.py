@@ -26,7 +26,6 @@ import tokenize
 import traceback
 import random
 import unicodedata
-import urllib3
 
 from enum import Enum
 from string import ascii_letters
@@ -41,10 +40,11 @@ from .compat import (
     compat_shlex_quote,
     compat_str,
     compat_tokenize_tokenize,
+    compat_urllib3,
     compat_urllib_error,
     compat_urllib_request,
     compat_urllib_request_DataHandler,
-    windows_enable_vt_mode, compat_HTTPError,
+    windows_enable_vt_mode
 )
 from .cookies import load_cookies
 from .utils import (
@@ -72,7 +72,6 @@ from .utils import (
     formatSeconds,
     GeoRestrictedError,
     get_domain,
-    has_urllib3,
     HEADRequest,
     int_or_none,
     iri_to_uri,
@@ -642,7 +641,7 @@ class YoutubeDL(object):
 
         self._pool = self._opener = None
         self._setup_opener()
-        if has_urllib3 and 'no-urllib3' not in self.params.get('compat_opts', []):
+        if compat_urllib3 is not None and 'no-urllib3' not in self.params.get('compat_opts', []):
             self._setup_pool()
         if auto_init:
             if auto_init != 'no_verbose_header':
@@ -3608,7 +3607,6 @@ class YoutubeDL(object):
         from .downloader.websocket import has_websockets
         from .postprocessor.embedthumbnail import has_mutagen
         from .cookies import SQLITE_AVAILABLE, SECRETSTORAGE_AVAILABLE
-        from .utils import has_urllib3
 
         lib_str = join_nonempty(
             compat_pycrypto_AES and compat_pycrypto_AES.__name__.split('.')[0],
@@ -3616,7 +3614,7 @@ class YoutubeDL(object):
             has_mutagen and 'mutagen',
             SQLITE_AVAILABLE and 'sqlite',
             has_websockets and 'websockets',
-            has_urllib3 and 'urllib3',
+            compat_urllib3 is not None and 'urllib3',
             delim=', ') or 'none'
         write_debug('Optional libraries: %s' % lib_str)
 
@@ -3640,7 +3638,7 @@ class YoutubeDL(object):
 
     def _setup_pool(self):
         if self.params.get('debug_printtraffic'):
-            urllib3.add_stderr_logger()
+            compat_urllib3.add_stderr_logger()
 
         opts_cookiesfrombrowser = self.params.get('cookiesfrombrowser')
         opts_cookiefile = self.params.get('cookiefile')

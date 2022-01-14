@@ -159,6 +159,10 @@ except ImportError:
     except ImportError:
         compat_pycrypto_AES = None
 
+try:
+    import urllib3 as compat_urllib3
+except ImportError:
+    compat_urllib3 = None
 
 WINDOWS_VT_MODE = False if compat_os_name == 'nt' else None
 
