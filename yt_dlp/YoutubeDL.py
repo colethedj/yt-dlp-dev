@@ -32,7 +32,6 @@ from string import ascii_letters
 
 from .compat import (
     compat_get_terminal_size,
-    compat_numeric_types,
     compat_os_name,
     compat_pycrypto_AES,
     compat_shlex_quote,
@@ -2325,7 +2324,7 @@ class YoutubeDL(object):
         def sanitize_numeric_fields(info):
             for numeric_field in self._NUMERIC_FIELDS:
                 field = info.get(numeric_field)
-                if field is None or isinstance(field, compat_numeric_types):
+                if field is None or isinstance(field, (int, float)):
                     continue
                 report_force_conversion(numeric_field, 'numeric', 'int')
                 info[numeric_field] = int_or_none(field)

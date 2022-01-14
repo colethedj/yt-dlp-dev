@@ -51,7 +51,6 @@ from .compat import (
     compat_html_entities,
     compat_html_entities_html5,
     compat_http_client,
-    compat_numeric_types,
     compat_os_name,
     compat_parse_qs,
     compat_shlex_split,
@@ -2338,7 +2337,7 @@ def url_or_none(url):
 def strftime_or_none(timestamp, date_format, default=None):
     datetime_object = None
     try:
-        if isinstance(timestamp, compat_numeric_types):  # unix timestamp
+        if isinstance(timestamp, (int, float)):  # unix timestamp
             datetime_object = datetime.datetime.utcfromtimestamp(timestamp)
         elif isinstance(timestamp, compat_str):  # assume YYYYMMDD
             datetime_object = datetime.datetime.strptime(timestamp, '%Y%m%d')
@@ -3272,7 +3271,7 @@ def _match_one(filter_part, dct, incomplete):
             comparison_value = comparison_value.replace(r'\%s' % m['quote'], m['quote'])
         actual_value = dct.get(m['key'])
         numeric_comparison = None
-        if isinstance(actual_value, compat_numeric_types):
+        if isinstance(actual_value, (int, float)):
             # If the original field is a string and matching comparisonvalue is
             # a number we should respect the origin of the original field
             # and process comparison value as a string (see
