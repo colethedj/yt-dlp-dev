@@ -51,7 +51,6 @@ from .compat import (
     compat_html_entities,
     compat_html_entities_html5,
     compat_http_client,
-    compat_integer_types,
     compat_numeric_types,
     compat_os_name,
     compat_parse_qs,
@@ -2323,7 +2322,7 @@ def str_or_none(v, default=None):
 
 def str_to_int(int_str):
     """ A more relaxed version of int_or_none """
-    if isinstance(int_str, compat_integer_types):
+    if isinstance(int_str, int):
         return int_str
     elif isinstance(int_str, compat_str):
         int_str = re.sub(r'[,\.\+]', '', int_str)
