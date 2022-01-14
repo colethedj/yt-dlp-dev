@@ -2850,6 +2850,7 @@ def handle_youtubedl_headers(headers):
 
     return filtered_headers
 
+
 if compat_urllib3 is not None:
     class YoutubeDLPoolManager(compat_urllib3.PoolManager):
         """
