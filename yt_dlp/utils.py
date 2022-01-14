@@ -2892,7 +2892,7 @@ if compat_urllib3 is not None:
                 self.cookiejar.add_cookie_header(url_or_request)
             # Remove headers not meant to be forwarded to different host
             retries = compat_urllib3.Retry(
-                total=sys.maxsize, redirect=10, remove_headers_on_redirect=url_or_request.unredirected_hdrs.keys())
+                remove_headers_on_redirect=url_or_request.unredirected_hdrs.keys())
 
             res = self.urlopen(
                 url_or_request.get_method(),
