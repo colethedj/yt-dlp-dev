@@ -3606,14 +3606,14 @@ class YoutubeDL(object):
         from .downloader.websocket import has_websockets
         from .postprocessor.embedthumbnail import has_mutagen
         from .cookies import SQLITE_AVAILABLE, SECRETSTORAGE_AVAILABLE
-        from .compat import has_pysocks
+        from .compat import compat_urllib3_socks
         lib_str = join_nonempty(
             compat_pycrypto_AES and compat_pycrypto_AES.__name__.split('.')[0],
             SECRETSTORAGE_AVAILABLE and 'secretstorage',
             has_mutagen and 'mutagen',
             SQLITE_AVAILABLE and 'sqlite',
             has_websockets and 'websockets',
-            compat_urllib3 is not None and ('urllib3' if not has_pysocks else 'urllib3[socks]'),
+            compat_urllib3 is not None and ('urllib3' if not compat_urllib3_socks else 'urllib3[socks]'),
             delim=', ') or 'none'
         write_debug('Optional libraries: %s' % lib_str)
 

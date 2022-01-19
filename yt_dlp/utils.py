@@ -66,6 +66,7 @@ from .compat import (
     compat_struct_pack,
     compat_struct_unpack,
     compat_urllib3,
+    compat_urllib3_socks,
     compat_urllib_error,
     compat_urllib_parse,
     compat_urllib_parse_urlencode,
@@ -77,7 +78,6 @@ from .compat import (
     compat_urllib_request,
     compat_urlparse,
     compat_xpath,
-    has_pysocks
 )
 
 from .socksproxy import (
@@ -2872,15 +2872,18 @@ if compat_urllib3 is not None:
         def _build_pm(self):
             if self.proxy_map:
                 proxy_url_parsed = compat_urlparse.urlsplit(self.proxy_map['http'])
+                # socks5 is treated as socks5h in YTDL socks module, so keep the same behavior
                 if proxy_url_parsed.scheme.lower() == 'socks5':
                     proxy_url_parsed = proxy_url_parsed._replace(scheme='socks5h')
                 proxy_url = proxy_url_parsed.geturl()
+
                 if proxy_url_parsed.scheme.lower() in ('socks', 'socks4', 'socks4a', 'socks5', 'socks5h'):
-                    raise NotImplementedError('socks proxy not supported with urllib3 yet')
-                   # self.pm = compat_urllib3.contrib.socks.SocksProxyManager(proxy_url)
-                # socks5 is treated as socks5h in YTDL socks module, so keep the same behavior
-                self.pm = compat_urllib3.ProxyManager(
-                    proxy_url=proxy_url)
+                    if compat_urllib3_socks is None:
+                        raise ExtractorError('pysocks required for using socks proxy with urllib3')
+                    self.pm = compat_urllib3_socks.SOCKSProxyManager(proxy_url)
+                else:
+                    self.pm = compat_urllib3.ProxyManager(
+                        proxy_url=proxy_url)
             else:
                 self.pm = compat_urllib3.PoolManager()
 
