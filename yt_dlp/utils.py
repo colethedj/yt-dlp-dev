@@ -2934,6 +2934,14 @@ if compat_urllib3 is not None:
                     raise compat_urllib_error.URLError(cause) from cause
                 raise compat_urllib_error.URLError(*e.args) from e
 
+            url_parsed = compat_urllib_parse_urlparse(res.geturl())
+            if url_parsed.hostname is None:
+                # hack
+                url_parsed = url_parsed._replace(
+                    netloc=f'{res.connection.host}:{res.connection.port}',
+                    scheme='https')
+            res.url = url_parsed.geturl()
+
             if not (
                 (200 <= res.status < 300)
                 or (res.status in (301, 302, 303, 307, 308) and url_or_request.get_method() in ('GET', 'HEAD'))
@@ -2945,16 +2953,6 @@ if compat_urllib3 is not None:
                 raise compat_HTTPError(
                     url=res.geturl(), code=res.status, msg=res.reason, hdrs=res.headers, fp=res)
 
-            url_parsed = compat_urllib_parse_urlparse(res.geturl())
-            if url_parsed.hostname is None:
-                # hack
-                url_parsed = url_parsed._replace(
-                    netloc=f'{res.connection.host}:{res.connection.port}',
-                    scheme='https')
-            res.url = url_parsed.geturl()
-            print(res.url)
-            # res.url = url
-            # some extractors access res.url when should be using res.geturl()
             # Update cookiejar with response cookies
             if self.cookiejar:
                 self.cookiejar.extract_cookies(res, url_or_request)
