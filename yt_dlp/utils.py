@@ -40,8 +40,6 @@ import xml.etree.ElementTree
 import zlib
 import mimetypes
 
-import urllib3.exceptions
-
 from .compat import (
     compat_HTMLParseError,
     compat_HTMLParser,
