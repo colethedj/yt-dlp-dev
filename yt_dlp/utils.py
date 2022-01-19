@@ -2870,18 +2870,19 @@ if compat_urllib3 is not None:
         def _build_pm(self):
             if self.proxy_map:
                 proxy_url_parsed = compat_urlparse.urlsplit(self.proxy_map['http'])
-                # socks5 is treated as socks5h in YTDL socks module, so keep the same behavior
-                if proxy_url_parsed.scheme.lower() == 'socks5':
-                    proxy_url_parsed = proxy_url_parsed._replace(scheme='socks5h')
-                proxy_url = proxy_url_parsed.geturl()
 
-                if proxy_url_parsed.scheme.lower() in ('socks', 'socks4', 'socks4a', 'socks5', 'socks5h'):
+                # backwards compat: socks5 is treated as socks5h, and socks is treated as socks4
+                scheme_compat_map = {'socks5': 'socks5h', 'socks': 'socks4'}
+                if proxy_url_parsed.scheme.lower() in scheme_compat_map:
+                    proxy_url_parsed = proxy_url_parsed._replace(scheme=scheme_compat_map[proxy_url_parsed.scheme.lower()])
+
+                if proxy_url_parsed.scheme.lower() in ('socks4', 'socks4a', 'socks5h'):
                     if compat_urllib3_socks is None:
                         raise ExtractorError('pysocks required for using socks proxy with urllib3')
-                    self.pm = compat_urllib3_socks.SOCKSProxyManager(proxy_url)
+                    self.pm = compat_urllib3_socks.SOCKSProxyManager(proxy_url_parsed.geturl())
                 else:
                     self.pm = compat_urllib3.ProxyManager(
-                        proxy_url=proxy_url)
+                        proxy_url=proxy_url_parsed.geturl())
             else:
                 self.pm = compat_urllib3.PoolManager()
 
