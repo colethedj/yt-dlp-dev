@@ -80,7 +80,7 @@ from .compat import (
     has_pysocks
 )
 
-from .socks import (
+from .socksproxy import (
     ProxyType,
     sockssocket,
 )
