@@ -2893,7 +2893,7 @@ if compat_urllib3 is not None:
                 return e
             cause = e.__cause__
             while cause is not None:
-                if isinstance(cause, __class):
+                if issubclass(cause, __class):
                     return cause
                 cause = cause.__cause__
 
