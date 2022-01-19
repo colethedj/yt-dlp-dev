@@ -2859,15 +2859,30 @@ if compat_urllib3 is not None:
     # We'll likely need some generic DLPHTTPError in which we translate different libraries HTTP Errors into such
     # Possibly for the response too
     # urllib3.response.HTTPResponse is mostly backwards compatible http.client.HTTPResponse
+
+
     class YoutubeDLUrlLib3Adapter:
         def __init__(self, cookiejar=None, proxy_map=None):
             self.cookiejar = cookiejar
             self.pm: compat_urllib3.PoolManager
             self.proxy_map = proxy_map
             self._build_pm()
+            pass
 
-        # TODO: this could go into YoutubeDL.setup_pool
+        class YoutubeDLUrlLib3HTTPResponse(compat_urllib3.HTTPResponse):
+
+            def _error_catcher(self):
+                try:
+                    return super()._error_catcher()
+                except compat_urllib3.exceptions.HTTPError as e:
+                    for c in network_exceptions + [OSError]:
+                        cause = YoutubeDLUrlLib3Adapter._find_cause(e, c)
+                        if cause:
+                            raise cause from e
+                    raise compat_urllib_error.URLError(e) from e
+
         def _build_pm(self):
+            compat_urllib3.connectionpool.HTTPConnectionPool.ResponseCls = self.YoutubeDLUrlLib3HTTPResponse
             if self.proxy_map:
                 proxy_url_parsed = compat_urlparse.urlsplit(self.proxy_map['http'])
 
@@ -2887,7 +2902,7 @@ if compat_urllib3 is not None:
                 self.pm = compat_urllib3.PoolManager()
 
         @staticmethod
-        def __find_cause(e, klass):
+        def _find_cause(e, klass):
             while True:
                 if issubclass(type(e), klass):
                     return e
@@ -2902,7 +2917,8 @@ if compat_urllib3 is not None:
                 self.cookiejar.add_cookie_header(url_or_request)
             # Remove headers not meant to be forwarded to different host
             retries = compat_urllib3.Retry(
-                remove_headers_on_redirect=url_or_request.unredirected_hdrs.keys())
+                remove_headers_on_redirect=url_or_request.unredirected_hdrs.keys(),
+                raise_on_redirect=False, other=0, read=0, connect=0)
             try:
                 try:
                     res = self.pm.urlopen(
@@ -2924,24 +2940,28 @@ if compat_urllib3 is not None:
                 # TODO: translate proxy errors. We could catch compat_urllib3.exceptions.ProxyError and translate errors and use socksproxy.ProxyError?
                 # TODO: this currently requires a monkey-patched urllib3-2.0 due to exception chaining being broken with ConnectionPool
                 for c in network_exceptions:  # Raise as-is
-                    cause = self.__find_cause(e, c)
+                    cause = self._find_cause(e, c)
                     if cause:
                         raise cause from e
 
                 # TODO: Raise encapsulated in URLError
-                cause = self.__find_cause(e, OSError)
+                cause = self._find_cause(e, OSError)
                 if cause:
                     raise compat_urllib_error.URLError(cause) from cause
                 raise compat_urllib_error.URLError(*e.args) from e
 
-            url_parsed = compat_urllib_parse_urlparse(res.geturl())
-            if url_parsed.hostname is None:
-                # hack
-                url_parsed = url_parsed._replace(
-                    netloc=f'{res.connection.host}:{res.connection.port}',
-                    scheme='https')
-            res.url = url_parsed.geturl()
-
+            url = res.geturl()
+            if url:
+                url_parsed = compat_urllib_parse_urlparse(res.geturl())
+                if isinstance(url_parsed, compat_urllib_parse.ParseResultBytes):
+                    url_parsed = url_parsed.decode()
+                if url_parsed.hostname is None:
+                    # hack
+                    netloc = f'{res.connection.host}:{res.connection.port}'
+                    url_parsed = url_parsed._replace(
+                        netloc=netloc,
+                        scheme='https')
+                res.url = url_parsed.geturl()
             if not (
                 (200 <= res.status < 300)
                 or (res.status in (301, 302, 303, 307, 308) and url_or_request.get_method() in ('GET', 'HEAD'))
