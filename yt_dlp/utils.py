@@ -2884,17 +2884,6 @@ if compat_urllib3 is not None:
             else:
                 self.pm = compat_urllib3.PoolManager()
 
-        def _handle_error(self, e: Exception):
-            from socket import gaierror
-            # Occurs when socket timeout is reached, or too many redirects
-            if isinstance(e, urllib3.exceptions.MaxRetryError):
-                raise compat_urllib_error.URLError(e.reason) from e
-            if isinstance(e, urllib3.exceptions.ConnectTimeoutError):
-                raise TimeoutError from e
-            if issubclass(e, urllib3.exceptions.NameResolutionError):
-                raise socket.gaierror()
-            raise e
-
         def __find_cause(self, e, __class):
             if isinstance(e, __class):
                 return e
@@ -2926,10 +2915,10 @@ if compat_urllib3 is not None:
                         redirect=True,
                     )
 
-                except urllib3.exceptions.MaxRetryError as r:
+                except compat_urllib3.exceptions.MaxRetryError as r:
                     raise r.reason
 
-            except urllib3.exceptions.HTTPError as e:
+            except compat_urllib3.exceptions.HTTPError as e:
                 # TimeoutError cause is usually a subclass of OSError e.g socket error
                 # URLError is a subclass of OSError
                 # We will raise URLError from the OSError, as that is what urllib does.
