@@ -40,6 +40,8 @@ import xml.etree.ElementTree
 import zlib
 import mimetypes
 
+import urllib3.exceptions
+
 from .compat import (
     compat_HTMLParseError,
     compat_HTMLParser,
@@ -2874,13 +2876,33 @@ if compat_urllib3 is not None:
                     proxy_url_parsed = proxy_url_parsed._replace(scheme='socks5h')
                 proxy_url = proxy_url_parsed.geturl()
                 if proxy_url_parsed.scheme.lower() in ('socks', 'socks4', 'socks4a', 'socks5', 'socks5h'):
-                    self.pm = compat_urllib3.contrib.socks.SocksProxyManager(proxy_url)
+                    raise NotImplementedError('socks proxy not supported with urllib3 yet')
+                   # self.pm = compat_urllib3.contrib.socks.SocksProxyManager(proxy_url)
                 # socks5 is treated as socks5h in YTDL socks module, so keep the same behavior
-                proxy_url = proxy_url_parsed.geturl()
                 self.pm = compat_urllib3.ProxyManager(
                     proxy_url=proxy_url)
             else:
                 self.pm = compat_urllib3.PoolManager()
+
+        def _handle_error(self, e: Exception):
+            from socket import gaierror
+            # Occurs when socket timeout is reached, or too many redirects
+            if isinstance(e, urllib3.exceptions.MaxRetryError):
+                raise compat_urllib_error.URLError(e.reason) from e
+            if isinstance(e, urllib3.exceptions.ConnectTimeoutError):
+                raise TimeoutError from e
+            if issubclass(e, urllib3.exceptions.NameResolutionError):
+                raise socket.gaierror()
+            raise e
+
+        def __find_cause(self, e, __class):
+            if isinstance(e, __class):
+                return e
+            cause = e.__cause__
+            while cause is not None:
+                if isinstance(cause, __class):
+                    return cause
+                cause = cause.__cause__
 
         def urlopen(self, url_or_request, timeout):
             if isinstance(url_or_request, str):
@@ -2890,21 +2912,35 @@ if compat_urllib3 is not None:
             # Remove headers not meant to be forwarded to different host
             retries = compat_urllib3.Retry(
                 remove_headers_on_redirect=url_or_request.unredirected_hdrs.keys())
-
             try:
-                res = self.pm.urlopen(
-                    method=url_or_request.get_method(),
-                    url=url_or_request.get_full_url(),
-                    request_url=url_or_request.get_full_url(),  # fix redirects
-                    headers=merge_dicts(url_or_request.headers, url_or_request.unredirected_hdrs, std_headers),  # TODO
-                    body=url_or_request.data,
-                    preload_content=False,
-                    timeout=timeout,
-                    retries=retries,
-                    redirect=True,
-                )
-            except:
-                raise NotImplementedError('need to implement error catching adapters')
+                try:
+                    res = self.pm.urlopen(
+                        method=url_or_request.get_method(),
+                        url=url_or_request.get_full_url(),
+                        request_url=url_or_request.get_full_url(),  # needed for redirect compat
+                        headers=merge_dicts(url_or_request.headers, url_or_request.unredirected_hdrs, std_headers),
+                        body=url_or_request.data,
+                        preload_content=False,
+                        timeout=timeout,
+                        retries=retries,
+                        redirect=True,
+                    )
+
+                except urllib3.exceptions.MaxRetryError as r:
+                    raise r.reason
+
+            except urllib3.exceptions.HTTPError as e:
+                # TimeoutError cause is usually a subclass of OSError e.g socket error
+                # URLError is a subclass of OSError
+                # We will raise URLError from the OSError, as that is what urllib does.
+                # TODO: this currently requires a monkey-patched urllib3-2.0 due to exception chaining being broken with ConnectionPool
+                cause = (self.__find_cause(e, compat_http_client.HTTPException)
+                         or self.__find_cause(e, ssl.CertificateError)  # TODO: prob a better way to design this
+                         or self.__find_cause(e, socket.error)
+                         or self.__find_cause(e, OSError))
+                if cause:
+                    raise compat_urllib_error.URLError(cause) from cause
+                raise compat_urllib_error.URLError(*e.args) from e
 
             # urllib3 doesn't raise an error on http error
             if res.status >= 400:  # TODO - make consistent with urllib
