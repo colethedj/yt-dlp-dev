@@ -2887,14 +2887,13 @@ if compat_urllib3 is not None:
                 self.pm = compat_urllib3.PoolManager()
 
         @staticmethod
-        def __find_cause(e, __class):
-            if isinstance(e, __class):
-                return e
-            cause = e.__cause__
-            while cause is not None:
-                if issubclass(cause, __class):
-                    return cause
-                cause = cause.__cause__
+        def __find_cause(e, klass):
+            while True:
+                if issubclass(type(e), klass):
+                    return e
+                if e is None or e is e.__cause__:  # possible __cause__ loop
+                    return
+                e = e.__cause__
 
         def urlopen(self, url_or_request, timeout):
             if isinstance(url_or_request, str):
@@ -2922,19 +2921,27 @@ if compat_urllib3 is not None:
                     raise r.reason
 
             except compat_urllib3.exceptions.HTTPError as e:
-                # TimeoutError cause is usually a subclass of OSError e.g socket error
-                # URLError is a subclass of OSError
-                # We will raise URLError from the OSError, as that is what urllib does.
+                # TODO: translate proxy errors. We could catch compat_urllib3.exceptions.ProxyError and translate errors and use socksproxy.ProxyError?
                 # TODO: this currently requires a monkey-patched urllib3-2.0 due to exception chaining being broken with ConnectionPool
-                cause = (self.__find_cause(e, compat_http_client.HTTPException)
-                         or self.__find_cause(e, ssl.CertificateError)  # TODO: prob a better way to design this
-                         or self.__find_cause(e, OSError))
+                for c in network_exceptions:  # Raise as-is
+                    cause = self.__find_cause(e, c)
+                    if cause:
+                        raise cause from e
+
+                # TODO: Raise encapsulated in URLError
+                cause = self.__find_cause(e, OSError)
                 if cause:
                     raise compat_urllib_error.URLError(cause) from cause
                 raise compat_urllib_error.URLError(*e.args) from e
-            # TODO: translate proxy errors. We could catch compat_urllib3.exceptions.ProxyError and translate errors and use socksproxy.ProxyError?
-            # urllib3 doesn't raise an error on http error
-            if res.status >= 400:  # TODO - make consistent with urllib
+
+            if not (
+                (200 <= res.status < 300)
+                or (res.status in (301, 302, 303, 307, 308) and url_or_request.get_method() in ('GET', 'HEAD'))
+                or (res.status in (301, 302, 303) and url_or_request.get_method() == 'POST')
+            ):
+                # Note: urllib3.response.HTTPResponse is subclass of io.IOBase,
+                # whereas http.client.HTTPResponse is subclass of io.BufferedIOBase
+                # urllib3 HTTPResponse should be backwards-compatible elsewhere.
                 raise compat_HTTPError(
                     url=res.geturl(), code=res.status, msg=res.reason, hdrs=res.headers, fp=res)
 
