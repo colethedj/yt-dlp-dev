@@ -164,6 +164,16 @@ try:
 except ImportError:
     compat_urllib3 = None
 
+has_pysocks = False
+# print(sys.path)
+# import urllib3.contrib.socks as compat_urllib3_socks
+#
+# try:
+#     import urllib3.contrib.socks as compat_urllib3_socks  # TODO: urllib3 doesn't detect pysocks regardless?
+#     has_pysocks = True
+# except ImportError:
+#     has_pysocks = False
+
 WINDOWS_VT_MODE = False if compat_os_name == 'nt' else None
 
 

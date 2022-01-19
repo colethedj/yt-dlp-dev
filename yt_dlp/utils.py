@@ -75,6 +75,7 @@ from .compat import (
     compat_urllib_request,
     compat_urlparse,
     compat_xpath,
+    has_pysocks
 )
 
 from .socks import (
@@ -2852,41 +2853,36 @@ def handle_youtubedl_headers(headers):
 
 
 if compat_urllib3 is not None:
-    class YoutubeDLPoolManager(compat_urllib3.PoolManager):
-        """
-        Pool Manager
-
-        Automatically adds headers
-
-        """
-
-        # TODO:
-        # Likely not use a custom pool manager for everything we've done here
-        # For proxies will need to use urllib3.SocksProxyManager
-        # We'll likely need some generic DLPHTTPError in which we translate different libraries HTTP Errors into such
-        # Possibly for the response too
-        # urllib3.response.HTTPResponse is mostly backwards compatible http.client.HTTPResponse
-        def __init__(self, headers=None, cookiejar=None, **kwargs):
-            # TODO: this just sets up basic headers
-            headers = {**(headers or {}), **std_headers}
+    # TODO:
+    # Likely not use a custom pool manager for everything we've done here
+    # For proxies will need to use urllib3.SocksProxyManager
+    # We'll likely need some generic DLPHTTPError in which we translate different libraries HTTP Errors into such
+    # Possibly for the response too
+    # urllib3.response.HTTPResponse is mostly backwards compatible http.client.HTTPResponse
+    class YoutubeDLUrlLib3Adapter:
+        def __init__(self, cookiejar=None, proxy_map=None):
             self.cookiejar = cookiejar
-            super().__init__(headers=headers, **kwargs)
+            self.pm: compat_urllib3.PoolManager
+            self.proxy_map = proxy_map
+            self._build_pm()
 
-        def urlopen(self, method, url, redirect=True, **kw):
-            kw = kw.copy()
-            kw['headers'] = merge_dicts(kw.get('headers', {}), self.headers)
-            kw['request_url'] = url
-            res = super().urlopen(method, url, redirect, **kw)
-            # However, it doesn't raise any HTTP Error...
-            if res.status >= 400:
-                raise compat_HTTPError(
-                    url=res.geturl(), code=res.status, msg=res.reason, hdrs=res.headers, fp=res)
-            # some extractors access res.url when should be using res.geturl()
-            if not hasattr(res, 'url') or not res.url:
-                res.url = res.geturl()
-            return res
+        # TODO: this could go into YoutubeDL.setup_pool
+        def _build_pm(self):
+            if self.proxy_map:
+                proxy_url_parsed = compat_urlparse.urlsplit(self.proxy_map['http'])
+                if proxy_url_parsed.scheme.lower() == 'socks5':
+                    proxy_url_parsed = proxy_url_parsed._replace(scheme='socks5h')
+                proxy_url = proxy_url_parsed.geturl()
+                if proxy_url_parsed.scheme.lower() in ('socks', 'socks4', 'socks4a', 'socks5', 'socks5h'):
+                    self.pm = compat_urllib3.contrib.socks.SocksProxyManager(proxy_url)
+                # socks5 is treated as socks5h in YTDL socks module, so keep the same behavior
+                proxy_url = proxy_url_parsed.geturl()
+                self.pm = compat_urllib3.ProxyManager(
+                    proxy_url=proxy_url)
+            else:
+                self.pm = compat_urllib3.PoolManager()
 
-        def urllib3_open(self, url_or_request, timeout):
+        def urlopen(self, url_or_request, timeout):
             if isinstance(url_or_request, str):
                 url_or_request = compat_urllib_request.Request(url_or_request)
             if self.cookiejar:
@@ -2895,20 +2891,38 @@ if compat_urllib3 is not None:
             retries = compat_urllib3.Retry(
                 remove_headers_on_redirect=url_or_request.unredirected_hdrs.keys())
 
-            res = self.urlopen(
-                url_or_request.get_method(),
-                url_or_request.get_full_url(),
-                headers=merge_dicts(url_or_request.headers, url_or_request.unredirected_hdrs),
-                body=url_or_request.data,
-                preload_content=False,
-                timeout=timeout,
-                retries=retries
-            )
+            try:
+                res = self.pm.urlopen(
+                    method=url_or_request.get_method(),
+                    url=url_or_request.get_full_url(),
+                    request_url=url_or_request.get_full_url(),  # fix redirects
+                    headers=merge_dicts(url_or_request.headers, url_or_request.unredirected_hdrs, std_headers),  # TODO
+                    body=url_or_request.data,
+                    preload_content=False,
+                    timeout=timeout,
+                    retries=retries,
+                    redirect=True,
+                )
+            except:
+                raise NotImplementedError('need to implement error catching adapters')
+
+            # urllib3 doesn't raise an error on http error
+            if res.status >= 400:  # TODO - make consistent with urllib
+                raise compat_HTTPError(
+                    url=res.geturl(), code=res.status, msg=res.reason, hdrs=res.headers, fp=res)
+
+            # some extractors access res.url when should be using res.geturl()
+            if not hasattr(res, 'url') or not res.url:
+                res.url = res.geturl()
+
+            # Update cookiejar with response cookies
             if self.cookiejar:
                 self.cookiejar.extract_cookies(res, url_or_request)
+
             return res
+
 else:
-    YoutubeDLPoolManager = None
+    YoutubeDLUrlLib3Adapter = None
 
 
 class YoutubeDLHandler(compat_urllib_request.HTTPHandler):
