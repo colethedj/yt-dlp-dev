@@ -2887,7 +2887,8 @@ if compat_urllib3 is not None:
             else:
                 self.pm = compat_urllib3.PoolManager()
 
-        def __find_cause(self, e, __class):
+        @staticmethod
+        def __find_cause(e, __class):
             if isinstance(e, __class):
                 return e
             cause = e.__cause__
@@ -2928,12 +2929,11 @@ if compat_urllib3 is not None:
                 # TODO: this currently requires a monkey-patched urllib3-2.0 due to exception chaining being broken with ConnectionPool
                 cause = (self.__find_cause(e, compat_http_client.HTTPException)
                          or self.__find_cause(e, ssl.CertificateError)  # TODO: prob a better way to design this
-                         or self.__find_cause(e, socket.error)
                          or self.__find_cause(e, OSError))
                 if cause:
                     raise compat_urllib_error.URLError(cause) from cause
                 raise compat_urllib_error.URLError(*e.args) from e
-
+            # TODO: translate proxy errors. We could catch compat_urllib3.exceptions.ProxyError and translate errors and use socksproxy.ProxyError?
             # urllib3 doesn't raise an error on http error
             if res.status >= 400:  # TODO - make consistent with urllib
                 raise compat_HTTPError(
