@@ -321,6 +321,7 @@ from .curiositystream import (
     CuriosityStreamSeriesIE,
 )
 from .cwtv import CWTVIE
+from .daftsex import DaftsexIE
 from .dailymail import DailyMailIE
 from .dailymotion import (
     DailymotionIE,
@@ -828,7 +829,10 @@ from .mirrativ import (
 )
 from .mit import TechTVMITIE, OCWMITIE
 from .mitele import MiTeleIE
-from .mixch import MixchIE
+from .mixch import (
+    MixchIE,
+    MixchArchiveIE,
+)
 from .mixcloud import (
     MixcloudIE,
     MixcloudUserIE,
@@ -1164,6 +1168,10 @@ from .pokemon import (
     PokemonIE,
     PokemonWatchIE,
 )
+from .pokergo import (
+    PokerGoIE,
+    PokerGoCollectionIE,
+)
 from .polsatgo import PolsatGoIE
 from .polskieradio import (
     PolskieRadioIE,
@@ -1291,6 +1299,12 @@ from .rtl2 import (
     RTL2YouIE,
     RTL2YouSeriesIE,
 )
+from .rtnews import (
+    RTNewsIE,
+    RTDocumentryIE,
+    RTDocumentryPlaylistIE,
+    RuptlyIE,
+)
 from .rtp import RTPIE
 from .rtrfm import RTRFMIE
 from .rts import RTSIE
@@ -1317,6 +1331,14 @@ from .rutube import (
     RutubePersonIE,
     RutubePlaylistIE,
     RutubeTagsIE,
+)
+from .glomex import (
+    GlomexIE,
+    GlomexEmbedIE,
+)
+from .megatvcom import (
+    MegaTVComIE,
+    MegaTVComEmbedIE,
 )
 from .rutv import RUTVIE
 from .ruutu import RuutuIE
@@ -1506,7 +1528,12 @@ from .teachingchannel import TeachingChannelIE
 from .teamcoco import TeamcocoIE
 from .teamtreehouse import TeamTreeHouseIE
 from .techtalks import TechTalksIE
-from .ted import TEDIE
+from .ted import (
+    TedEmbedIE,
+    TedPlaylistIE,
+    TedSeriesIE,
+    TedTalkIE,
+)
 from .tele5 import Tele5IE
 from .tele13 import Tele13IE
 from .telebruxelles import TeleBruxellesIE
@@ -1651,6 +1678,10 @@ from .tvnow import (
     TVNowSeasonIE,
     TVNowAnnualIE,
     TVNowShowIE,
+)
+from .tvopengr import (
+    TVOpenGrWatchIE,
+    TVOpenGrEmbedIE,
 )
 from .tvp import (
     TVPEmbedIE,
@@ -1953,6 +1984,7 @@ from .youtube import (
     YoutubeFavouritesIE,
     YoutubeHistoryIE,
     YoutubeTabIE,
+    YoutubeLivestreamEmbedIE,
     YoutubePlaylistIE,
     YoutubeRecommendedIE,
     YoutubeSearchDateIE,
