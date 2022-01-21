@@ -2865,11 +2865,11 @@ if compat_urllib3 is not None:
     # urllib3.response.HTTPResponse is mostly backwards compatible http.client.HTTPResponse
 
     class YoutubeDLUrlLib3Adapter:
-        def __init__(self, cookiejar=None, proxy_map=None, ssl_context=None):
+        def __init__(self, params, cookiejar=None, proxy_map=None):
             self.cookiejar = cookiejar
             self.pm: compat_urllib3.PoolManager
             self.proxy_map = proxy_map
-            self.ssl_context = ssl_context
+            self.params = params
             self._build_pm()
             pass
 
@@ -2885,6 +2885,11 @@ if compat_urllib3 is not None:
 
         def _build_pm(self):
             compat_urllib3.connectionpool.HTTPConnectionPool.ResponseCls = self.YoutubeDLUrlLib3HTTPResponse
+            pm_args = {'ssl_context': make_ssl_context(self.params)}
+            source_address = self.params.get('source_address')
+            if source_address:
+                pm_args['source_address'] = (source_address, 0)
+
             if self.proxy_map:
                 proxy_url_parsed = compat_urlparse.urlsplit(self.proxy_map['http'])
                 # backwards compat: socks5 is treated as socks5h, and socks is treated as socks4
@@ -2896,12 +2901,12 @@ if compat_urllib3 is not None:
                     if compat_urllib3_socks is None:
                         raise Exception('pysocks required for using socks proxy with urllib3')
                     self.pm = compat_urllib3_socks.SOCKSProxyManager(
-                        proxy_url=proxy_url_parsed.geturl(), ssl_context=self.ssl_context)
+                        proxy_url=proxy_url_parsed.geturl(), **pm_args)
                 else:
                     self.pm = compat_urllib3.ProxyManager(
-                        proxy_url=proxy_url_parsed.geturl(), proxy_ssl_context=self.ssl_context, ssl_context=self.ssl_context)
+                        proxy_url=proxy_url_parsed.geturl(), proxy_ssl_context=pm_args.get('ssl_context'), **pm_args)
             else:
-                self.pm = compat_urllib3.PoolManager(ssl_context=self.ssl_context)
+                self.pm = compat_urllib3.PoolManager(**pm_args)
 
         @classmethod
         def _translate_error(cls, e):

@@ -3658,13 +3658,14 @@ class YoutubeDL(object):
         if self.params.get('debug_printtraffic'):
             compat_urllib3.add_stderr_logger()
 
-        opts_cookiesfrombrowser = self.params.get('cookiesfrombrowser')
-        opts_cookiefile = self.params.get('cookiefile')
-        self.cookiejar = load_cookies(opts_cookiefile, opts_cookiesfrombrowser, self)
+        if not self.cookiejar:
+            opts_cookiesfrombrowser = self.params.get('cookiesfrombrowser')
+            opts_cookiefile = self.params.get('cookiefile')
+            self.cookiejar = load_cookies(opts_cookiefile, opts_cookiesfrombrowser, self)
 
         try:
-            self._urllib3_opener = YoutubeDLUrlLib3Adapter(
-                cookiejar=self.cookiejar, proxy_map=self._get_proxy_map(), ssl_context=make_ssl_context(self.params))
+            self._urllib3_opener = YoutubeDLUrlLib3Adapter(self.params,
+                cookiejar=self.cookiejar, proxy_map=self._get_proxy_map())
         except Exception as e:
             self.report_warning(str(e) + '; falling back to urllib')
 
