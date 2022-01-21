@@ -2881,7 +2881,7 @@ if compat_urllib3 is not None:
                     with super()._error_catcher() as ec:
                         yield ec
                 except compat_urllib3.exceptions.HTTPError as e:
-                    YoutubeDLUrlLib3Adapter._translate_error(e)
+                    YoutubeDLUrlLib3Adapter._translate_exception(e)
 
         def _build_pm(self):
             compat_urllib3.connectionpool.HTTPConnectionPool.ResponseCls = self.YoutubeDLUrlLib3HTTPResponse
@@ -2909,7 +2909,7 @@ if compat_urllib3 is not None:
                 self.pm = compat_urllib3.PoolManager(**pm_args)
 
         @classmethod
-        def _translate_error(cls, e):
+        def _translate_exception(cls, e):
             # TODO: translate proxy errors. We could catch compat_urllib3.exceptions.ProxyError and translate errors and use socksproxy.ProxyError?
             # TODO: this currently requires a monkey-patched urllib3-2.0 due to exception chaining being broken with ConnectionPool
 
@@ -2964,7 +2964,7 @@ if compat_urllib3 is not None:
                     raise r.reason
 
             except compat_urllib3.exceptions.HTTPError as e:
-                self._translate_error(e)
+                self._translate_exception(e)
 
             url = res.geturl()
             if url:
