@@ -2532,7 +2532,7 @@ def _ssl_load_windows_store_certs(ssl_context, storename):
             pass
 
 
-def make_HTTPS_handler(params, **kwargs):
+def make_ssl_context(params):
     opts_check_certificate = not params.get('nocheckcertificate')
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     context.check_hostname = opts_check_certificate
@@ -2552,7 +2552,11 @@ def make_HTTPS_handler(params, **kwargs):
                 for storename in ('CA', 'ROOT'):
                     _ssl_load_windows_store_certs(context, storename)
             context.set_default_verify_paths()
-    return YoutubeDLHTTPSHandler(params, context=context, **kwargs)
+    return context
+
+
+def make_HTTPS_handler(params, **kwargs):
+    return YoutubeDLHTTPSHandler(params, context=make_ssl_context(params), **kwargs)
 
 
 def bug_reports_message(before=';'):
@@ -2861,10 +2865,11 @@ if compat_urllib3 is not None:
     # urllib3.response.HTTPResponse is mostly backwards compatible http.client.HTTPResponse
 
     class YoutubeDLUrlLib3Adapter:
-        def __init__(self, cookiejar=None, proxy_map=None):
+        def __init__(self, cookiejar=None, proxy_map=None, ssl_context=None):
             self.cookiejar = cookiejar
             self.pm: compat_urllib3.PoolManager
             self.proxy_map = proxy_map
+            self.ssl_context = ssl_context
             self._build_pm()
             pass
 
@@ -2882,7 +2887,6 @@ if compat_urllib3 is not None:
             compat_urllib3.connectionpool.HTTPConnectionPool.ResponseCls = self.YoutubeDLUrlLib3HTTPResponse
             if self.proxy_map:
                 proxy_url_parsed = compat_urlparse.urlsplit(self.proxy_map['http'])
-
                 # backwards compat: socks5 is treated as socks5h, and socks is treated as socks4
                 scheme_compat_map = {'socks5': 'socks5h', 'socks': 'socks4'}
                 if proxy_url_parsed.scheme.lower() in scheme_compat_map:
@@ -2891,12 +2895,13 @@ if compat_urllib3 is not None:
                 if proxy_url_parsed.scheme.lower() in ('socks4', 'socks4a', 'socks5h'):
                     if compat_urllib3_socks is None:
                         raise Exception('pysocks required for using socks proxy with urllib3')
-                    self.pm = compat_urllib3_socks.SOCKSProxyManager(proxy_url_parsed.geturl())
+                    self.pm = compat_urllib3_socks.SOCKSProxyManager(
+                        proxy_url=proxy_url_parsed.geturl(), ssl_context=self.ssl_context)
                 else:
                     self.pm = compat_urllib3.ProxyManager(
-                        proxy_url=proxy_url_parsed.geturl())
+                        proxy_url=proxy_url_parsed.geturl(), proxy_ssl_context=self.ssl_context, ssl_context=self.ssl_context)
             else:
-                self.pm = compat_urllib3.PoolManager()
+                self.pm = compat_urllib3.PoolManager(ssl_context=self.ssl_context)
 
         @classmethod
         def _translate_error(cls, e):
@@ -2947,7 +2952,7 @@ if compat_urllib3 is not None:
                         preload_content=False,
                         timeout=timeout,
                         retries=retries,
-                        redirect=True,
+                        redirect=True
                     )
 
                 except compat_urllib3.exceptions.MaxRetryError as r:
