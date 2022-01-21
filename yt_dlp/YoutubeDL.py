@@ -326,6 +326,8 @@ class YoutubeDL(object):
     cookiesfrombrowser:  A tuple containing the name of the browser, the profile
                        name/pathfrom where cookies are loaded, and the name of the
                        keyring. Eg: ('chrome', ) or ('vivaldi', 'default', 'BASICTEXT')
+    legacyserverconnect: Explicitly allow HTTPS connection to servers that do not
+                       support RFC 5746 secure renegotiation
     nocheckcertificate:  Do not verify SSL certificates
     prefer_insecure:   Use HTTP instead of HTTPS to retrieve information.
                        At the moment, this is only supported by YouTube.
@@ -2754,7 +2756,9 @@ class YoutubeDL(object):
         if not test:
             for ph in self._progress_hooks:
                 fd.add_progress_hook(ph)
-            urls = '", "'.join([f['url'] for f in info.get('requested_formats', [])] or [info['url']])
+            urls = '", "'.join(
+                (f['url'].split(',')[0] + ',<data>' if f['url'].startswith('data:') else f['url'])
+                for f in info.get('requested_formats', []) or [info])
             self.write_debug('Invoking downloader on "%s"' % urls)
 
         # Note: Ideally info should be a deep-copied so that hooks cannot modify it.

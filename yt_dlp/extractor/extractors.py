@@ -304,6 +304,10 @@ from .cozytv import CozyTVIE
 from .cracked import CrackedIE
 from .crackle import CrackleIE
 from .crooksandliars import CrooksAndLiarsIE
+from .crowdbunker import (
+    CrowdBunkerIE,
+    CrowdBunkerChannelIE,
+)
 from .crunchyroll import (
     CrunchyrollIE,
     CrunchyrollShowPlaylistIE,
@@ -636,7 +640,11 @@ from .iprima import (
     IPrimaIE,
     IPrimaCNNIE
 )
-from .iqiyi import IqiyiIE
+from .iqiyi import (
+    IqiyiIE,
+    IqIE,
+    IqAlbumIE
+)
 from .ir90tv import Ir90TvIE
 from .itv import (
     ITVIE,
@@ -748,7 +756,10 @@ from .livestream import (
     LivestreamOriginalIE,
     LivestreamShortenerIE,
 )
-from .lnkgo import LnkGoIE
+from .lnkgo import (
+    LnkGoIE,
+    LnkIE,
+)
 from .localnews8 import LocalNews8IE
 from .lovehomeporn import LoveHomePornIE
 from .lrt import LRTIE
