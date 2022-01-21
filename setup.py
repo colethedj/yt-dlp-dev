@@ -26,7 +26,7 @@ LONG_DESCRIPTION = '\n\n'.join((
 REQUIREMENTS = [
     'mutagen', 'pycryptodomex', 'websockets', 'urllib3[socks]',
     'brotli>=1.0.9; platform_python_implementation=="CPython"',
-    'brotlicffi; platform_python_implementation!="CPython"']
+    'brotlicffi>=1.0.9.0; platform_python_implementation!="CPython"']
 
 
 if sys.argv[1:2] == ['py2exe']:
