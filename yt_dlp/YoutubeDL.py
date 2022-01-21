@@ -3655,7 +3655,7 @@ class YoutubeDL(object):
     def _setup_urllib3_opener(self):
         if compat_urllib3 is None or 'no-urllib3' in self.params.get('compat_opts', []):
             return
-
+        compat_urllib3.disable_warnings()
         if self.params.get('debug_printtraffic'):
             compat_urllib3.add_stderr_logger()
 
