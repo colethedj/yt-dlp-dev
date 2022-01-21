@@ -31,6 +31,7 @@ from enum import Enum
 from string import ascii_letters
 
 from .compat import (
+    compat_brotli,
     compat_basestring,
     compat_get_terminal_size,
     compat_kwargs,
@@ -3617,6 +3618,7 @@ class YoutubeDL(object):
             SQLITE_AVAILABLE and 'sqlite',
             has_websockets and 'websockets',
             compat_urllib3 is not None and ('urllib3' if not compat_urllib3_socks else 'urllib3[socks]'),
+            compat_brotli is not None and 'brotli',
             delim=', ') or 'none'
         write_debug('Optional libraries: %s' % lib_str)
 

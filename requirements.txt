@@ -2,3 +2,5 @@ mutagen
 pycryptodomex
 websockets
 urllib3[socks]
+brotli>=1.0.9; platform_python_implementation=='CPython'
+brotlicffi; platform_python_implementation!='CPython'
