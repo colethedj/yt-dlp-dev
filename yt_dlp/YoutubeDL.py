@@ -126,7 +126,8 @@ from .utils import (
     write_string,
     YoutubeDLCookieProcessor,
     YoutubeDLHandler,
-    YoutubeDLRedirectHandler, YoutubeDLUrlLib3Adapter, make_ssl_context,
+    YoutubeDLRedirectHandler,
+    YoutubeDLUrlLib3Adapter
 )
 from .cache import Cache
 from .minicurses import format_text
@@ -3664,8 +3665,8 @@ class YoutubeDL(object):
             self.cookiejar = load_cookies(opts_cookiefile, opts_cookiesfrombrowser, self)
 
         try:
-            self._urllib3_opener = YoutubeDLUrlLib3Adapter(self.params,
-                cookiejar=self.cookiejar, proxy_map=self._get_proxy_map())
+            self._urllib3_opener = YoutubeDLUrlLib3Adapter(
+                self.params, cookiejar=self.cookiejar, proxy_map=self._get_proxy_map())
         except Exception as e:
             self.report_warning(str(e) + '; falling back to urllib')
 
