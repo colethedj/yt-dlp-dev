@@ -2871,15 +2871,13 @@ if compat_urllib3 is not None:
 
         class YoutubeDLUrlLib3HTTPResponse(compat_urllib3.HTTPResponse):
 
+            @contextlib.contextmanager
             def _error_catcher(self):
                 try:
-                    return super()._error_catcher()
+                    with super()._error_catcher() as ec:
+                        yield ec
                 except compat_urllib3.exceptions.HTTPError as e:
-                    for c in network_exceptions + [OSError]:
-                        cause = YoutubeDLUrlLib3Adapter._find_cause(e, c)
-                        if cause:
-                            raise cause from e
-                    raise compat_urllib_error.URLError(e) from e
+                    YoutubeDLUrlLib3Adapter._translate_error(e)
 
         def _build_pm(self):
             compat_urllib3.connectionpool.HTTPConnectionPool.ResponseCls = self.YoutubeDLUrlLib3HTTPResponse
@@ -2893,13 +2891,31 @@ if compat_urllib3 is not None:
 
                 if proxy_url_parsed.scheme.lower() in ('socks4', 'socks4a', 'socks5h'):
                     if compat_urllib3_socks is None:
-                        raise ExtractorError('pysocks required for using socks proxy with urllib3')
+                        raise Exception('pysocks required for using socks proxy with urllib3')
                     self.pm = compat_urllib3_socks.SOCKSProxyManager(proxy_url_parsed.geturl())
                 else:
                     self.pm = compat_urllib3.ProxyManager(
                         proxy_url=proxy_url_parsed.geturl())
             else:
                 self.pm = compat_urllib3.PoolManager()
+
+        @classmethod
+        def _translate_error(cls, e):
+            # TODO: translate proxy errors. We could catch compat_urllib3.exceptions.ProxyError and translate errors and use socksproxy.ProxyError?
+            # TODO: this currently requires a monkey-patched urllib3-2.0 due to exception chaining being broken with ConnectionPool
+
+            # Noter we are missing the custom urllib error messages
+            for c in (compat_http_client.BadStatusLine, OSError):
+                cause = cls._find_cause(e, c)
+                if cause:
+                    raise compat_urllib_error.URLError(cause) from cause
+
+            # Other HTTPExceptions are not wrapped in URLError
+            cause = cls._find_cause(e, compat_http_client.HTTPException)
+            if cause:
+                raise cause
+
+            raise compat_urllib_error.URLError(e) from e
 
         @staticmethod
         def _find_cause(e, klass):
@@ -2937,18 +2953,7 @@ if compat_urllib3 is not None:
                     raise r.reason
 
             except compat_urllib3.exceptions.HTTPError as e:
-                # TODO: translate proxy errors. We could catch compat_urllib3.exceptions.ProxyError and translate errors and use socksproxy.ProxyError?
-                # TODO: this currently requires a monkey-patched urllib3-2.0 due to exception chaining being broken with ConnectionPool
-                for c in network_exceptions:  # Raise as-is
-                    cause = self._find_cause(e, c)
-                    if cause:
-                        raise cause from e
-
-                # TODO: Raise encapsulated in URLError
-                cause = self._find_cause(e, OSError)
-                if cause:
-                    raise compat_urllib_error.URLError(cause) from cause
-                raise compat_urllib_error.URLError(*e.args) from e
+                self._translate_error(e)
 
             url = res.geturl()
             if url:
