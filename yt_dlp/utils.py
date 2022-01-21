@@ -2934,13 +2934,15 @@ if compat_urllib3 is not None:
             retries = compat_urllib3.Retry(
                 remove_headers_on_redirect=url_or_request.unredirected_hdrs.keys(),
                 raise_on_redirect=False, other=0, read=0, connect=0)
+            headers = handle_youtubedl_headers(
+                merge_dicts(url_or_request.headers, url_or_request.unredirected_hdrs, std_headers))
             try:
                 try:
                     res = self.pm.urlopen(
                         method=url_or_request.get_method(),
                         url=url_or_request.get_full_url(),
                         request_url=url_or_request.get_full_url(),  # needed for redirect compat
-                        headers=merge_dicts(url_or_request.headers, url_or_request.unredirected_hdrs, std_headers),
+                        headers=headers,
                         body=url_or_request.data,
                         preload_content=False,
                         timeout=timeout,
