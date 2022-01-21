@@ -2860,7 +2860,6 @@ if compat_urllib3 is not None:
     # Possibly for the response too
     # urllib3.response.HTTPResponse is mostly backwards compatible http.client.HTTPResponse
 
-
     class YoutubeDLUrlLib3Adapter:
         def __init__(self, cookiejar=None, proxy_map=None):
             self.cookiejar = cookiejar

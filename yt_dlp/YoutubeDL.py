@@ -540,7 +540,6 @@ class YoutubeDL(object):
         self._err_file = sys.stderr
         self.params = params
         self.cache = Cache(self)
-        self._pool: YoutubeDLPoolManager
         windows_enable_vt_mode()
         self._allow_colors = {
             'screen': not self.params.get('no_color') and supports_terminal_sequences(self._screen_file),
