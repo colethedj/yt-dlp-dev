@@ -62,19 +62,20 @@ class Session:
         self.params = youtubedl_params
 
     def add_adapter(self, adapter):
-        bisect.bisect(self._adapters, adapter)
+        bisect.insort_left(self._adapters, adapter)
 
     def remove_adapter(self, adapter: BaseBackendAdapter):
         self._adapters.remove(adapter)
 
     def send(self, request: urllib.request.Request):
+        last_err = None
         for adapter in self._adapters:
             try:
                 return adapter.request(request, proxies=self.global_proxies)
             except NotSuitableError as e:
-                if str(e):
-                    self._logger.error(f'{adapter.BACKEND_NAME} backend could not be used: {e}')
-        raise Exception('No appropriate adapter available that can resolve this request')
+                last_err = e
+                self._logger.debug(f'{adapter.BACKEND_NAME} backend could not be used: {e}')
+        raise Exception('No appropriate adapter available that can resolve this request. ' + str(last_err) if last_err else '')
 
 
 # goes in YoutubeDL class?
