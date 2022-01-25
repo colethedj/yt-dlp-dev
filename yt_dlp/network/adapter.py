@@ -25,7 +25,7 @@ class BaseBackendAdapter(ABC):
         super(BaseBackendAdapter).__init__()
 
     def request(self, request: urllib.request.Request, *req_args, **req_kwargs):
-        scheme = urllib.parse.urlparse(request.full_url).scheme
+        scheme = urllib.parse.urlparse(request.full_url).scheme  # do we want this here?
         if scheme.lower() not in self.PROTOCOLS:
             raise NotSuitableError(f'{scheme} is not a supported scheme')
         return self._request(request, *req_args, **req_kwargs)
@@ -41,7 +41,7 @@ class BaseBackendAdapter(ABC):
 class MyBackendAdapter(BaseBackendAdapter):
     BACKEND_NAME = 'my backend'
     PRIORITY = 40
-    SUPPORTED_METHODS = ['http', 'https']
+    PROTOCOLS = ['http', 'https']
 
     def __init__(self, cookies: http.cookiejar.CookieJar, youtubedl_params: dict):
         super().__init__(cookies, youtubedl_params)

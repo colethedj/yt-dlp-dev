@@ -165,6 +165,10 @@ from .version import __version__, RELEASE_GIT_HEAD
 if compat_os_name == 'nt':
     import ctypes
 
+import typing
+
+
+YoutubeDLParams = dict
 
 class YoutubeDL(object):
     """YoutubeDL class.
