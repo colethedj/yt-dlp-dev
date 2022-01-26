@@ -8,82 +8,112 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 from typing import List
 
-
-class NotSuitableError(Exception):
-    ...
+Request: urllib.request.Request
 
 
-class BaseBackendAdapter(ABC):
+class BaseBackendHandler(ABC):
 
-    BACKEND_NAME: str
-    PRIORITY = 0  # highest priority
-    PROTOCOLS: list
+    _SUPPORTED_PROTOCOLS: list
 
-    def __init__(self, cookies: http.cookiejar.CookieJar, youtubedl_params: dict):
-        self.cookiejar = cookies
+    def __init__(self, youtubedl_params: dict, ydl_logger):
+        self._next_handler = None
         self.params = youtubedl_params
-        super(BaseBackendAdapter).__init__()
+        self.logger = ydl_logger
+        super(BaseBackendHandler).__init__()
 
-    def request(self, request: urllib.request.Request, *req_args, **req_kwargs):
-        scheme = urllib.parse.urlparse(request.full_url).scheme  # do we want this here?
-        if scheme.lower() not in self.PROTOCOLS:
-            raise NotSuitableError(f'{scheme} is not a supported scheme')
-        return self._request(request, *req_args, **req_kwargs)
+    def set_next(self, handler):
+        self._next_handler = handler
+        return handler
+
+    def handle(self, request: Request, **req_kwargs):
+        if self.can_handle(request, **req_kwargs):
+            res = self._real_handle(request, **req_kwargs)
+            if res:
+                return res
+        if self._next_handler:
+            return self._next_handler.handle(request, **req_kwargs)
+
+    @classmethod
+    def _is_supported_protocol(cls, request: Request):
+        return urllib.parse.urlparse(request.full_url).scheme.lower() in cls._SUPPORTED_PROTOCOLS
+
+    @classmethod
+    def can_handle(cls, request: Request, **req_kwargs) -> bool:
+        return cls._is_supported_protocol(request)
 
     @abstractmethod
-    def _request(self, request: urllib.request.Request, proxies=None):
+    def _real_handle(self, request: Request, proxies=None):
         raise NotImplementedError('This function must be implemented by subclasses')
 
-    def __lt__(self, other):
-        return self.PRIORITY < other.PRIORITY
+
+class UnsupportedBackendAdapter(BaseBackendHandler):
+    def can_handle(self, request: Request, **req_kwargs):
+        raise Exception('This request is not supported')
+
+    def _real_handle(self, request: Request, proxies=None):
+        return
 
 
-class MyBackendAdapter(BaseBackendAdapter):
-    BACKEND_NAME = 'my backend'
-    PRIORITY = 40
-    PROTOCOLS = ['http', 'https']
+class MyBackendAdapter(BaseBackendHandler):
+    _SUPPORTED_PROTOCOLS = ['http', 'https']
 
-    def __init__(self, cookies: http.cookiejar.CookieJar, youtubedl_params: dict):
-        super().__init__(cookies, youtubedl_params)
-        # do some stuff
+    def can_handle(self, request: Request, **req_kwargs) -> bool:
+        if req_kwargs.get('proxies'):
+            return False
+        return super().can_handle(request, **req_kwargs)
 
-    def _request(self, request: urllib.request.Request, proxies=None):
-        if proxies:
-            raise NotSuitableError
+    def _real_handle(self, request: Request, proxies=None):
         raise NotImplementedError
 
 
 class Session:
 
-    def __init__(self, youtubedl_params: dict, logger, proxies=None):
-        self._adapters: List[BaseBackendAdapter] = []
-        self.global_proxies = proxies or {}
+    def __init__(self, youtubedl_params: dict, logger):
+        self._handler_chain = None
         self._logger = logger
         self.params = youtubedl_params
+        self.cookiejar = http.cookiejar.CookieJar()
 
-    def add_adapter(self, adapter):
-        bisect.insort_left(self._adapters, adapter)
+    def add_handler(self, handler: BaseBackendHandler):
+        if self._handler_chain is None:
+            self._handler_chain = handler
+        else:
+            self._handler_chain = self._handler_chain.set_next(handler)
 
-    def remove_adapter(self, adapter: BaseBackendAdapter):
-        self._adapters.remove(adapter)
+    def _make_proxy_map(self, request: Request = None):
+        proxy = None
+        if request is not None:
+            req_proxy = request.headers.get('Ytdl-request-proxy')
+            if req_proxy is not None:
+                proxy = req_proxy
+                del request.headers['Ytdl-request-proxy']
 
-    def send(self, request: urllib.request.Request):
-        last_err = None
-        for adapter in self._adapters:
-            try:
-                return adapter.request(request, proxies=self.global_proxies)
-            except NotSuitableError as e:
-                last_err = e
-                self._logger.debug(f'{adapter.BACKEND_NAME} backend could not be used: {e}')
-        raise Exception('No appropriate adapter available that can resolve this request. ' + str(last_err) if last_err else '')
+        opts_proxy = self.params.get('proxy')
+        if not proxy and opts_proxy:
+            proxy = opts_proxy
+
+        if proxy:
+            return {'http': opts_proxy, 'https': opts_proxy}
+
+        proxies = urllib.request.getproxies()
+        # Set HTTPS proxy to HTTP one if given (https://github.com/ytdl-org/youtube-dl/issues/805)
+        if 'http' in proxies and 'https' not in proxies:
+            proxies['https'] = proxies['http']
+        return proxies
+
+    def urlopen(self, request: urllib.request.Request):
+        self.cookiejar.add_cookie_header(request)
+        res = self._handler_chain.handle(request, proxies=self._make_proxy_map(request))
+        if res:
+            self.cookiejar.extract_cookies(res, request)
+        return res
 
 
 # goes in YoutubeDL class?
 def create_session(youtubedl_params, ydl_logger):
-    adapters = [MyBackendAdapter]
+    adapters = [MyBackendAdapter, UnsupportedBackendAdapter]
     session = Session(youtubedl_params, logger=ydl_logger)
-    cookies = http.cookiejar.CookieJar()
     for adapter in adapters:
         if not adapter:
             continue
-        session.add_adapter(adapter(cookies, youtubedl_params))
+        session.add_handler(adapter(youtubedl_params, None))
