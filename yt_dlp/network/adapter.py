@@ -19,6 +19,12 @@ class BaseBackendHandler(ABC):
         self._next_handler = None
         self.params = youtubedl_params
         self.logger = ydl_logger
+        self._initialize()
+
+    @abstractmethod
+    def _initialize(self):
+        """Initialization process. Redefine in subclasses."""
+        pass
 
     def set_next(self, handler):
         self._next_handler = handler
@@ -42,15 +48,14 @@ class BaseBackendHandler(ABC):
 
     @abstractmethod
     def _real_handle(self, request: Request, proxies=None):
-        raise NotImplementedError('This function must be implemented by subclasses')
+        """Real request handling process. Redefine in subclasses"""
+        pass
+
 
 
 class UnsupportedBackendAdapter(BaseBackendHandler):
     def can_handle(self, request: Request, **req_kwargs):
         raise Exception('This request is not supported')
-
-    def _real_handle(self, request: Request, proxies=None):
-        return
 
 
 class MyBackendAdapter(BaseBackendHandler):
@@ -60,9 +65,6 @@ class MyBackendAdapter(BaseBackendHandler):
         if req_kwargs.get('proxies'):
             return False
         return super().can_handle(request, **req_kwargs)
-
-    def _real_handle(self, request: Request, proxies=None):
-        raise NotImplementedError
 
 
 class Session:
