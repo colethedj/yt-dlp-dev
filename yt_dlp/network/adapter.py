@@ -19,7 +19,6 @@ class BaseBackendHandler(ABC):
         self._next_handler = None
         self.params = youtubedl_params
         self.logger = ydl_logger
-        super(BaseBackendHandler).__init__()
 
     def set_next(self, handler):
         self._next_handler = handler
