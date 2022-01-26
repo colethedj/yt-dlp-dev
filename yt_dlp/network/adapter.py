@@ -1,17 +1,16 @@
 import abc
 import bisect
 import http.cookiejar
-
+from http.client import HTTPResponse
 import urllib.request
 import urllib.parse
-from abc import ABC, abstractmethod
 from collections import OrderedDict
 from typing import List
 
 Request: urllib.request.Request
 
 
-class BaseBackendHandler(ABC):
+class BaseBackendHandler:
 
     _SUPPORTED_PROTOCOLS: list
 
@@ -21,7 +20,6 @@ class BaseBackendHandler(ABC):
         self.logger = ydl_logger
         self._initialize()
 
-    @abstractmethod
     def _initialize(self):
         """Initialization process. Redefine in subclasses."""
         pass
@@ -46,19 +44,17 @@ class BaseBackendHandler(ABC):
     def can_handle(cls, request: Request, **req_kwargs) -> bool:
         return cls._is_supported_protocol(request)
 
-    @abstractmethod
-    def _real_handle(self, request: Request, proxies=None):
+    def _real_handle(self, request: Request, proxies=None) -> HTTPResponse:
         """Real request handling process. Redefine in subclasses"""
         pass
 
 
-
-class UnsupportedBackendAdapter(BaseBackendHandler):
+class UnsupportedBackendHandler(BaseBackendHandler):
     def can_handle(self, request: Request, **req_kwargs):
         raise Exception('This request is not supported')
 
 
-class MyBackendAdapter(BaseBackendHandler):
+class MyBackendHandler(BaseBackendHandler):
     _SUPPORTED_PROTOCOLS = ['http', 'https']
 
     def can_handle(self, request: Request, **req_kwargs) -> bool:
@@ -112,7 +108,7 @@ class Session:
 
 # goes in YoutubeDL class?
 def create_session(youtubedl_params, ydl_logger):
-    adapters = [MyBackendAdapter, UnsupportedBackendAdapter]
+    adapters = [UnsupportedBackendHandler, MyBackendHandler]
     session = Session(youtubedl_params, logger=ydl_logger)
     for adapter in adapters:
         if not adapter:
