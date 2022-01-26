@@ -10,7 +10,7 @@ from typing import List
 Request: urllib.request.Request
 
 
-class BaseBackendHandler:
+class BackendHandler:
 
     _SUPPORTED_PROTOCOLS: list
 
@@ -49,12 +49,12 @@ class BaseBackendHandler:
         pass
 
 
-class UnsupportedBackendHandler(BaseBackendHandler):
+class UnsupportedBackendHandler(BackendHandler):
     def can_handle(self, request: Request, **req_kwargs):
         raise Exception('This request is not supported')
 
 
-class MyBackendHandler(BaseBackendHandler):
+class MyBackendHandler(BackendHandler):
     _SUPPORTED_PROTOCOLS = ['http', 'https']
 
     def can_handle(self, request: Request, **req_kwargs) -> bool:
@@ -71,7 +71,7 @@ class Session:
         self.params = youtubedl_params
         self.cookiejar = http.cookiejar.CookieJar()
 
-    def add_handler(self, handler: BaseBackendHandler):
+    def add_handler(self, handler: BackendHandler):
         if self._handler_chain is None:
             self._handler_chain = handler
         else:
