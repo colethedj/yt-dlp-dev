@@ -13,7 +13,8 @@ Request: urllib.request.Request
 
 
 # TODO: add support for unified debug printing?
-class BaseHTTPResponse(ABC, io.BufferedIOBase):
+# TODO: This and the subclasses will likely need some work
+class BaseHTTPResponse(ABC, io.IOBase):
     """
     Adapter interface for responses
     """
@@ -93,7 +94,7 @@ class BackendHandler:
     def can_handle(cls, request: Request, **req_kwargs) -> bool:
         return cls._is_supported_protocol(request)
 
-    def _real_handle(self, request: Request, proxies=None) -> HTTPResponse:
+    def _real_handle(self, request: Request, proxies=None) -> BaseHTTPResponse:
         """Real request handling process. Redefine in subclasses"""
         pass
 
