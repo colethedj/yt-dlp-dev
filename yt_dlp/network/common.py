@@ -3,10 +3,10 @@ import bisect
 import http.cookiejar
 import http.client
 import io
-import urllib.request
 import urllib.parse
 from collections import OrderedDict
 from typing import List
+from urllib.error import HTTPError
 from abc import ABC, abstractmethod
 from http import HTTPStatus
 Request: urllib.request.Request
@@ -34,6 +34,10 @@ class BaseHTTPResponse(ABC, io.IOBase):
 
     def getcode(self):
         return self.status
+
+    @property
+    def url(self):
+        return self.geturl()
 
     @abstractmethod
     def geturl(self):
@@ -164,3 +168,55 @@ def create_session(youtubedl_params, ydl_logger):
         if not adapter:
             continue
         session.add_handler(adapter(youtubedl_params, None))
+
+
+"""
+BackendError
+    RequestError
+        HTTPError (similar to urllib.error.HTTPError)
+        
+        TimeoutError
+            ReadTimeoutError (also inherits NetworkError)
+            ConnectionTimeoutError (also inherits NetworkError)
+        
+        NetworkError # TODO
+            # making req
+            ResolveHostnameError (host name resolution error, DNS Error)
+            
+            # during req/response
+            IncompleteReadError
+            # Covers HTTPExceptions: connection reset, incomplete read, remote disconnected, etc.
+        
+        SSLError
+            CertificateError (for help text)
+            ... ?
+        ProxyError
+            Socks proxy error, etc.
+        
+        ContentDecodingError
+        MaxRedirectsError
+        
+
+Other notes:
+- add original request obj to every RequestError
+- each BackendError will have backend details 
+"""
+
+"""
+
+
+  
+        #TransportError / Connection error / Network error (?). Prob most of our socket errors here
+       #  ProtocolError - errors during request/response (?)
+            # todo:
+            # HTTPException like Errors - related to reading the response
+            #    ConnectionResetError
+            #    RemoteDisconnected
+            #    Incomplete read
+            #    ...
+            
+                
+
+    
+
+"""
