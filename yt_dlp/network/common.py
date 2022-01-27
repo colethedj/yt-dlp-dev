@@ -1,13 +1,62 @@
 import abc
 import bisect
 import http.cookiejar
-from http.client import HTTPResponse
+import http.client
+import io
 import urllib.request
 import urllib.parse
 from collections import OrderedDict
 from typing import List
-
+from abc import ABC, abstractmethod
+from http import HTTPStatus
 Request: urllib.request.Request
+
+
+# TODO: add support for unified debug printing?
+class BaseHTTPResponse(ABC, io.BufferedIOBase):
+    """
+    Adapter interface for responses
+    """
+
+    REDIRECT_STATUS_CODES = [301, 302, 303, 307, 308]
+
+    def __init__(self, headers, status, version, reason):
+        self.headers = headers  # headers should be a dict-like object
+        self.status = self.code = status
+        self.reason = reason
+        if not reason:
+            try:
+                self.reason = HTTPStatus(status).value
+            except ValueError:
+                pass
+        self.version = version  # HTTP Version, e.g. HTTP 1.1 = 11
+
+    def getcode(self):
+        return self.status
+
+    @abstractmethod
+    def geturl(self):
+        """return the final url"""
+        pass
+
+    def get_redirect_url(self):
+        return self.getheader('location') if self.status in self.REDIRECT_STATUS_CODES else None
+
+    def getheaders(self):
+        return self.headers
+
+    def getheader(self, name, default=None):
+        return self.headers.get(name, default)
+
+    def info(self):
+        return self.headers
+
+    def readable(self):
+        return True
+
+    @abstractmethod
+    def read(self, amt: int = None):
+        raise NotImplementedError
 
 
 class BackendHandler:
