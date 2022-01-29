@@ -9,6 +9,8 @@ from typing import List
 from urllib.error import HTTPError
 from abc import ABC, abstractmethod
 from http import HTTPStatus
+from email.message import Message
+
 Request: urllib.request.Request
 
 
@@ -22,7 +24,7 @@ class BaseHTTPResponse(ABC, io.IOBase):
     REDIRECT_STATUS_CODES = [301, 302, 303, 307, 308]
 
     def __init__(self, headers, status, version, reason):
-        self.headers = headers  # headers should be a dict-like object
+        self.headers = YDLHTTPHeaderStore(headers)
         self.status = self.code = status
         self.reason = reason
         if not reason:
@@ -158,6 +160,24 @@ class Session:
         if res:
             self.cookiejar.extract_cookies(res, request)
         return res
+
+
+class YDLHTTPHeaderStore(Message):
+    def __init__(self, data=None):
+        super().__init__()
+        if data is not None:
+            self.add_headers(data)
+
+    def add_headers(self, data):
+        for k, v in data.items():
+            self.add_header(k, v)
+
+    def replace_headers(self, data):
+        for k, v in data.items():
+            self.replace_header(k, v)
+
+    def copy(self):
+        return YDLHTTPHeaderStore(self)
 
 
 # goes in YoutubeDL class?
