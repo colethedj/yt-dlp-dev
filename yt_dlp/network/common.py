@@ -122,16 +122,17 @@ class MyBackendHandler(BackendHandler):
 class Session:
 
     def __init__(self, youtubedl_params: dict, logger):
-        self._handler_chain = None
+        self._first_handler = None
+        self._last_handler = None
         self._logger = logger
         self.params = youtubedl_params
         self.cookiejar = http.cookiejar.CookieJar()
 
     def add_handler(self, handler: BackendHandler):
-        if self._handler_chain is None:
-            self._handler_chain = handler
+        if self._first_handler is None:
+            self._first_handler = self._last_handler = handler
         else:
-            self._handler_chain = self._handler_chain.set_next(handler)
+            self._last_handler = self._last_handler.set_next(handler)
 
     def _make_proxy_map(self, request: Request = None):
         proxy = None
@@ -155,8 +156,8 @@ class Session:
         return proxies
 
     def urlopen(self, request: urllib.request.Request):
-        self.cookiejar.add_cookie_header(request)
-        res = self._handler_chain.handle(request, proxies=self._make_proxy_map(request))
+        self.cookiejar.add_cookie_header(request)  # TODO: this should probably be done within the handler
+        res = self._first_handler.handle(request, proxies=self._make_proxy_map(request))
         if res:
             self.cookiejar.extract_cookies(res, request)
         return res
