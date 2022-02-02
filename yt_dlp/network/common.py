@@ -68,12 +68,11 @@ class BaseHTTPResponse(ABC, io.IOBase):
 
 class BackendHandler:
 
-    _SUPPORTED_PROTOCOLS: list
-
-    def __init__(self, youtubedl_params: dict, ydl_logger):
+    def __init__(self, youtubedl_params: dict, ydl_logger, cookies):
         self._next_handler = None
         self.params = youtubedl_params
         self.logger = ydl_logger
+        self.cookies = cookies
         self._initialize()
 
     def _initialize(self):
@@ -93,6 +92,19 @@ class BackendHandler:
             return self._next_handler.handle(request, **req_kwargs)
 
     @classmethod
+    def can_handle(cls, request: Request, **req_kwargs) -> bool:
+        """Validate if handler is suitable for given request. Redefine in subclasses."""
+
+    def _real_handle(self, request: Request, proxies=None) -> BaseHTTPResponse:
+        """Real request handling process. Redefine in subclasses"""
+        pass
+
+
+class HTTPBackendHandler(BackendHandler):
+
+    _SUPPORTED_PROTOCOLS: list
+
+    @classmethod
     def _is_supported_protocol(cls, request: Request):
         return urllib.parse.urlparse(request.full_url).scheme.lower() in cls._SUPPORTED_PROTOCOLS
 
@@ -100,23 +112,10 @@ class BackendHandler:
     def can_handle(cls, request: Request, **req_kwargs) -> bool:
         return cls._is_supported_protocol(request)
 
-    def _real_handle(self, request: Request, proxies=None) -> BaseHTTPResponse:
-        """Real request handling process. Redefine in subclasses"""
-        pass
-
 
 class UnsupportedBackendHandler(BackendHandler):
     def can_handle(self, request: Request, **req_kwargs):
         raise Exception('This request is not supported')
-
-
-class MyBackendHandler(BackendHandler):
-    _SUPPORTED_PROTOCOLS = ['http', 'https']
-
-    def can_handle(self, request: Request, **req_kwargs) -> bool:
-        if req_kwargs.get('proxies'):
-            return False
-        return super().can_handle(request, **req_kwargs)
 
 
 class Session:
@@ -126,7 +125,6 @@ class Session:
         self._last_handler = None
         self._logger = logger
         self.params = youtubedl_params
-        self.cookiejar = http.cookiejar.CookieJar()
 
     def add_handler(self, handler: BackendHandler):
         if self._first_handler is None:
@@ -155,12 +153,8 @@ class Session:
             proxies['https'] = proxies['http']
         return proxies
 
-    def urlopen(self, request: urllib.request.Request):
-        self.cookiejar.add_cookie_header(request)  # TODO: this should probably be done within the handler
-        res = self._first_handler.handle(request, proxies=self._make_proxy_map(request))
-        if res:
-            self.cookiejar.extract_cookies(res, request)
-        return res
+    def send_request(self, request: urllib.request.Request):
+        return self._first_handler.handle(request, proxies=self._make_proxy_map(request))
 
 
 class YDLHTTPHeaderStore(Message):
@@ -183,12 +177,13 @@ class YDLHTTPHeaderStore(Message):
 
 # goes in YoutubeDL class?
 def create_session(youtubedl_params, ydl_logger):
-    adapters = [UnsupportedBackendHandler, MyBackendHandler]
+    adapters = [UnsupportedBackendHandler]
     session = Session(youtubedl_params, logger=ydl_logger)
+    cookiejar = http.cookiejar.CookieJar()
     for adapter in adapters:
         if not adapter:
             continue
-        session.add_handler(adapter(youtubedl_params, None))
+        session.add_handler(adapter(youtubedl_params, None, cookiejar))
 
 
 """
