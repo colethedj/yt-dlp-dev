@@ -1,8 +1,8 @@
-from .common import BaseHTTPResponse
+from .common import HTTPResponse
 import http.client
 
 
-class HttplibResponseAdapter(BaseHTTPResponse):
+class HttplibResponseAdapter(HTTPResponse):
     def __init__(self, res: http.client.HTTPResponse):
         self._res = res
         super().__init__(

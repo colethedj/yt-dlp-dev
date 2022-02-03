@@ -10,13 +10,121 @@ from urllib.error import HTTPError
 from abc import ABC, abstractmethod
 from http import HTTPStatus
 from email.message import Message
+import urllib.request
 
-Request: urllib.request.Request
+from yt_dlp.utils import extract_basic_auth, escape_url, sanitize_url
+
+
+class YDLRequest:
+    """
+    Our own request class, similar to urllib.request.Request
+    This is used to send request information from youtube-dl to the backends.
+    Backends are expected to extract relevant data from this object rather that use it directly (e.g. passing to urllib)
+    """
+    def __init__(
+            self, url, data=None, headers=None, proxy=None, compression=True, method=None,
+            unverifiable=False, unredirected_headers=None, origin_req_host=None):
+        """
+        @param proxy: proxy to use for the request, e.g. socks5://127.0.0.1:1080. Default is None.
+        @param compression: whether to include content-encoding header on request (i.e. disable/enable compression).
+        For everything else, see urllib.request.Request docs: https://docs.python.org/3/library/urllib.request.html?highlight=request#urllib.request.Request
+
+        Headers are stored internally in a YDLHTTPHeaderStore. Be careful not to have multiple headers (TODO: do we want to add something to prevent this?)
+        """
+        url, basic_auth_header = extract_basic_auth(escape_url(sanitize_url(url)))
+        # Using Request object for url parsing.
+        self.__request_url_store = urllib.request.Request(url)
+        self._method = method
+        self._data = data
+        self._headers = YDLHTTPHeaderStore(headers)
+        self._unredirected_headers = YDLHTTPHeaderStore(unredirected_headers)
+
+        # TODO: add support for passing different types of auth into a YDlRequest, and don't add the headers.
+        #  That can be done in the backend
+        if basic_auth_header:
+            self.unredirected_headers['Authorization'] = basic_auth_header
+
+        self.proxy = proxy
+        self.compression = compression
+
+        # See https://docs.python.org/3/library/urllib.request.html#urllib.request.Request
+        # and https://datatracker.ietf.org/doc/html/rfc2965.html
+        self.unverifiable = unverifiable
+        self.origin_req_host = (
+                origin_req_host
+                or urllib.parse.urlparse(self.url).netloc
+                or self.__request_url_store.origin_req_host)
+
+    @property
+    def url(self):
+        return self.__request_url_store.full_url
+
+    @property
+    def data(self):
+        return self._data
+
+    @property
+    def headers(self):
+        return self._headers
+
+    @property
+    def unredirected_headers(self):
+        """Headers to not send in a redirect"""
+        return self._unredirected_headers
+
+    @property
+    def method(self):
+        return self._method or 'POST' if self._data else 'GET'
+
+    def copy(self):
+        return self.__class__(
+            self.url, self.data, self.headers.copy(), self.proxy, self.compression, self.method, self.unverifiable,
+            self.unredirected_headers.copy())
+
+    # Backwards compatible functions with urllib.request.Request for cookiejar handling
+
+    def add_unredirected_header(self, key, value):
+        self._unredirected_headers.replace_header(key, value)
+
+    def add_header(self, key, value):
+        self._headers.replace_header(key, value)
+
+    def has_header(self, header):
+        return header in self._headers or header in self._unredirected_headers
+
+    def remove_header(self, key):
+        del self._headers[key]
+        del self._unredirected_headers[key]
+
+    def get_header(self, key, default=None):
+        return self._headers.get(key, self._unredirected_headers.get(key, default))
+
+    def header_items(self):
+        return list({**self._unredirected_headers, **self._headers}.items())
+
+    def get_full_url(self):
+        return self.url
+
+    def get_method(self):
+        return self.method
+
+
+class HEADRequest(YDLRequest):
+    @property
+    def method(self):
+        return 'HEAD'
+
+
+class PUTRequest(YDLRequest):
+    @property
+    def method(self):
+        return 'PUT'
 
 
 # TODO: add support for unified debug printing?
 # TODO: This and the subclasses will likely need some work
-class BaseHTTPResponse(ABC, io.IOBase):
+# TODO: add original request (or request history?)
+class HTTPResponse(ABC, io.IOBase):
     """
     Adapter interface for responses
     """
@@ -83,7 +191,7 @@ class BackendHandler:
         self._next_handler = handler
         return handler
 
-    def handle(self, request: Request, **req_kwargs):
+    def handle(self, request: YDLRequest, **req_kwargs):
         if self.can_handle(request, **req_kwargs):
             res = self._real_handle(request, **req_kwargs)
             if res:
@@ -92,10 +200,10 @@ class BackendHandler:
             return self._next_handler.handle(request, **req_kwargs)
 
     @classmethod
-    def can_handle(cls, request: Request, **req_kwargs) -> bool:
+    def can_handle(cls, request: YDLRequest, **req_kwargs) -> bool:
         """Validate if handler is suitable for given request. Redefine in subclasses."""
 
-    def _real_handle(self, request: Request, proxies=None) -> BaseHTTPResponse:
+    def _real_handle(self, request: YDLRequest, **kwargs) -> HTTPResponse:
         """Real request handling process. Redefine in subclasses"""
         pass
 
@@ -105,16 +213,16 @@ class HTTPBackendHandler(BackendHandler):
     _SUPPORTED_PROTOCOLS: list
 
     @classmethod
-    def _is_supported_protocol(cls, request: Request):
-        return urllib.parse.urlparse(request.full_url).scheme.lower() in cls._SUPPORTED_PROTOCOLS
+    def _is_supported_protocol(cls, request: YDLRequest):
+        return urllib.parse.urlparse(request.url).scheme.lower() in cls._SUPPORTED_PROTOCOLS
 
     @classmethod
-    def can_handle(cls, request: Request, **req_kwargs) -> bool:
+    def can_handle(cls, request: YDLRequest, **req_kwargs) -> bool:
         return cls._is_supported_protocol(request)
 
 
 class UnsupportedBackendHandler(BackendHandler):
-    def can_handle(self, request: Request, **req_kwargs):
+    def can_handle(self, request: YDLRequest, **req_kwargs):
         raise Exception('This request is not supported')
 
 
@@ -125,6 +233,7 @@ class Session:
         self._last_handler = None
         self._logger = logger
         self.params = youtubedl_params
+        self.proxy = self.get_main_proxy()
 
     def add_handler(self, handler: BackendHandler):
         if self._first_handler is None:
@@ -132,29 +241,16 @@ class Session:
         else:
             self._last_handler = self._last_handler.set_next(handler)
 
-    def _make_proxy_map(self, request: Request = None):
-        proxy = None
-        if request is not None:
-            req_proxy = request.headers.get('Ytdl-request-proxy')
-            if req_proxy is not None:
-                proxy = req_proxy
-                del request.headers['Ytdl-request-proxy']
-
-        opts_proxy = self.params.get('proxy')
-        if not proxy and opts_proxy:
-            proxy = opts_proxy
-
-        if proxy:
-            return {'http': opts_proxy, 'https': opts_proxy}
-
+    def get_main_proxy(self):
         proxies = urllib.request.getproxies()
-        # Set HTTPS proxy to HTTP one if given (https://github.com/ytdl-org/youtube-dl/issues/805)
-        if 'http' in proxies and 'https' not in proxies:
-            proxies['https'] = proxies['http']
-        return proxies
+        return (self.params.get('proxy')
+                or proxies.get('http')
+                or proxies.get('https'))
 
-    def send_request(self, request: urllib.request.Request):
-        return self._first_handler.handle(request, proxies=self._make_proxy_map(request))
+    def send_request(self, request: YDLRequest):
+        if not request.proxy and self.proxy:
+            request.proxy = self.proxy
+        return self._first_handler.handle(request)
 
 
 class YDLHTTPHeaderStore(Message):
@@ -174,6 +270,13 @@ class YDLHTTPHeaderStore(Message):
     def copy(self):
         return YDLHTTPHeaderStore(self)
 
+
+"""
+Youtube-dl request object
+This is used for communication between the network backends and youtube-dl only
+
+Network backends are responsible for validating and parsing the url, etc.
+"""
 
 # goes in YoutubeDL class?
 def create_session(youtubedl_params, ydl_logger):
