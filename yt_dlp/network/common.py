@@ -3,6 +3,7 @@ import bisect
 import http.cookiejar
 import http.client
 import io
+import sys
 import urllib.parse
 from collections import OrderedDict
 from typing import List
@@ -11,7 +12,9 @@ from abc import ABC, abstractmethod
 from http import HTTPStatus
 from email.message import Message
 import urllib.request
-
+import tempfile
+import urllib.response
+from ..utils import YoutubeDLError
 from yt_dlp.utils import extract_basic_auth, escape_url, sanitize_url
 
 
@@ -281,6 +284,30 @@ def create_session(youtubedl_params, ydl_logger):
         if not adapter:
             continue
         session.add_handler(adapter(youtubedl_params, None, cookiejar))
+
+
+class RequestError(YoutubeDLError):
+    def __init__(self, msg, request: YDLRequest =None):
+        super().__init__(msg)
+        self.request = request
+
+
+# TODO: Add tests for reading, closing, trying to read again etc.
+# Test for making sure connection is released
+# TODO: what parameters do we want? code/reason, response or both?
+# Similar API as urllib.error.HTTPError
+class HTTPError(RequestError, tempfile._TemporaryFileWrapper):
+    def __init__(self, response: HTTPResponse, request: YDLRequest = None):
+        self.response = self.fp = response
+        self.code = response.code
+        msg = f'HTTP Error {self.code}: {response.reason}'
+        if 400 <= self.code < 500:
+            msg = '[Client Error] ' + msg
+        elif 500 <= self.code < 600:
+            msg = '[Server Error] ' + msg
+        super().__init__(msg, request)
+        tempfile._TemporaryFileWrapper.__init__(self, response, '<yt-dlp response>', delete=False)
+
 
 
 """
