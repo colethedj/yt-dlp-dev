@@ -739,7 +739,6 @@ from .limelight import (
     LimelightChannelListIE,
 )
 from .line import (
-    LineTVIE,
     LineLiveIE,
     LineLiveChannelIE,
 )
@@ -882,6 +881,12 @@ from .mtv import (
 )
 from .muenchentv import MuenchenTVIE
 from .musescore import MuseScoreIE
+from .musicdex import (
+    MusicdexSongIE,
+    MusicdexAlbumIE,
+    MusicdexArtistIE,
+    MusicdexPlaylistIE,
+)
 from .mwave import MwaveIE, MwaveMeetGreetIE
 from .mxplayer import (
     MxplayerIE,
@@ -958,6 +963,7 @@ from .newgrounds import (
     NewgroundsUserIE,
 )
 from .newstube import NewstubeIE
+from .newsy import NewsyIE
 from .nextmedia import (
     NextMediaIE,
     NextMediaActionNewsIE,
@@ -1216,6 +1222,13 @@ from .puhutv import (
 from .presstv import PressTVIE
 from .projectveritas import ProjectVeritasIE
 from .prosiebensat1 import ProSiebenSat1IE
+from .prx import (
+    PRXStoryIE,
+    PRXSeriesIE,
+    PRXAccountIE,
+    PRXStoriesSearchIE,
+    PRXSeriesSearchIE
+)
 from .puls4 import Puls4IE
 from .pyvideo import PyvideoIE
 from .qqmusic import (
@@ -1822,7 +1835,10 @@ from .vimeo import (
     VimeoWatchLaterIE,
     VHXEmbedIE,
 )
-from .vimm import VimmIE
+from .vimm import (
+    VimmIE,
+    VimmRecordingIE,
+)
 from .vimple import VimpleIE
 from .vine import (
     VineIE,
@@ -1969,6 +1985,7 @@ from .yandexmusic import (
 )
 from .yandexvideo import (
     YandexVideoIE,
+    YandexVideoPreviewIE,
     ZenYandexIE,
     ZenYandexChannelIE,
 )

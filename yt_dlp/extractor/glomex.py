@@ -177,9 +177,6 @@ class GlomexEmbedIE(GlomexBaseIE):
 
     @classmethod
     def _extract_urls(cls, webpage, origin_url):
-        # in comparison with _VALID_URL:
-        # * make the scheme optional
-        # * simplify the query string part; after extracting iframe src, the URL will be matched again
         VALID_SRC = rf'(?:https?:)?{cls._BASE_PLAYER_URL_RE}\?(?:(?!(?P=_q1)).)+'
 
         # https://docs.glomex.com/publisher/video-player-integration/javascript-api/
@@ -201,8 +198,13 @@ class GlomexEmbedIE(GlomexBaseIE):
             )+</script>
         )''' % {'quot_re': r'["\']', 'url_re': VALID_SRC}
 
-        for mobj in re.finditer(EMBED_RE, webpage):
-            mdict = mobj.groupdict()
+        for mtup in re.findall(EMBED_RE, webpage):
+            # re.finditer causes a memory spike. See https://github.com/yt-dlp/yt-dlp/issues/2512
+            mdict = dict(zip((
+                'url', '_',
+                'html_tag', '_', 'integration_html', '_', 'id_html', '_', 'glomex_player',
+                'script_tag', '_', '_', 'integration_js', '_', 'id_js',
+            ), mtup))
             if mdict.get('url'):
                 url = unescapeHTML(mdict['url'])
                 if not cls.suitable(url):

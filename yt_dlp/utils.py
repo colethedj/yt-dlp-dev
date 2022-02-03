@@ -3010,8 +3010,7 @@ class InAdvancePagedList(PagedList):
 
     def _getslice(self, start, end):
         start_page = start // self._pagesize
-        end_page = (
-            self._pagecount if end is None else (end // self._pagesize + 1))
+        end_page = self._pagecount if end is None else min(self._pagecount, end // self._pagesize + 1)
         skip_elems = start - start_page * self._pagesize
         only_more = None if end is None else end - start
         for pagenum in range(start_page, end_page):
@@ -5140,13 +5139,10 @@ def to_high_limit_path(path):
 
 
 def format_field(obj, field=None, template='%s', ignore=(None, ''), default='', func=None):
-    if field is None:
-        val = obj if obj is not None else default
-    else:
-        val = obj.get(field, default)
-    if func and val not in ignore:
-        val = func(val)
-    return template % val if val not in ignore else default
+    val = traverse_obj(obj, *variadic(field))
+    if val in ignore:
+        return default
+    return template % (func(val) if func else val)
 
 
 def clean_podcast_url(url):

@@ -42,6 +42,7 @@ from ..utils import (
     int_or_none,
     is_html,
     join_nonempty,
+    js_to_json,
     mimetype2ext,
     network_exceptions,
     NO_DEFAULT,
@@ -257,7 +258,7 @@ class YoutubeBaseInfoExtractor(InfoExtractor):
 
     _RESERVED_NAMES = (
         r'channel|c|user|playlist|watch|w|v|embed|e|watch_popup|clip|'
-        r'shorts|movies|results|shared|hashtag|trending|feed|feeds|'
+        r'shorts|movies|results|shared|hashtag|trending|explore|feed|feeds|'
         r'browse|oembed|get_video_info|iframe_api|s/player|'
         r'storefront|oops|index|account|reporthistory|t/terms|about|upload|signin|logout')
 
@@ -764,7 +765,8 @@ class YoutubeBaseInfoExtractor(InfoExtractor):
                         first_bytes = e.cause.read(512)
                         if not is_html(first_bytes):
                             yt_error = try_get(
-                                self._parse_json(self._webpage_read_content(e.cause, None, item_id, prefix=first_bytes), item_id, fatal=False),
+                                self._parse_json(
+                                    self._webpage_read_content(e.cause, None, item_id, prefix=first_bytes) or '{}', item_id, fatal=False),
                                 lambda x: x['error']['message'], compat_str)
                             if yt_error:
                                 self._report_alerts([('ERROR', yt_error)], fatal=False)
@@ -2419,9 +2421,14 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
             raise ExtractorError(traceback.format_exc(), cause=e, video_id=video_id)
 
     def _extract_n_function_name(self, jscode):
-        return self._search_regex(
-            (r'\.get\("n"\)\)&&\(b=(?P<nfunc>[a-zA-Z0-9$]{3})\([a-zA-Z0-9]\)',),
-            jscode, 'Initial JS player n function name', group='nfunc')
+        nfunc, idx = self._search_regex(
+            r'\.get\("n"\)\)&&\(b=(?P<nfunc>[a-zA-Z0-9$]{3})(\[(?P<idx>\d+)\])?\([a-zA-Z0-9]\)',
+            jscode, 'Initial JS player n function name', group=('nfunc', 'idx'))
+        if not idx:
+            return nfunc
+        return json.loads(js_to_json(self._search_regex(
+            rf'var {nfunc}\s*=\s*(\[.+?\]);', jscode,
+            f'Initial JS player n function list ({nfunc}.{idx})')))[int(idx)]
 
     def _extract_n_function(self, video_id, player_url):
         player_id = self._extract_player_info(player_url)
@@ -3332,7 +3339,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
             'uploader_id': self._search_regex(r'/(?:channel|user)/([^/?&#]+)', owner_profile_url, 'uploader id') if owner_profile_url else None,
             'uploader_url': owner_profile_url,
             'channel_id': channel_id,
-            'channel_url': f'https://www.youtube.com/channel/{channel_id}' if channel_id else None,
+            'channel_url': format_field(channel_id, template='https://www.youtube.com/channel/%s'),
             'duration': duration,
             'view_count': int_or_none(
                 get_first((video_details, microformats), (..., 'viewCount'))
