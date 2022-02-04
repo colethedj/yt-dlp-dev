@@ -309,8 +309,50 @@ class HTTPError(RequestError, tempfile._TemporaryFileWrapper):
         tempfile._TemporaryFileWrapper.__init__(self, response, '<yt-dlp response>', delete=False)
 
 
+class TransportError(RequestError):
+    pass
+
+
+
+class ReadError(TransportError):
+    pass
+
+class ReadTimeoutError(ReadError):
+    pass
+
+class IncompleteReadError(ReadError):
+    pass
+
+class ConnectError(TransportError):
+    pass
+
+class ConnectionTimeoutError(ConnectError):  # (have our timeout setting)
+    pass
+
+class ConnectionResetError(TransportError):
+    pass
+
+class ResolveHostError(TransportError):
+    msg = 'Failed to resolve hostname. There is likely an issue with your connection or DNS.'
+
 
 """
+RequestError
+    HTTPError
+    TransportError
+        ReadTimeoutError
+        ConnectionTimeoutError
+        IncompleteReadError
+        ConnectionResetError
+        ResolveHostError
+        
+        
+        ProxyError
+            ...
+    SSLError
+    ContentDecodingError
+    MaxRedirectsError
+
 BackendError
     RequestError
         HTTPError (similar to urllib.error.HTTPError)
