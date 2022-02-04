@@ -1,6 +1,5 @@
 import os
 import signal
-import asyncio
 import threading
 
 try:
@@ -12,6 +11,7 @@ except (ImportError, SyntaxError):
 else:
     has_websockets = True
 
+from ..compat import asyncio
 from .common import FileDownloader
 from .external import FFmpegFD
 

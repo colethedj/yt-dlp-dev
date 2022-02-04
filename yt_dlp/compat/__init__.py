@@ -1,6 +1,5 @@
 # coding: utf-8
 
-import asyncio
 import base64
 import collections
 import getpass
@@ -72,22 +71,6 @@ if compat_os_name == 'nt' and sys.version_info < (3, 8):
         return path
 else:
     compat_realpath = os.path.realpath
-
-
-
-
-try:
-    compat_asyncio_run = asyncio.run  # >= 3.7
-except AttributeError:
-    def compat_asyncio_run(coro):
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-        loop.run_until_complete(coro)
-
-    asyncio.run = compat_asyncio_run
 
 
 # Python 3.8+ does not honor %HOME% on windows, but this breaks compatibility with youtube-dl
@@ -189,7 +172,6 @@ __all__ = [
     'compat_HTMLParseError',
     'compat_HTMLParser',
     'compat_HTTPError',
-    'compat_asyncio_run',
     'compat_b64decode',
     'compat_chr',
     'compat_collections_abc',
