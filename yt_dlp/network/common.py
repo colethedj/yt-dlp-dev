@@ -39,8 +39,8 @@ class YDLRequest:
         self.__request_url_store = urllib.request.Request(url)
         self._method = method
         self._data = data
-        self._headers = YDLHTTPHeaderStore(headers)
-        self._unredirected_headers = YDLHTTPHeaderStore(unredirected_headers)
+        self._headers = YDLUniqueHTTPHeaderStore(headers)
+        self._unredirected_headers = YDLUniqueHTTPHeaderStore(unredirected_headers)
 
         # TODO: add support for passing different types of auth into a YDlRequest, and don't add the headers.
         #  That can be done in the backend
@@ -266,6 +266,11 @@ class YDLHTTPHeaderStore(Message):
 
     def copy(self):
         return YDLHTTPHeaderStore(self)
+
+
+class YDLUniqueHTTPHeaderStore(YDLHTTPHeaderStore):
+    def add_header(self, *args, **kwargs):
+        return self.replace_header(*args, **kwargs)
 
 
 """

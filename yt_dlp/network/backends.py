@@ -1,3 +1,5 @@
+import contextlib
+
 from .common import HTTPResponse
 import http.client
 
