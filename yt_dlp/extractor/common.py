@@ -9,7 +9,6 @@ import json
 import netrc
 import os
 import random
-import re
 import sys
 import time
 import math
@@ -30,6 +29,7 @@ from ..compat import (
     compat_urllib_request,
     compat_urlparse,
     compat_xml_parse_error,
+    re,
 )
 from ..downloader import FileDownloader
 from ..downloader.f4m import (
@@ -41,7 +41,6 @@ from ..utils import (
     base_url,
     bug_reports_message,
     clean_html,
-    compiled_regex_type,
     determine_ext,
     determine_protocol,
     dict_get,
@@ -1162,7 +1161,7 @@ class InfoExtractor(object):
         In case of failure return a default value or raise a WARNING or a
         RegexNotFoundError, depending on fatal, specifying the field name.
         """
-        if isinstance(pattern, (str, compat_str, compiled_regex_type)):
+        if isinstance(pattern, (str, re.Pattern)):
             mobj = re.search(pattern, string, flags)
         else:
             for p in pattern:

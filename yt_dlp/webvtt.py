@@ -11,14 +11,9 @@ Regular expressions based on the W3C WebVTT specification
 in RFC 8216 §3.5 <https://tools.ietf.org/html/rfc8216#section-3.5>.
 """
 
-import re
 import io
 from .utils import int_or_none, timetuple_from_msec
-from .compat import (
-    compat_str as str,
-    compat_Pattern,
-    compat_Match,
-)
+from .compat import re
 
 
 class _MatchParser(object):
@@ -32,7 +27,7 @@ class _MatchParser(object):
         self._pos = 0
 
     def match(self, r):
-        if isinstance(r, compat_Pattern):
+        if isinstance(r, re.Pattern):
             return r.match(self._data, self._pos)
         if isinstance(r, str):
             if self._data.startswith(r, self._pos):
@@ -43,7 +38,7 @@ class _MatchParser(object):
     def advance(self, by):
         if by is None:
             amt = 0
-        elif isinstance(by, compat_Match):
+        elif isinstance(by, re.Match):
             amt = len(by.group(0))
         elif isinstance(by, str):
             amt = len(by)
