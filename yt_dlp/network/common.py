@@ -315,46 +315,65 @@ class HTTPError(RequestError, tempfile._TemporaryFileWrapper):
 
 
 class TransportError(RequestError):
-    pass
+    def __init__(self, msg, request=None, cause=None):
+        super().__init__(msg, request)
+        self.cause = cause
 
 
+class Timeout(RequestError):
+    """Timeout error"""
 
-class ReadError(TransportError):
-    pass
 
-class ReadTimeoutError(ReadError):
-    pass
+class ReadTimeoutError(TransportError, Timeout):
+    """timeout error occurred when reading data"""
 
-class IncompleteReadError(ReadError):
-    pass
 
-class ConnectError(TransportError):
-    pass
+class ConnectionTimeoutError(TransportError, Timeout):
+    """timeout error occurred when trying to connect to server"""
 
-class ConnectionTimeoutError(ConnectError):  # (have our timeout setting)
-    pass
-
-class ConnectionResetError(TransportError):
-    pass
 
 class ResolveHostError(TransportError):
-    msg = 'Failed to resolve hostname. There is likely an issue with your connection or DNS.'
+    # TODO: prob want actual hostname
+    msg = 'Failed to resolve hostname. Either the hostname doesn\'t exist, or here is likely an issue with your connection or DNS.'
 
+
+class ConnectionReset(TransportError):
+    pass
+
+
+class IncompleteRead(TransportError):
+    pass
+
+
+class SSLError(TransportError):
+    pass
+
+
+class ProxyError(TransportError):
+    pass
+
+
+class ContentDecodingError(RequestError):
+    pass
+
+
+class MaxRedirectsError(RequestError):
+    pass
 
 """
 RequestError
     HTTPError
+    MaxRedirectsError
+    SSLError
+    TimeoutError
+        ReadTimeoutError (also inherits transport error)
+        ConnectionTimeoutError (also inherits transport error)
+    
     TransportError
-        ReadTimeoutError
-        ConnectionTimeoutError
-        IncompleteReadError
         ConnectionResetError
         ResolveHostError
-        
-        
         ProxyError
-            ...
-    SSLError
+        SSLError
     ContentDecodingError
     MaxRedirectsError
 

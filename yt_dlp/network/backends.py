@@ -1,6 +1,13 @@
 import contextlib
-
-from .common import HTTPResponse
+import socket
+import ssl
+from .common import (
+    HTTPResponse,
+    IncompleteRead,
+    ReadTimeoutError,
+    TransportError,
+    ConnectionReset
+)
 import http.client
 
 
@@ -18,10 +25,14 @@ class HttplibResponseAdapter(HTTPResponse):
         try:
             return self._res.read(amt)
         # TODO: handle exceptions
-        except http.client.IncompleteRead:
-            raise
-        except Exception:
-            raise
+        except http.client.IncompleteRead as err:
+            raise IncompleteRead(err) from err
+        except ConnectionResetError as err:
+            raise ConnectionReset(err) from err
+        except socket.timeout as err:
+            raise ReadTimeoutError(err) from err
+        except (OSError, http.client.HTTPException) as err:
+            raise TransportError(err) from err
 
     def close(self):
         super().close()
@@ -29,3 +40,4 @@ class HttplibResponseAdapter(HTTPResponse):
 
     def tell(self) -> int:
         return self._res.tell()
+
