@@ -13,7 +13,6 @@ import http.cookies
 import http.server
 import itertools
 import os
-import re
 import shlex
 import shutil
 import socket
@@ -23,6 +22,8 @@ import sys
 import tokenize
 import urllib
 import xml.etree.ElementTree as etree
+
+from . import re
 
 
 # HTMLParseError has been deprecated in Python 3.3 and removed in
@@ -73,16 +74,6 @@ else:
     compat_realpath = os.path.realpath
 
 
-try:
-    compat_Pattern = re.Pattern
-except AttributeError:
-    compat_Pattern = type(re.compile(''))
-
-
-try:
-    compat_Match = re.Match
-except AttributeError:
-    compat_Match = type(re.compile('').match(''))
 
 
 try:
@@ -201,8 +192,6 @@ __all__ = [
     'compat_HTMLParseError',
     'compat_HTMLParser',
     'compat_HTTPError',
-    'compat_Match',
-    'compat_Pattern',
     'compat_Struct',
     'compat_asyncio_run',
     'compat_b64decode',

@@ -78,10 +78,6 @@ from .socks import (
 )
 
 
-# This is not clearly defined otherwise
-compiled_regex_type = type(re.compile(''))
-
-
 def random_user_agent():
     _USER_AGENT_TPL = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/%s Safari/537.36'
     _CHROME_VERSIONS = (
