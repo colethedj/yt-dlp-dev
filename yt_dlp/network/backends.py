@@ -26,13 +26,13 @@ class HttplibResponseAdapter(HTTPResponse):
             return self._res.read(amt)
         # TODO: handle exceptions
         except http.client.IncompleteRead as err:
-            raise IncompleteRead(err) from err
+            raise IncompleteRead(err, self.geturl()) from err
         except ConnectionResetError as err:
-            raise ConnectionReset(err) from err
+            raise ConnectionReset(err, self.geturl()) from err
         except socket.timeout as err:
-            raise ReadTimeoutError(err) from err
+            raise ReadTimeoutError(err, self.geturl()) from err
         except (OSError, http.client.HTTPException) as err:
-            raise TransportError(err) from err
+            raise TransportError(err, self.geturl()) from err
 
     def close(self):
         super().close()

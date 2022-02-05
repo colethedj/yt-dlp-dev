@@ -292,9 +292,9 @@ def create_session(youtubedl_params, ydl_logger):
 
 
 class RequestError(YoutubeDLError):
-    def __init__(self, msg, request: YDLRequest =None):
+    def __init__(self, msg, url):
         super().__init__(msg)
-        self.request = request
+        self.url = url
 
 
 # TODO: Add tests for reading, closing, trying to read again etc.
@@ -302,7 +302,7 @@ class RequestError(YoutubeDLError):
 # TODO: what parameters do we want? code/reason, response or both?
 # Similar API as urllib.error.HTTPError
 class HTTPError(RequestError, tempfile._TemporaryFileWrapper):
-    def __init__(self, response: HTTPResponse, request: YDLRequest = None):
+    def __init__(self, response: HTTPResponse, url):
         self.response = self.fp = response
         self.code = response.code
         msg = f'HTTP Error {self.code}: {response.reason}'
@@ -310,13 +310,13 @@ class HTTPError(RequestError, tempfile._TemporaryFileWrapper):
             msg = '[Client Error] ' + msg
         elif 500 <= self.code < 600:
             msg = '[Server Error] ' + msg
-        super().__init__(msg, request)
+        super().__init__(msg, url)
         tempfile._TemporaryFileWrapper.__init__(self, response, '<yt-dlp response>', delete=False)
 
 
 class TransportError(RequestError):
-    def __init__(self, msg, request=None, cause=None):
-        super().__init__(msg, request)
+    def __init__(self, msg, url, cause=None):
+        super().__init__(msg, url)
         self.cause = cause
 
 
