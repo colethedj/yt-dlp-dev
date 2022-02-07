@@ -227,7 +227,6 @@ class YDLBackendHandler(BaseBackendHandler):
 
     def set_next(self, handler):
         self._next_handler = handler
-        return handler
 
     def handle(self, request: YDLRequest, **req_kwargs):
         if self.can_handle(request, **req_kwargs):
@@ -255,17 +254,18 @@ class UnsupportedBackendHandler(YDLBackendHandler):
 class Session:
 
     def __init__(self, youtubedl_params: dict, logger):
-        self._first_handler = None
-        self._last_handler = None
+        self._handler = None
         self._logger = logger
         self.params = youtubedl_params
         self.proxy = self.get_main_proxy()
 
     def add_handler(self, handler: YDLBackendHandler):
-        if self._first_handler is None:
-            self._first_handler = self._last_handler = handler
+
+        if self._handler is None:
+            self._handler = handler
         else:
-            self._last_handler = self._last_handler.set_next(handler)
+            handler.set_next(self._handler)
+            self._handler = handler
 
     def get_main_proxy(self):
         proxies = urllib.request.getproxies()
@@ -276,7 +276,7 @@ class Session:
     def send_request(self, request: YDLRequest):
         if not request.proxy and self.proxy:
             request.proxy = self.proxy
-        return self._first_handler.handle(request)
+        return self._handler.handle(request)
 
 
 class YDLHTTPHeaderStore(Message):

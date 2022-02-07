@@ -3715,7 +3715,7 @@ class YoutubeDL(object):
 
     def _create_session(self):
         logger = YDLLogger(self)  # TODO: separate logging stuff from YouTubeDL.py
-        handlers = [UrllibHandler, UnsupportedBackendHandler]
+        handlers = [UnsupportedBackendHandler, UrllibHandler]
         session = Session(self.params, logger=logger)
         for handler in handlers:
             if not handler:
