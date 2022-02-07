@@ -12,7 +12,6 @@ from ..utils import (
     find_xpath_attr,
     fix_xml_ampersands,
     float_or_none,
-    HEADRequest,
     int_or_none,
     join_nonempty,
     RegexNotFoundError,
@@ -25,6 +24,7 @@ from ..utils import (
     url_basename,
     xpath_text,
 )
+from ..network.common import HEADRequest
 
 
 def _media_xml_tag(tag):

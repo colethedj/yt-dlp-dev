@@ -5,12 +5,12 @@ import re
 from .common import InfoExtractor
 from .kaltura import KalturaIE
 from ..utils import (
-    HEADRequest,
     remove_start,
     sanitized_Request,
     smuggle_url,
     urlencode_postdata,
 )
+from ..network.common import HEADRequest
 
 
 class GDCVaultIE(InfoExtractor):

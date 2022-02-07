@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import abc
 import bisect
 import http.cookiejar
@@ -14,8 +16,10 @@ from email.message import Message
 import urllib.request
 import tempfile
 import urllib.response
+
+from ..compat import compat_urllib_request
 from ..utils import YoutubeDLError
-from yt_dlp.utils import extract_basic_auth, escape_url, sanitize_url
+from ..utils import extract_basic_auth, escape_url, sanitize_url
 
 
 class YDLRequest:

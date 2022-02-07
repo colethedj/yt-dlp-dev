@@ -19,7 +19,6 @@ from ..utils import (
     determine_ext,
     ExtractorError,
     float_or_none,
-    HEADRequest,
     int_or_none,
     is_html,
     js_to_json,
@@ -40,6 +39,7 @@ from ..utils import (
     xpath_text,
     xpath_with_ns,
 )
+from ..network.common import HEADRequest
 from .commonprotocols import RtmpIE
 from .brightcove import (
     BrightcoveLegacyIE,

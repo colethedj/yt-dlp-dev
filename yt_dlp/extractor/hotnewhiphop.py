@@ -4,10 +4,10 @@ from .common import InfoExtractor
 from ..compat import compat_b64decode
 from ..utils import (
     ExtractorError,
-    HEADRequest,
     sanitized_Request,
     urlencode_postdata,
 )
+from ..network.common import HEADRequest
 
 
 class HotNewHipHopIE(InfoExtractor):

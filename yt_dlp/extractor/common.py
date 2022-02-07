@@ -58,7 +58,6 @@ from ..utils import (
     js_to_json,
     JSON_LD_RE,
     mimetype2ext,
-    network_exceptions,
     NO_DEFAULT,
     orderedSet,
     parse_bitrate,
@@ -78,7 +77,6 @@ from ..utils import (
     UnsupportedError,
     unified_strdate,
     unified_timestamp,
-    update_Request,
     update_url_query,
     url_basename,
     url_or_none,
@@ -88,6 +86,8 @@ from ..utils import (
     xpath_text,
     xpath_with_ns,
 )
+from ..network.backends import update_Request
+from ..network.utils import network_exceptions
 
 
 class InfoExtractor(object):

@@ -20,11 +20,11 @@ from ..utils import (
     determine_ext,
     encodeFilename,
     encodeArgument,
-    handle_youtubedl_headers,
     check_executable,
     Popen,
     remove_end,
 )
+from ..network.backends import handle_youtubedl_headers
 
 
 class ExternalFD(FragmentFD):

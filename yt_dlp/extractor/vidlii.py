@@ -5,7 +5,6 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
-    HEADRequest,
     format_field,
     float_or_none,
     get_element_by_id,
@@ -15,6 +14,7 @@ from ..utils import (
     unified_strdate,
     urljoin,
 )
+from ..network.common import HEADRequest
 
 
 class VidLiiIE(InfoExtractor):

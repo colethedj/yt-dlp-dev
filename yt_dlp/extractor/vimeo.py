@@ -17,7 +17,6 @@ from ..utils import (
     determine_ext,
     ExtractorError,
     get_element_by_class,
-    HEADRequest,
     js_to_json,
     int_or_none,
     merge_dicts,
@@ -37,6 +36,7 @@ from ..utils import (
     unescapeHTML,
     urlhandle_detect_ext,
 )
+from ..network.common import HEADRequest
 
 
 class VimeoBaseInfoExtractor(InfoExtractor):

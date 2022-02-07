@@ -45,7 +45,8 @@ from .compat import (
     windows_enable_vt_mode
 )
 from .cookies import load_cookies
-from .network.backends import UrllibHandler
+from .network.backends import UrllibHandler, make_HTTPS_handler, YoutubeDLHandler, YoutubeDLCookieProcessor, \
+    YoutubeDLRedirectHandler, PerRequestProxyHandler
 from .utils import (
     age_restricted,
     args_to_str,
@@ -80,15 +81,12 @@ from .utils import (
     LINK_TEMPLATES,
     locked_file,
     make_dir,
-    make_HTTPS_handler,
     MaxDownloadsReached,
-    network_exceptions,
     number_of_digits,
     orderedSet,
     OUTTMPL_TYPES,
     PagedList,
     parse_filesize,
-    PerRequestProxyHandler,
     platform_name,
     Popen,
     POSTPROCESS_WHEN,
@@ -123,11 +121,8 @@ from .utils import (
     write_json_file,
     write_string,
     YDLLogger,
-    YoutubeDLCookieProcessor,
-    YoutubeDLHandler,
-    YoutubeDLRedirectHandler,
-    YoutubeDLUrlLib3Adapter
 )
+from .network.utils import network_exceptions
 from .cache import Cache
 from .minicurses import format_text
 from .extractor import (

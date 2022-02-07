@@ -18,7 +18,6 @@ from ..utils import (
     error_to_compat_str,
     ExtractorError,
     float_or_none,
-    HEADRequest,
     int_or_none,
     KNOWN_EXTENSIONS,
     mimetype2ext,
@@ -32,6 +31,7 @@ from ..utils import (
     urlhandle_detect_ext,
     sanitized_Request,
 )
+from ..network.common import HEADRequest
 
 
 class SoundcloudEmbedIE(InfoExtractor):

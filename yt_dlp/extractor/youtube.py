@@ -44,7 +44,6 @@ from ..utils import (
     join_nonempty,
     js_to_json,
     mimetype2ext,
-    network_exceptions,
     NO_DEFAULT,
     orderedSet,
     parse_codecs,
@@ -70,6 +69,7 @@ from ..utils import (
     urljoin,
     variadic,
 )
+from ..network.utils import network_exceptions
 
 
 def get_first(obj, keys, **kwargs):

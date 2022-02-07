@@ -23,9 +23,9 @@ from .compat import (
 from .utils import (
     expand_path,
     Popen,
-    YoutubeDLCookieJar,
     YDLLogger
 )
+from .network.backends import YoutubeDLCookieJar
 
 try:
     import sqlite3
