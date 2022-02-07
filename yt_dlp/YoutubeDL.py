@@ -32,10 +32,7 @@ from string import ascii_letters
 
 from .compat import (
     compat_brotli,
-    compat_basestring,
     compat_get_terminal_size,
-    compat_kwargs,
-    compat_numeric_types,
     compat_os_name,
     compat_pycrypto_AES,
     compat_shlex_quote,
@@ -610,14 +607,14 @@ class YoutubeDL(object):
         else:
             self.params['nooverwrites'] = not self.params['overwrites']
 
-        params.setdefault('forceprint', {})
-        params.setdefault('print_to_file', {})
+        self.params.setdefault('forceprint', {})
+        self.params.setdefault('print_to_file', {})
 
         # Compatibility with older syntax
         if not isinstance(params['forceprint'], dict):
-            params['forceprint'] = {'video': params['forceprint']}
+            self.params['forceprint'] = {'video': params['forceprint']}
 
-        if params.get('bidi_workaround', False):
+        if self.params.get('bidi_workaround', False):
             try:
                 import pty
                 master, slave = pty.openpty()
@@ -645,7 +642,7 @@ class YoutubeDL(object):
 
         if (sys.platform != 'win32'
                 and sys.getfilesystemencoding() in ['ascii', 'ANSI_X3.4-1968']
-                and not params.get('restrictfilenames', False)):
+                and not self.params.get('restrictfilenames', False)):
             # Unicode filesystem API will throw errors (#1474, #13027)
             self.report_warning(
                 'Assuming --restrict-filenames since file system encoding '
@@ -682,7 +679,7 @@ class YoutubeDL(object):
             pp_def = dict(pp_def_raw)
             when = pp_def.pop('when', 'post_process')
             self.add_post_processor(
-                get_postprocessor(pp_def.pop('key'))(self, **compat_kwargs(pp_def)),
+                get_postprocessor(pp_def.pop('key'))(self, **pp_def),
                 when=when)
 
         def preload_download_archive(fn):
@@ -2253,10 +2250,7 @@ class YoutubeDL(object):
 
     def _calc_headers(self, info_dict):
         res = std_headers.copy()
-
-        add_headers = info_dict.get('http_headers')
-        if add_headers:
-            res.update(add_headers)
+        res.update(info_dict.get('http_headers') or {})
 
         cookies = self._calc_cookies(info_dict)
         if cookies:
@@ -2322,6 +2316,8 @@ class YoutubeDL(object):
             raise ExtractorError('Missing "id" field in extractor result', ie=info_dict['extractor'])
         elif not info_dict.get('id'):
             raise ExtractorError('Extractor failed to obtain "id"', ie=info_dict['extractor'])
+
+        info_dict['fulltitle'] = info_dict.get('title')
         if 'title' not in info_dict:
             raise ExtractorError('Missing "title" field in extractor result',
                                  video_id=info_dict['id'], ie=info_dict['extractor'])
@@ -2344,7 +2340,7 @@ class YoutubeDL(object):
         def sanitize_numeric_fields(info):
             for numeric_field in self._NUMERIC_FIELDS:
                 field = info.get(numeric_field)
-                if field is None or isinstance(field, compat_numeric_types):
+                if field is None or isinstance(field, (int, float)):
                     continue
                 report_force_conversion(numeric_field, 'numeric', 'int')
                 info[numeric_field] = int_or_none(field)
@@ -2434,9 +2430,6 @@ class YoutubeDL(object):
         info_dict['__has_drm'] = any(f.get('has_drm') for f in formats)
         if not self.params.get('allow_unplayable_formats'):
             formats = [f for f in formats if not f.get('has_drm')]
-
-        # backward compatibility
-        info_dict['fulltitle'] = info_dict['title']
 
         if info_dict.get('is_live'):
             get_from_start = bool(self.params.get('live_from_start'))

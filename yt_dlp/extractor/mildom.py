@@ -5,12 +5,12 @@ import base64
 from datetime import datetime
 import itertools
 import json
+import uuid
 
 from .common import InfoExtractor
 from ..utils import (
     std_headers,
     update_url_query,
-    random_uuidv4,
     try_get,
     float_or_none,
     dict_get
@@ -140,7 +140,7 @@ class MildomIE(MildomBaseIE):
             })
 
         stream_query = self._common_queries({
-            'streamReqId': random_uuidv4(),
+            'streamReqId': str(uuid.uuid4()),
             'is_lhls': '0',
         })
         m3u8_url = update_url_query(servers['stream_server'] + '/%s_master.m3u8' % video_id, stream_query)

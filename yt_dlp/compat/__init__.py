@@ -1,8 +1,7 @@
 # coding: utf-8
 
-import asyncio
 import base64
-import ctypes
+import collections
 import getpass
 import html
 import html.parser
@@ -12,9 +11,7 @@ import http.cookiejar
 import http.cookies
 import http.server
 import itertools
-import optparse
 import os
-import re
 import shlex
 import shutil
 import socket
@@ -24,7 +21,8 @@ import sys
 import tokenize
 import urllib
 import xml.etree.ElementTree as etree
-from subprocess import DEVNULL
+
+from . import re
 
 
 # HTMLParseError has been deprecated in Python 3.3 and removed in
@@ -32,12 +30,6 @@ from subprocess import DEVNULL
 # and uniform cross-version exception handling
 class compat_HTMLParseError(Exception):
     pass
-
-
-# compat_ctypes_WINFUNCTYPE = ctypes.WINFUNCTYPE
-# will not work since ctypes.WINFUNCTYPE does not exist in UNIX machines
-def compat_ctypes_WINFUNCTYPE(*args, **kwargs):
-    return ctypes.WINFUNCTYPE(*args, **kwargs)
 
 
 class _TreeBuilder(etree.TreeBuilder):
@@ -79,58 +71,6 @@ if compat_os_name == 'nt' and sys.version_info < (3, 8):
         return path
 else:
     compat_realpath = os.path.realpath
-
-
-def compat_print(s):
-    assert isinstance(s, compat_str)
-    print(s)
-
-
-# Fix https://github.com/ytdl-org/youtube-dl/issues/4223
-# See http://bugs.python.org/issue9161 for what is broken
-def workaround_optparse_bug9161():
-    op = optparse.OptionParser()
-    og = optparse.OptionGroup(op, 'foo')
-    try:
-        og.add_option('-t')
-    except TypeError:
-        real_add_option = optparse.OptionGroup.add_option
-
-        def _compat_add_option(self, *args, **kwargs):
-            enc = lambda v: (
-                v.encode('ascii', 'replace') if isinstance(v, compat_str)
-                else v)
-            bargs = [enc(a) for a in args]
-            bkwargs = dict(
-                (k, enc(v)) for k, v in kwargs.items())
-            return real_add_option(self, *bargs, **bkwargs)
-        optparse.OptionGroup.add_option = _compat_add_option
-
-
-try:
-    compat_Pattern = re.Pattern
-except AttributeError:
-    compat_Pattern = type(re.compile(''))
-
-
-try:
-    compat_Match = re.Match
-except AttributeError:
-    compat_Match = type(re.compile('').match(''))
-
-
-try:
-    compat_asyncio_run = asyncio.run  # >= 3.7
-except AttributeError:
-    def compat_asyncio_run(coro):
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-        loop.run_until_complete(coro)
-
-    asyncio.run = compat_asyncio_run
 
 
 # Python 3.8+ does not honor %HOME% on windows, but this breaks compatibility with youtube-dl
@@ -195,19 +135,14 @@ def windows_enable_vt_mode():  # TODO: Do this the proper way https://bugs.pytho
 
 #  Deprecated
 
-compat_basestring = str
 compat_chr = chr
-compat_input = input
-compat_integer_types = (int, )
-compat_kwargs = lambda kwargs: kwargs
-compat_numeric_types = (int, float, complex)
+compat_filter = filter
+compat_map = map
 compat_str = str
-compat_xpath = lambda xpath: xpath
-compat_zip = zip
 
+compat_collections_abc = collections.abc
 compat_HTMLParser = html.parser.HTMLParser
 compat_HTTPError = urllib.error.HTTPError
-compat_Struct = struct.Struct
 compat_b64decode = base64.b64decode
 compat_cookiejar = http.cookiejar
 compat_cookiejar_Cookie = compat_cookiejar.Cookie
@@ -228,7 +163,6 @@ compat_shlex_split = shlex.split
 compat_socket_create_connection = socket.create_connection
 compat_struct_pack = struct.pack
 compat_struct_unpack = struct.unpack
-compat_subprocess_get_DEVNULL = lambda: DEVNULL
 compat_tokenize_tokenize = tokenize.tokenize
 compat_urllib_error = urllib.error
 compat_urllib_parse = urllib.parse
@@ -255,22 +189,18 @@ __all__ = [
     'compat_HTMLParseError',
     'compat_HTMLParser',
     'compat_HTTPError',
-    'compat_Match',
-    'compat_Pattern',
-    'compat_Struct',
-    'compat_asyncio_run',
     'compat_b64decode',
-    'compat_basestring',
     'compat_chr',
+    'compat_collections_abc',
     'compat_cookiejar',
     'compat_cookiejar_Cookie',
     'compat_cookies',
     'compat_cookies_SimpleCookie',
-    'compat_ctypes_WINFUNCTYPE',
     'compat_etree_Element',
     'compat_etree_fromstring',
     'compat_etree_register_namespace',
     'compat_expanduser',
+    'compat_filter',
     'compat_get_terminal_size',
     'compat_getenv',
     'compat_getpass',
@@ -278,15 +208,11 @@ __all__ = [
     'compat_html_entities_html5',
     'compat_http_client',
     'compat_http_server',
-    'compat_input',
-    'compat_integer_types',
     'compat_itertools_count',
-    'compat_kwargs',
-    'compat_numeric_types',
+    'compat_map',
     'compat_ord',
     'compat_os_name',
     'compat_parse_qs',
-    'compat_print',
     'compat_pycrypto_AES',
     'compat_realpath',
     'compat_setenv',
@@ -296,7 +222,6 @@ __all__ = [
     'compat_str',
     'compat_struct_pack',
     'compat_struct_unpack',
-    'compat_subprocess_get_DEVNULL',
     'compat_tokenize_tokenize',
     'compat_urllib_error',
     'compat_urllib_parse',
@@ -314,8 +239,5 @@ __all__ = [
     'compat_urlparse',
     'compat_urlretrieve',
     'compat_xml_parse_error',
-    'compat_xpath',
-    'compat_zip',
     'windows_enable_vt_mode',
-    'workaround_optparse_bug9161',
 ]

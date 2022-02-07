@@ -9,7 +9,6 @@ from .compat import (
     compat_expanduser,
     compat_get_terminal_size,
     compat_getenv,
-    compat_kwargs,
     compat_shlex_split,
 )
 from .utils import (
@@ -208,14 +207,12 @@ def create_parser():
     fmt = optparse.IndentedHelpFormatter(width=max_width, max_help_position=max_help_position)
     fmt.format_option_strings = _format_option_string
 
-    kw = {
-        'version': __version__,
-        'formatter': fmt,
-        'usage': '%prog [OPTIONS] URL [URL...]',
-        'conflict_handler': 'resolve',
-    }
-
-    parser = optparse.OptionParser(**compat_kwargs(kw))
+    parser = optparse.OptionParser(
+        version=__version__,
+        formatter=fmt,
+        usage='%prog [OPTIONS] URL [URL...]',
+        conflict_handler='resolve'
+    )
 
     general = optparse.OptionGroup(parser, 'General Options')
     general.add_option(
@@ -381,10 +378,10 @@ def create_parser():
     geo.add_option(
         '--geo-bypass',
         action='store_true', dest='geo_bypass', default=True,
-        help='Bypass geographic restriction via faking X-Forwarded-For HTTP header')
+        help='Bypass geographic restriction via faking X-Forwarded-For HTTP header (default)')
     geo.add_option(
         '--no-geo-bypass',
-        action='store_false', dest='geo_bypass', default=True,
+        action='store_false', dest='geo_bypass',
         help='Do not bypass geographic restriction via faking X-Forwarded-For HTTP header')
     geo.add_option(
         '--geo-bypass-country', metavar='CODE',

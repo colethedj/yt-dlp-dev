@@ -44,19 +44,14 @@ from .compat import (
     compat_HTMLParseError,
     compat_HTMLParser,
     compat_HTTPError,
-    compat_basestring,
     compat_brotli,
     compat_chr,
     compat_cookiejar,
-    compat_ctypes_WINFUNCTYPE,
     compat_etree_fromstring,
     compat_expanduser,
     compat_html_entities,
     compat_html_entities_html5,
     compat_http_client,
-    compat_integer_types,
-    compat_numeric_types,
-    compat_kwargs,
     compat_os_name,
     compat_parse_qs,
     compat_shlex_split,
@@ -76,17 +71,12 @@ from .compat import (
     compat_urllib_parse_unquote_plus,
     compat_urllib_request,
     compat_urlparse,
-    compat_xpath,
 )
 
 from .socksproxy import (
     ProxyType,
     sockssocket,
 )
-
-
-# This is not clearly defined otherwise
-compiled_regex_type = type(re.compile(''))
 
 
 def random_user_agent():
@@ -311,20 +301,11 @@ def write_json_file(obj, fn):
         raise
 
 
-if sys.version_info >= (2, 7):
-    def find_xpath_attr(node, xpath, key, val=None):
-        """ Find the xpath xpath[@key=val] """
-        assert re.match(r'^[a-zA-Z_-]+$', key)
-        expr = xpath + ('[@%s]' % key if val is None else "[@%s='%s']" % (key, val))
-        return node.find(expr)
-else:
-    def find_xpath_attr(node, xpath, key, val=None):
-        for f in node.findall(compat_xpath(xpath)):
-            if key not in f.attrib:
-                continue
-            if val is None or f.attrib.get(key) == val:
-                return f
-        return None
+def find_xpath_attr(node, xpath, key, val=None):
+    """ Find the xpath xpath[@key=val] """
+    assert re.match(r'^[a-zA-Z_-]+$', key)
+    expr = xpath + ('[@%s]' % key if val is None else "[@%s='%s']" % (key, val))
+    return node.find(expr)
 
 # On python2.6 the xml.etree.ElementTree.Element methods don't support
 # the namespace parameter
@@ -344,7 +325,7 @@ def xpath_with_ns(path, ns_map):
 
 def xpath_element(node, xpath, name=None, fatal=False, default=NO_DEFAULT):
     def _find_xpath(xpath):
-        return node.find(compat_xpath(xpath))
+        return node.find(xpath)
 
     if isinstance(xpath, (str, compat_str)):
         n = _find_xpath(xpath)
@@ -620,10 +601,9 @@ def clean_html(html):
     if html is None:  # Convenience for sanitizing descriptions etc.
         return html
 
-    # Newline vs <br />
-    html = html.replace('\n', ' ')
-    html = re.sub(r'(?u)\s*<\s*br\s*/?\s*>\s*', '\n', html)
-    html = re.sub(r'(?u)<\s*/\s*p\s*>\s*<\s*p[^>]*>', '\n', html)
+    html = re.sub(r'\s+', ' ', html)
+    html = re.sub(r'(?u)\s?<\s?br\s?/?\s?>\s?', '\n', html)
+    html = re.sub(r'(?u)<\s?/\s?p\s?>\s?<\s?p[^>]*>', '\n', html)
     # Strip html tags
     html = re.sub('<.*?>', '', html)
     # Replace html entities
@@ -982,13 +962,9 @@ def make_HTTPS_handler(params, **kwargs):
 
 
 def bug_reports_message(before=';'):
-    if ytdl_is_updateable():
-        update_cmd = 'type  yt-dlp -U  to update'
-    else:
-        update_cmd = 'see  https://github.com/yt-dlp/yt-dlp  on how to update'
-    msg = 'please report this issue on  https://github.com/yt-dlp/yt-dlp .'
-    msg += ' Make sure you are using the latest version; %s.' % update_cmd
-    msg += ' Be sure to call yt-dlp with the --verbose flag and include its complete output.'
+    msg = ('please report this issue on  https://github.com/yt-dlp/yt-dlp , '
+           'filling out the "Broken site" issue template properly. '
+           'Confirm you are on the latest version using -U')
 
     before = before.rstrip()
     if not before or before.endswith(('.', '!', '?')):
@@ -1204,7 +1180,7 @@ class XAttrUnavailableError(YoutubeDLError):
 
 
 def _create_http_connection(ydl_handler, http_class, is_https, *args, **kwargs):
-    hc = http_class(*args, **compat_kwargs(kwargs))
+    hc = http_class(*args, **kwargs)
     source_address = ydl_handler._params.get('source_address')
 
     if source_address is not None:
@@ -2053,88 +2029,10 @@ def get_windows_version():
         return None
 
 
-def _windows_write_string(s, out):
-    """ Returns True if the string was written using special methods,
-    False if it has yet to be written out."""
-    # Adapted from http://stackoverflow.com/a/3259271/35070
-
-    import ctypes.wintypes
-
-    WIN_OUTPUT_IDS = {
-        1: -11,
-        2: -12,
-    }
-
-    try:
-        fileno = out.fileno()
-    except AttributeError:
-        # If the output stream doesn't have a fileno, it's virtual
-        return False
-    except io.UnsupportedOperation:
-        # Some strange Windows pseudo files?
-        return False
-    if fileno not in WIN_OUTPUT_IDS:
-        return False
-
-    GetStdHandle = compat_ctypes_WINFUNCTYPE(
-        ctypes.wintypes.HANDLE, ctypes.wintypes.DWORD)(
-        ('GetStdHandle', ctypes.windll.kernel32))
-    h = GetStdHandle(WIN_OUTPUT_IDS[fileno])
-
-    WriteConsoleW = compat_ctypes_WINFUNCTYPE(
-        ctypes.wintypes.BOOL, ctypes.wintypes.HANDLE, ctypes.wintypes.LPWSTR,
-        ctypes.wintypes.DWORD, ctypes.POINTER(ctypes.wintypes.DWORD),
-        ctypes.wintypes.LPVOID)(('WriteConsoleW', ctypes.windll.kernel32))
-    written = ctypes.wintypes.DWORD(0)
-
-    GetFileType = compat_ctypes_WINFUNCTYPE(ctypes.wintypes.DWORD, ctypes.wintypes.DWORD)(('GetFileType', ctypes.windll.kernel32))
-    FILE_TYPE_CHAR = 0x0002
-    FILE_TYPE_REMOTE = 0x8000
-    GetConsoleMode = compat_ctypes_WINFUNCTYPE(
-        ctypes.wintypes.BOOL, ctypes.wintypes.HANDLE,
-        ctypes.POINTER(ctypes.wintypes.DWORD))(
-        ('GetConsoleMode', ctypes.windll.kernel32))
-    INVALID_HANDLE_VALUE = ctypes.wintypes.DWORD(-1).value
-
-    def not_a_console(handle):
-        if handle == INVALID_HANDLE_VALUE or handle is None:
-            return True
-        return ((GetFileType(handle) & ~FILE_TYPE_REMOTE) != FILE_TYPE_CHAR
-                or GetConsoleMode(handle, ctypes.byref(ctypes.wintypes.DWORD())) == 0)
-
-    if not_a_console(h):
-        return False
-
-    def next_nonbmp_pos(s):
-        try:
-            return next(i for i, c in enumerate(s) if ord(c) > 0xffff)
-        except StopIteration:
-            return len(s)
-
-    while s:
-        count = min(next_nonbmp_pos(s), 1024)
-
-        ret = WriteConsoleW(
-            h, s, count if count else 2, ctypes.byref(written), None)
-        if ret == 0:
-            raise OSError('Failed to write string')
-        if not count:  # We just wrote a non-BMP character
-            assert written.value == 2
-            s = s[1:]
-        else:
-            assert written.value > 0
-            s = s[written.value:]
-    return True
-
-
 def write_string(s, out=None, encoding=None):
     if out is None:
         out = sys.stderr
     assert type(s) == compat_str
-
-    if sys.platform == 'win32' and encoding is None and hasattr(out, 'fileno'):
-        if _windows_write_string(s, out):
-            return
 
     if 'b' in getattr(out, 'mode', ''):
         byt = s.encode(encoding or preferredencoding(), 'ignore')
@@ -2238,35 +2136,17 @@ else:
             raise IOError(UNSUPPORTED_MSG)
 
 
-class locked_file(object):
-    def __init__(self, filename, mode, encoding=None):
-        assert mode in ['r', 'a', 'w']
-        self.f = io.open(filename, mode, encoding=encoding)
-        self.mode = mode
-
-    def __enter__(self):
-        exclusive = self.mode != 'r'
+@contextlib.contextmanager
+def locked_file(filename, mode, encoding=None):
+    f = open(filename, mode, encoding=encoding)
+    try:
+        _lock_file(f, mode != 'r')
         try:
-            _lock_file(self.f, exclusive)
-        except IOError:
-            self.f.close()
-            raise
-        return self
-
-    def __exit__(self, etype, value, traceback):
-        try:
-            _unlock_file(self.f)
+            yield f
         finally:
-            self.f.close()
-
-    def __iter__(self):
-        return iter(self.f)
-
-    def write(self, *args):
-        return self.f.write(*args)
-
-    def read(self, *args):
-        return self.f.read(*args)
+            _unlock_file(f)
+    finally:
+        f.close()
 
 
 def get_filesystem_encoding():
@@ -2588,7 +2468,7 @@ def str_or_none(v, default=None):
 
 def str_to_int(int_str):
     """ A more relaxed version of int_or_none """
-    if isinstance(int_str, compat_integer_types):
+    if isinstance(int_str, int):
         return int_str
     elif isinstance(int_str, compat_str):
         int_str = re.sub(r'[,\.\+]', '', int_str)
@@ -2622,7 +2502,7 @@ def url_or_none(url):
 def strftime_or_none(timestamp, date_format, default=None):
     datetime_object = None
     try:
-        if isinstance(timestamp, compat_numeric_types):  # unix timestamp
+        if isinstance(timestamp, (int, float)):  # unix timestamp
             datetime_object = datetime.datetime.utcfromtimestamp(timestamp)
         elif isinstance(timestamp, compat_str):  # assume YYYYMMDD
             datetime_object = datetime.datetime.strptime(timestamp, '%Y%m%d')
@@ -2632,7 +2512,7 @@ def strftime_or_none(timestamp, date_format, default=None):
 
 
 def parse_duration(s):
-    if not isinstance(s, compat_basestring):
+    if not isinstance(s, str):
         return None
     s = s.strip()
     if not s:
@@ -2942,14 +2822,6 @@ class InAdvancePagedList(PagedList):
             yield from page_results
 
 
-def uppercase_escape(s):
-    unicode_escape = codecs.getdecoder('unicode_escape')
-    return re.sub(
-        r'\\U[0-9a-fA-F]{8}',
-        lambda m: unicode_escape(m.group(0))[0],
-        s)
-
-
 def lowercase_escape(s):
     unicode_escape = codecs.getdecoder('unicode_escape')
     return re.sub(
@@ -3145,7 +3017,7 @@ TV_PARENTAL_GUIDELINES = {
 def parse_age_limit(s):
     if type(s) == int:
         return s if 0 <= s <= 21 else None
-    if not isinstance(s, compat_basestring):
+    if not isinstance(s, str):
         return None
     m = re.match(r'^(?P<age>\d{1,2})\+?$', s)
     if m:
@@ -3503,12 +3375,11 @@ def render_table(header_row, data, delim=False, extra_gap=0, hide_empty=False):
         return [max(width(str(v)) for v in col) for col in zip(*table)]
 
     def filter_using_list(row, filterArray):
-        return [col for (take, col) in zip(filterArray, row) if take]
+        return [col for take, col in itertools.zip_longest(filterArray, row, fillvalue=True) if take]
 
-    if hide_empty:
-        max_lens = get_max_lens(data)
-        header_row = filter_using_list(header_row, max_lens)
-        data = [filter_using_list(row, max_lens) for row in data]
+    max_lens = get_max_lens(data) if hide_empty else []
+    header_row = filter_using_list(header_row, max_lens)
+    data = [filter_using_list(row, max_lens) for row in data]
 
     table = [header_row] + data
     max_lens = get_max_lens(table)
@@ -3565,7 +3436,7 @@ def _match_one(filter_part, dct, incomplete):
             comparison_value = comparison_value.replace(r'\%s' % m['quote'], m['quote'])
         actual_value = dct.get(m['key'])
         numeric_comparison = None
-        if isinstance(actual_value, compat_numeric_types):
+        if isinstance(actual_value, (int, float)):
             # If the original field is a string and matching comparisonvalue is
             # a number we should respect the origin of the original field
             # and process comparison value as a string (see
@@ -4758,113 +4629,6 @@ def urshift(val, n):
     return val >> n if val >= 0 else (val + 0x100000000) >> n
 
 
-# Based on png2str() written by @gdkchan and improved by @yokrysty
-# Originally posted at https://github.com/ytdl-org/youtube-dl/issues/9706
-def decode_png(png_data):
-    # Reference: https://www.w3.org/TR/PNG/
-    header = png_data[8:]
-
-    if png_data[:8] != b'\x89PNG\x0d\x0a\x1a\x0a' or header[4:8] != b'IHDR':
-        raise IOError('Not a valid PNG file.')
-
-    int_map = {1: '>B', 2: '>H', 4: '>I'}
-    unpack_integer = lambda x: compat_struct_unpack(int_map[len(x)], x)[0]
-
-    chunks = []
-
-    while header:
-        length = unpack_integer(header[:4])
-        header = header[4:]
-
-        chunk_type = header[:4]
-        header = header[4:]
-
-        chunk_data = header[:length]
-        header = header[length:]
-
-        header = header[4:]  # Skip CRC
-
-        chunks.append({
-            'type': chunk_type,
-            'length': length,
-            'data': chunk_data
-        })
-
-    ihdr = chunks[0]['data']
-
-    width = unpack_integer(ihdr[:4])
-    height = unpack_integer(ihdr[4:8])
-
-    idat = b''
-
-    for chunk in chunks:
-        if chunk['type'] == b'IDAT':
-            idat += chunk['data']
-
-    if not idat:
-        raise IOError('Unable to read PNG data.')
-
-    decompressed_data = bytearray(zlib.decompress(idat))
-
-    stride = width * 3
-    pixels = []
-
-    def _get_pixel(idx):
-        x = idx % stride
-        y = idx // stride
-        return pixels[y][x]
-
-    for y in range(height):
-        basePos = y * (1 + stride)
-        filter_type = decompressed_data[basePos]
-
-        current_row = []
-
-        pixels.append(current_row)
-
-        for x in range(stride):
-            color = decompressed_data[1 + basePos + x]
-            basex = y * stride + x
-            left = 0
-            up = 0
-
-            if x > 2:
-                left = _get_pixel(basex - 3)
-            if y > 0:
-                up = _get_pixel(basex - stride)
-
-            if filter_type == 1:  # Sub
-                color = (color + left) & 0xff
-            elif filter_type == 2:  # Up
-                color = (color + up) & 0xff
-            elif filter_type == 3:  # Average
-                color = (color + ((left + up) >> 1)) & 0xff
-            elif filter_type == 4:  # Paeth
-                a = left
-                b = up
-                c = 0
-
-                if x > 2 and y > 0:
-                    c = _get_pixel(basex - stride - 3)
-
-                p = a + b - c
-
-                pa = abs(p - a)
-                pb = abs(p - b)
-                pc = abs(p - c)
-
-                if pa <= pb and pa <= pc:
-                    color = (color + a) & 0xff
-                elif pb <= pc:
-                    color = (color + b) & 0xff
-                else:
-                    color = (color + c) & 0xff
-
-            current_row.append(color)
-
-    return width, height, pixels
-
-
 def write_xattr(path, key, value):
     # This mess below finds the best xattr tool for the job
     try:
@@ -5041,7 +4805,7 @@ def iri_to_uri(iri):
 def to_high_limit_path(path):
     if sys.platform in ['win32', 'cygwin']:
         # Work around MAX_PATH limitation on Windows. The maximum allowed length for the individual path segments may still be quite limited.
-        return r'\\?\ '.rstrip() + os.path.abspath(path)
+        return '\\\\?\\' + os.path.abspath(path)
 
     return path
 
@@ -5068,13 +4832,6 @@ def clean_podcast_url(url):
                 st\.fm # https://podsights.com/docs/
             )/e
         )/''', '', url)
-
-
-_HEX_TABLE = '0123456789abcdef'
-
-
-def random_uuidv4():
-    return re.sub(r'[xy]', lambda x: _HEX_TABLE[random.randint(0, 15)], 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx')
 
 
 def make_dir(path, to_screen=None):
@@ -5296,8 +5053,10 @@ class Config:
 
     def init(self, args=None, filename=None):
         assert not self.__initialized
+        directory = ''
         if filename:
             location = os.path.realpath(filename)
+            directory = os.path.dirname(location)
             if location in self._loaded_paths:
                 return False
             self._loaded_paths.add(location)
@@ -5305,7 +5064,7 @@ class Config:
         self.__initialized = True
         self.own_args, self.filename = args, filename
         for location in self._parser.parse_args(args)[0].config_locations or []:
-            location = compat_expanduser(location)
+            location = os.path.join(directory, expand_path(location))
             if os.path.isdir(location):
                 location = os.path.join(location, 'yt-dlp.conf')
             if not os.path.exists(location):

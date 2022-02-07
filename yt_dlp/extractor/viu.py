@@ -6,7 +6,6 @@ import re
 
 from .common import InfoExtractor
 from ..compat import (
-    compat_kwargs,
     compat_str,
     compat_urlparse,
     compat_urllib_request,
@@ -46,7 +45,7 @@ class ViuBaseIE(InfoExtractor):
         kwargs['headers'] = headers
         response = self._download_json(
             'https://www.viu.com/api/' + path, *args,
-            **compat_kwargs(kwargs))['response']
+            **kwargs)['response']
         if response.get('status') != 'success':
             raise ExtractorError('%s said: %s' % (
                 self.IE_NAME, response['message']), expected=True)
