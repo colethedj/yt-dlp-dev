@@ -48,6 +48,7 @@ from .compat import (
     windows_enable_vt_mode
 )
 from .cookies import load_cookies
+from .network.backends import UrllibHandler
 from .utils import (
     age_restricted,
     args_to_str,
@@ -73,7 +74,6 @@ from .utils import (
     formatSeconds,
     GeoRestrictedError,
     get_domain,
-    HEADRequest,
     InAdvancePagedList,
     int_or_none,
     iri_to_uri,
@@ -125,6 +125,7 @@ from .utils import (
     version_tuple,
     write_json_file,
     write_string,
+    YDLLogger,
     YoutubeDLCookieProcessor,
     YoutubeDLHandler,
     YoutubeDLRedirectHandler,
@@ -159,6 +160,15 @@ from .postprocessor import (
     MoveFilesAfterDownloadPP,
     _PLUGIN_CLASSES as plugin_postprocessors
 )
+
+from .network.common import (
+    HEADRequest,
+    Session,
+    UnsupportedBackendHandler,
+    YDLRequest,
+    req_to_ydlreq
+)
+
 from .update import detect_variant
 from .version import __version__, RELEASE_GIT_HEAD
 
@@ -167,8 +177,6 @@ if compat_os_name == 'nt':
 
 import typing
 
-
-YoutubeDLParams = dict
 
 class YoutubeDL(object):
     """YoutubeDL class.
@@ -535,6 +543,7 @@ class YoutubeDL(object):
         @param auto_init    Whether to load the default extractors and print header (if verbose).
                             Set to 'no_verbose_header' to not print the header
         """
+        self._cookiejar = None
         if params is None:
             params = {}
         self._ies = {}
@@ -654,7 +663,7 @@ class YoutubeDL(object):
 
         self._urllib3_opener = self._opener = None
         self._setup_opener()
-        self._setup_urllib3_opener()
+        self.session = self._create_session()
         if auto_init:
             if auto_init != 'no_verbose_header':
                 self.print_debug_header()
@@ -3560,13 +3569,19 @@ class YoutubeDL(object):
         self.__list_table(video_id, name, self.render_subtitles_table, video_id, subtitles)
 
     def urlopen(self, req):
-        if isinstance(req, compat_basestring):
-            req = sanitized_Request(req)
-
-        if self._urllib3_opener:
-            self.write_debug('Using urllib3', only_once=True)
-            return self._urllib3_opener.urlopen(req, timeout=self._socket_timeout)
-        return self._opener.open(req, timeout=self._socket_timeout)
+        if isinstance(req, str):
+            req = YDLRequest(req)
+        # TODO: compat
+        if isinstance(req, compat_urllib_request.Request):
+            req = req_to_ydlreq(req)
+        if req.headers.get('Youtubedl-no-compression'):
+            req.compression = True
+            del req.headers['Youtubedl-no-compression']
+        proxy = req.headers.get('Ytdl-request-proxy')
+        if proxy:
+            req.proxy = proxy or req.proxy
+            del req.headers['Ytdl-request-proxy']
+        return self.session.send_request(req)
 
     def print_debug_header(self):
         if not self.params.get('verbose'):
@@ -3698,32 +3713,40 @@ class YoutubeDL(object):
                 proxies['https'] = proxies['http']
         return proxies
 
-    def _setup_urllib3_opener(self):
-        if compat_urllib3 is None or 'no-urllib3' in self.params.get('compat_opts', []):
-            return
-        compat_urllib3.disable_warnings()
-        if self.params.get('debug_printtraffic'):
-            compat_urllib3.add_stderr_logger()
+    def _create_session(self):
+        logger = YDLLogger(self)  # TODO: separate logging stuff from YouTubeDL.py
+        handlers = [UrllibHandler, UnsupportedBackendHandler]
+        session = Session(self.params, logger=logger)
+        for handler in handlers:
+            if not handler:
+                continue
+            session.add_handler(handler(self.params, logger, self.cookiejar))
+        return session
 
-        if not self.cookiejar:
+    @property
+    def cookiejar(self):
+        if not self._cookiejar:
             opts_cookiesfrombrowser = self.params.get('cookiesfrombrowser')
             opts_cookiefile = self.params.get('cookiefile')
-            self.cookiejar = load_cookies(opts_cookiefile, opts_cookiesfrombrowser, self)
+            self._cookiejar = load_cookies(opts_cookiefile, opts_cookiesfrombrowser, self)
+        return self._cookiejar
 
-        try:
-            self._urllib3_opener = YoutubeDLUrlLib3Adapter(
-                self.params, cookiejar=self.cookiejar, proxy_map=self._get_proxy_map())
-        except Exception as e:
-            self.report_warning(str(e) + '; falling back to urllib')
+    # def _setup_urllib3_opener(self):
+    #     if compat_urllib3 is None or 'no-urllib3' in self.params.get('compat_opts', []):
+    #         return
+    #     compat_urllib3.disable_warnings()
+    #     if self.params.get('debug_printtraffic'):
+    #         compat_urllib3.add_stderr_logger()
+    #
+    #     try:
+    #         self._urllib3_opener = YoutubeDLUrlLib3Adapter(
+    #             self.params, cookiejar=self.cookiejar, proxy_map=self._get_proxy_map())
+    #     except Exception as e:
+    #         self.report_warning(str(e) + '; falling back to urllib')
 
     def _setup_opener(self):
         timeout_val = self.params.get('socket_timeout')
         self._socket_timeout = 20 if timeout_val is None else float(timeout_val)
-
-        opts_cookiesfrombrowser = self.params.get('cookiesfrombrowser')
-        opts_cookiefile = self.params.get('cookiefile')
-
-        self.cookiejar = load_cookies(opts_cookiefile, opts_cookiesfrombrowser, self)
 
         cookie_processor = YoutubeDLCookieProcessor(self.cookiejar)
         proxies = self._get_proxy_map()

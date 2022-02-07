@@ -26,7 +26,7 @@ class YDLRequest:
     """
     def __init__(
             self, url, data=None, headers=None, proxy=None, compression=True, method=None,
-            unverifiable=False, unredirected_headers=None, origin_req_host=None):
+            unverifiable=False, unredirected_headers=None, origin_req_host=None, timeout=None):
         """
         @param proxy: proxy to use for the request, e.g. socks5://127.0.0.1:1080. Default is None.
         @param compression: whether to include content-encoding header on request (i.e. disable/enable compression).
@@ -41,6 +41,7 @@ class YDLRequest:
         self._data = data
         self._headers = YDLUniqueHTTPHeaderStore(headers)
         self._unredirected_headers = YDLUniqueHTTPHeaderStore(unredirected_headers)
+        self.timeout = timeout
 
         # TODO: add support for passing different types of auth into a YDlRequest, and don't add the headers.
         #  That can be done in the backend
@@ -112,6 +113,13 @@ class YDLRequest:
         return self.method
 
 
+def req_to_ydlreq(req: urllib.request.Request):
+    return YDLRequest(
+        req.get_full_url(), data=req.data, headers=req.headers, method=req.get_method(),
+        unverifiable=req.unverifiable, unredirected_headers=req.unredirected_hdrs,
+        origin_req_host=req.origin_req_host)
+
+
 class HEADRequest(YDLRequest):
     @property
     def method(self):
@@ -134,7 +142,7 @@ class HTTPResponse(ABC, io.IOBase):
 
     REDIRECT_STATUS_CODES = [301, 302, 303, 307, 308]
 
-    def __init__(self, headers, status, version, reason):
+    def __init__(self, headers, status, version=None, reason=None):
         self.headers = YDLHTTPHeaderStore(headers)
         self.status = self.code = status
         self.reason = reason
@@ -204,7 +212,13 @@ class YDLBackendHandler(BaseBackendHandler):
     def __init__(self, youtubedl_params: dict, ydl_logger, cookies):
         self.params = youtubedl_params
         self.logger = ydl_logger
-        self.cookies = cookies
+        self.cookiejar = cookies
+
+        # TODO: The following can probably be delegated to YoutubeDL._create_session
+        timeout_val = self.params.get('socket_timeout')
+        self.debuglevel = 1 if self.params.get('debug_printtraffic') else 0
+        self.socket_timeout = 20 if timeout_val is None else float(timeout_val)
+
         self._initialize()
 
     def _initialize(self):
@@ -233,7 +247,7 @@ class YDLBackendHandler(BaseBackendHandler):
         return cls._is_supported_protocol(request)
 
 
-class UnsupportedBackendHandler(BaseBackendHandler):
+class UnsupportedBackendHandler(YDLBackendHandler):
     def can_handle(self, request: YDLRequest, **req_kwargs):
         raise Exception('This request is not supported')
 
@@ -285,8 +299,10 @@ class YDLHTTPHeaderStore(Message):
 
 class YDLUniqueHTTPHeaderStore(YDLHTTPHeaderStore):
     def add_header(self, *args, **kwargs):
-        return self.replace_header(*args, **kwargs)
-
+        try:
+            return self.replace_header(*args, **kwargs)
+        except KeyError:
+            return super().add_header(*args, **kwargs)
 
 """
 Youtube-dl request object
@@ -295,20 +311,10 @@ This is used for communication between the network backends and youtube-dl only
 Network backends are responsible for validating and parsing the url, etc.
 """
 
-# goes in YoutubeDL class?
-def create_session(youtubedl_params, ydl_logger):
-    adapters = [UnsupportedBackendHandler]
-    session = Session(youtubedl_params, logger=ydl_logger)
-    cookiejar = http.cookiejar.CookieJar()
-    for adapter in adapters:
-        if not adapter:
-            continue
-        session.add_handler(adapter(youtubedl_params, None, cookiejar))
-
 
 # TODO: deal with msg in places where we don't always want to specify it
 class RequestError(YoutubeDLError):
-    def __init__(self, url, msg=None):
+    def __init__(self, url=None, msg=None):
         super().__init__(msg)
         self.url = url
 
@@ -331,7 +337,7 @@ class HTTPError(RequestError, tempfile._TemporaryFileWrapper):
 
 
 class TransportError(RequestError):
-    def __init__(self, url, msg=None, cause=None):
+    def __init__(self, url=None, msg=None, cause=None):
         if msg and cause:
             msg = msg + f' (caused by {cause!r})'  # TODO
         super().__init__(msg, url)
@@ -351,8 +357,8 @@ class ConnectionTimeoutError(TransportError, Timeout):
 
 
 class ResolveHostError(TransportError):
-    def __init__(self, url, cause=None, host=None):
-        msg = f'Failed to resolve host "{host or urllib.parse.urlparse(url).hostname}"'
+    def __init__(self, url=None, cause=None, host=None):
+        msg = f'Failed to resolve host' + f' {host or urllib.parse.urlparse(url).hostname if url else ""}'
         super().__init__(url, msg=msg, cause=cause)
 
 
@@ -361,7 +367,7 @@ class ConnectionReset(TransportError):
 
 
 class IncompleteRead(TransportError, http.client.IncompleteRead):
-    def __init__(self, url, partial, *, cause=None, expected=None):
+    def __init__(self, partial, url=None, cause=None, expected=None):
         self.partial = partial
         self.expected = expected
         super().__init__(repr(self), url, cause)  # TODO: since we override with repr() in http.client.IncompleteRead
