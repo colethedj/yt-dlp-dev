@@ -291,8 +291,9 @@ def create_session(youtubedl_params, ydl_logger):
         session.add_handler(adapter(youtubedl_params, None, cookiejar))
 
 
+# TODO: deal with msg in places where we don't always want to specify it
 class RequestError(YoutubeDLError):
-    def __init__(self, msg, url):
+    def __init__(self, url, msg=None):
         super().__init__(msg)
         self.url = url
 
@@ -315,7 +316,9 @@ class HTTPError(RequestError, tempfile._TemporaryFileWrapper):
 
 
 class TransportError(RequestError):
-    def __init__(self, msg, url, cause=None):
+    def __init__(self, url, msg=None, cause=None):
+        if msg and cause:
+            msg = msg + f' (caused by {cause!r})'  # TODO
         super().__init__(msg, url)
         self.cause = cause
 
@@ -333,16 +336,20 @@ class ConnectionTimeoutError(TransportError, Timeout):
 
 
 class ResolveHostError(TransportError):
-    # TODO: prob want actual hostname
-    msg = 'Failed to resolve hostname. Either the hostname doesn\'t exist, or here is likely an issue with your connection or DNS.'
+    def __init__(self, url, cause=None, host=None):
+        msg = f'Failed to resolve host "{host or urllib.parse.urlparse(url).hostname}"'
+        super().__init__(url, msg=msg, cause=cause)
 
 
 class ConnectionReset(TransportError):
-    pass
+    msg = 'The connection was reset'
 
 
-class IncompleteRead(TransportError):
-    pass
+class IncompleteRead(TransportError, http.client.IncompleteRead):
+    def __init__(self, url, partial, *, cause=None, expected=None):
+        self.partial = partial
+        self.expected = expected
+        super().__init__(repr(self), url, cause)  # TODO: since we override with repr() in http.client.IncompleteRead
 
 
 class SSLError(TransportError):
