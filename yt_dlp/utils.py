@@ -5368,3 +5368,24 @@ class Config:
 
     def parse_args(self):
         return self._parser.parse_args(list(self.all_args))
+
+
+class YDLLogger:
+    def __init__(self, ydl=None):
+        self._ydl = ydl
+
+    def debug(self, message):
+        if self._ydl:
+            self._ydl.write_debug(message)
+
+    def info(self, message):
+        if self._ydl:
+            self._ydl.to_screen(f'[Cookies] {message}')
+
+    def warning(self, message, only_once=False):
+        if self._ydl:
+            self._ydl.report_warning(message, only_once)
+
+    def error(self, message):
+        if self._ydl:
+            self._ydl.report_error(message)

@@ -247,7 +247,7 @@ class Session:
         self.params = youtubedl_params
         self.proxy = self.get_main_proxy()
 
-    def add_handler(self, handler: BackendHandler):
+    def add_handler(self, handler: YDLBackendHandler):
         if self._first_handler is None:
             self._first_handler = self._last_handler = handler
         else:

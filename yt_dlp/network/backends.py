@@ -6,7 +6,8 @@ from .common import (
     IncompleteRead,
     ReadTimeoutError,
     TransportError,
-    ConnectionReset
+    ConnectionReset,
+    YDLBackendHandler
 )
 import http.client
 
