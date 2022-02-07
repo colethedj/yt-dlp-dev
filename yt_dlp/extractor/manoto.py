@@ -3,9 +3,11 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
-    clean_html, traverse_obj
+    clean_html,
+    int_or_none,
+    traverse_obj
 )
-from ..utils import int_or_none
+
 
 _API_URL = 'https://dak1vd5vmi7x6.cloudfront.net/api/v1/publicrole/{}/{}?id={}'
 

@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 import re
 
 from .common import InfoExtractor
-from ..exceptions import ExtractorError
+from ..utils import ExtractorError
 from ..compat import compat_urlparse
 
 

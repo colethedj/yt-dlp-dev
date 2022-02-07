@@ -9,9 +9,9 @@ from ..compat import (
     compat_ord,
 )
 from ..utils import (
+    int_or_none,
     parse_duration,
 )
-from ..utils import int_or_none
 
 
 class XMinusIE(InfoExtractor):

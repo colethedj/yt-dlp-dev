@@ -6,9 +6,9 @@ import re
 from .common import InfoExtractor
 from ..utils import (
     base_url,
+    ExtractorError,
     try_get,
 )
-from ..exceptions import ExtractorError
 from ..compat import compat_str
 
 

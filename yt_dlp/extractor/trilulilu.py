@@ -3,10 +3,10 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
+    ExtractorError,
+    int_or_none,
     parse_iso8601,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class TriluliluIE(InfoExtractor):

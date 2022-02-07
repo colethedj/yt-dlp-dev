@@ -7,9 +7,9 @@ from .common import InfoExtractor
 from .youtube import YoutubeIE
 from ..utils import (
     clean_html,
+    ExtractorError,
     get_element_by_id,
 )
-from ..exceptions import ExtractorError
 
 
 class TechTVMITIE(InfoExtractor):

@@ -6,10 +6,11 @@ import re
 from .common import InfoExtractor
 from ..compat import compat_str
 from ..utils import (
+    format_field,
+    int_or_none,
     js_to_json,
-    try_get, format_field,
+    try_get,
 )
-from ..utils import int_or_none
 
 
 class JojIE(InfoExtractor):

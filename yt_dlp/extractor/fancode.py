@@ -6,10 +6,10 @@ from .common import InfoExtractor
 from ..compat import compat_str
 from ..utils import (
     parse_iso8601,
+    ExtractorError,
     try_get,
     mimetype2ext
 )
-from ..exceptions import ExtractorError
 
 
 class FancodeVodIE(InfoExtractor):

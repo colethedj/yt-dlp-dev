@@ -5,9 +5,10 @@ from __future__ import unicode_literals
 from .common import InfoExtractor
 from ..compat import compat_str
 from ..utils import (
-    str_or_none, format_field,
+    format_field,
+    int_or_none,
+    str_or_none,
 )
-from ..utils import int_or_none
 
 
 class LineLiveBaseIE(InfoExtractor):

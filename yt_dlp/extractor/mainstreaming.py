@@ -4,12 +4,13 @@ import re
 from .common import InfoExtractor
 
 from ..utils import (
+    int_or_none,
     js_to_json,
     parse_duration,
+    traverse_obj,
     try_get,
-    urljoin, traverse_obj
+    urljoin
 )
-from ..utils import int_or_none
 
 
 class MainStreamingIE(InfoExtractor):

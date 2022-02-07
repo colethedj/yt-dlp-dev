@@ -2,10 +2,11 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
+    ExtractorError,
     dict_get,
-    try_get, traverse_obj,
+    traverse_obj,
+    try_get,
 )
-from ..exceptions import ExtractorError
 
 
 class MirrativBaseIE(InfoExtractor):

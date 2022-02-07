@@ -12,9 +12,9 @@ from ..utils import (
     shell_quote,
     str_or_none,
     Popen,
+    PostProcessingError,
     prepend_extension,
 )
-from ..exceptions import PostProcessingError
 
 
 # Deprecated in favor of the native implementation

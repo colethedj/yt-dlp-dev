@@ -6,10 +6,10 @@ from .common import InfoExtractor
 from ..utils import (
     # ExtractorError,
     # HEADRequest,
+    int_or_none,
     qualities,
     unified_strdate,
 )
-from ..utils import int_or_none
 
 
 class CanalplusIE(InfoExtractor):

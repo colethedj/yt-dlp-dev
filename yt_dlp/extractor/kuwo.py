@@ -8,10 +8,10 @@ from ..compat import compat_urlparse
 from ..utils import (
     get_element_by_id,
     clean_html,
+    ExtractorError,
     InAdvancePagedList,
     remove_start,
 )
-from ..exceptions import ExtractorError
 
 
 class KuwoBaseIE(InfoExtractor):

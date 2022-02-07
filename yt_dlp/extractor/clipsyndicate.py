@@ -2,7 +2,8 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
-    fix_xml_ampersands, find_xpath_attr
+    find_xpath_attr,
+    fix_xml_ampersands
 )
 
 

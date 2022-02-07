@@ -31,6 +31,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import traceback
 import xml.etree.ElementTree
 import mimetypes
 
@@ -49,11 +50,13 @@ from .compat import (
     compat_str,
     compat_struct_pack,
     compat_struct_unpack,
+    compat_urllib_parse,
     compat_urllib_parse_urlencode,
     compat_urllib_parse_urlparse,
     compat_urllib_parse_urlunparse,
     compat_urllib_parse_quote,
     compat_urllib_parse_quote_plus,
+    compat_urllib_request,
     compat_urlparse,
 )
 
@@ -76,6 +79,21 @@ MONTH_NAMES = {
         'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
         'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'],
 }
+
+KNOWN_EXTENSIONS = (
+    'mp4', 'm4a', 'm4p', 'm4b', 'm4r', 'm4v', 'aac',
+    'flv', 'f4v', 'f4a', 'f4b',
+    'webm', 'ogg', 'ogv', 'oga', 'ogx', 'spx', 'opus',
+    'mkv', 'mka', 'mk3d',
+    'avi', 'divx',
+    'mov',
+    'asf', 'wmv', 'wma',
+    '3gp', '3g2',
+    'mp3',
+    'flac',
+    'ape',
+    'wav',
+    'f4f', 'f4m', 'm3u8', 'smil')
 
 # needed for sanitizing filenames in restricted mode
 ACCENT_CHARS = dict(zip('ÂÃÄÀÁÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖŐØŒÙÚÛÜŰÝÞßàáâãäåæçèéêëìíîïðñòóôõöőøœùúûüűýþÿ',
@@ -204,6 +222,79 @@ def write_json_file(obj, fn):
         except OSError:
             pass
         raise
+
+
+def find_xpath_attr(node, xpath, key, val=None):
+    """ Find the xpath xpath[@key=val] """
+    assert re.match(r'^[a-zA-Z_-]+$', key)
+    expr = xpath + ('[@%s]' % key if val is None else "[@%s='%s']" % (key, val))
+    return node.find(expr)
+
+# On python2.6 the xml.etree.ElementTree.Element methods don't support
+# the namespace parameter
+
+
+def xpath_with_ns(path, ns_map):
+    components = [c.split(':') for c in path.split('/')]
+    replaced = []
+    for c in components:
+        if len(c) == 1:
+            replaced.append(c[0])
+        else:
+            ns, tag = c
+            replaced.append('{%s}%s' % (ns_map[ns], tag))
+    return '/'.join(replaced)
+
+
+def xpath_element(node, xpath, name=None, fatal=False, default=NO_DEFAULT):
+    def _find_xpath(xpath):
+        return node.find(xpath)
+
+    if isinstance(xpath, (str, compat_str)):
+        n = _find_xpath(xpath)
+    else:
+        for xp in xpath:
+            n = _find_xpath(xp)
+            if n is not None:
+                break
+
+    if n is None:
+        if default is not NO_DEFAULT:
+            return default
+        elif fatal:
+            name = xpath if name is None else name
+            raise ExtractorError('Could not find XML element %s' % name)
+        else:
+            return None
+    return n
+
+
+def xpath_text(node, xpath, name=None, fatal=False, default=NO_DEFAULT):
+    n = xpath_element(node, xpath, name, fatal=fatal, default=default)
+    if n is None or n == default:
+        return n
+    if n.text is None:
+        if default is not NO_DEFAULT:
+            return default
+        elif fatal:
+            name = xpath if name is None else name
+            raise ExtractorError('Could not find XML element\'s text %s' % name)
+        else:
+            return None
+    return n.text
+
+
+def xpath_attr(node, xpath, key, name=None, fatal=False, default=NO_DEFAULT):
+    n = find_xpath_attr(node, xpath, key)
+    if n is None:
+        if default is not NO_DEFAULT:
+            return default
+        elif fatal:
+            name = '%s[@%s]' % (xpath, key) if name is None else name
+            raise ExtractorError('Could not find XML attribute %s' % name)
+        else:
+            return None
+    return n.attrib[key]
 
 
 def get_element_by_id(id, html):
@@ -552,6 +643,44 @@ def sanitize_path(s, force=False):
     return os.path.join(*sanitized_path)
 
 
+def sanitize_url(url):
+    # Prepend protocol-less URLs with `http:` scheme in order to mitigate
+    # the number of unwanted failures due to missing protocol
+    if url.startswith('//'):
+        return 'http:%s' % url
+    # Fix some common typos seen so far
+    COMMON_TYPOS = (
+        # https://github.com/ytdl-org/youtube-dl/issues/15649
+        (r'^httpss://', r'https://'),
+        # https://bx1.be/lives/direct-tv/
+        (r'^rmtp([es]?)://', r'rtmp\1://'),
+    )
+    for mistake, fixup in COMMON_TYPOS:
+        if re.match(mistake, url):
+            return re.sub(mistake, fixup, url)
+    return url
+
+
+def extract_basic_auth(url):
+    parts = compat_urlparse.urlsplit(url)
+    if parts.username is None:
+        return url, None
+    url = compat_urlparse.urlunsplit(parts._replace(netloc=(
+        parts.hostname if parts.port is None
+        else '%s:%d' % (parts.hostname, parts.port))))
+    auth_payload = base64.b64encode(
+        ('%s:%s' % (parts.username, parts.password or '')).encode('utf-8'))
+    return url, 'Basic ' + auth_payload.decode('utf-8')
+
+
+def sanitized_Request(url, *args, **kwargs):
+    url, auth_header = extract_basic_auth(escape_url(sanitize_url(url)))
+    if auth_header is not None:
+        headers = args[1] if len(args) >= 2 else kwargs.setdefault('headers', {})
+        headers['Authorization'] = auth_header
+    return compat_urllib_request.Request(url, *args, **kwargs)
+
+
 def expand_path(s):
     """Expand shell variables and ~"""
     return os.path.expandvars(compat_expanduser(s))
@@ -711,6 +840,217 @@ def formatSeconds(secs, delim=':', msec=False):
     return '%s.%03d' % (ret, time.milliseconds) if msec else ret
 
 
+def bug_reports_message(before=';'):
+    msg = ('please report this issue on  https://github.com/yt-dlp/yt-dlp , '
+           'filling out the "Broken site" issue template properly. '
+           'Confirm you are on the latest version using -U')
+
+    before = before.rstrip()
+    if not before or before.endswith(('.', '!', '?')):
+        msg = msg[0].title() + msg[1:]
+
+    return (before + ' ' if before else '') + msg
+
+
+class YoutubeDLError(Exception):
+    """Base exception for YoutubeDL errors."""
+    msg = None
+
+    def __init__(self, msg=None):
+        if msg is not None:
+            self.msg = msg
+        elif self.msg is None:
+            self.msg = type(self).__name__
+        super().__init__(self.msg)
+
+class ExtractorError(YoutubeDLError):
+    """Error during info extraction."""
+
+    def __init__(self, msg, tb=None, expected=False, cause=None, video_id=None, ie=None):
+        """ tb, if given, is the original traceback (so that it can be printed out).
+        If expected is set, this is a normal error message and most likely not a bug in yt-dlp.
+        """
+        if sys.exc_info()[0] in network_exceptions:
+            expected = True
+
+        self.msg = str(msg)
+        self.traceback = tb
+        self.expected = expected
+        self.cause = cause
+        self.video_id = video_id
+        self.ie = ie
+        self.exc_info = sys.exc_info()  # preserve original exception
+
+        super(ExtractorError, self).__init__(''.join((
+            format_field(ie, template='[%s] '),
+            format_field(video_id, template='%s: '),
+            self.msg,
+            format_field(cause, template=' (caused by %r)'),
+            '' if expected else bug_reports_message())))
+
+    def format_traceback(self):
+        if self.traceback is None:
+            return None
+        return ''.join(traceback.format_tb(self.traceback))
+
+
+class UnsupportedError(ExtractorError):
+    def __init__(self, url):
+        super(UnsupportedError, self).__init__(
+            'Unsupported URL: %s' % url, expected=True)
+        self.url = url
+
+
+class RegexNotFoundError(ExtractorError):
+    """Error when a regex didn't match"""
+    pass
+
+
+class GeoRestrictedError(ExtractorError):
+    """Geographic restriction Error exception.
+
+    This exception may be thrown when a video is not available from your
+    geographic location due to geographic restrictions imposed by a website.
+    """
+
+    def __init__(self, msg, countries=None, **kwargs):
+        kwargs['expected'] = True
+        super(GeoRestrictedError, self).__init__(msg, **kwargs)
+        self.countries = countries
+
+
+class DownloadError(YoutubeDLError):
+    """Download Error exception.
+
+    This exception may be thrown by FileDownloader objects if they are not
+    configured to continue on errors. They will contain the appropriate
+    error message.
+    """
+
+    def __init__(self, msg, exc_info=None):
+        """ exc_info, if given, is the original exception that caused the trouble (as returned by sys.exc_info()). """
+        super(DownloadError, self).__init__(msg)
+        self.exc_info = exc_info
+
+
+class EntryNotInPlaylist(YoutubeDLError):
+    """Entry not in playlist exception.
+
+    This exception will be thrown by YoutubeDL when a requested entry
+    is not found in the playlist info_dict
+    """
+    msg = 'Entry not found in info'
+
+
+class SameFileError(YoutubeDLError):
+    """Same File exception.
+
+    This exception will be thrown by FileDownloader objects if they detect
+    multiple files would have to be downloaded to the same file on disk.
+    """
+    msg = 'Fixed output name but more than one file to download'
+
+    def __init__(self, filename=None):
+        if filename is not None:
+            self.msg += f': {filename}'
+        super().__init__(self.msg)
+
+
+class PostProcessingError(YoutubeDLError):
+    """Post Processing exception.
+
+    This exception may be raised by PostProcessor's .run() method to
+    indicate an error in the postprocessing task.
+    """
+
+
+class DownloadCancelled(YoutubeDLError):
+    """ Exception raised when the download queue should be interrupted """
+    msg = 'The download was cancelled'
+
+
+class ExistingVideoReached(DownloadCancelled):
+    """ --break-on-existing triggered """
+    msg = 'Encountered a video that is already in the archive, stopping due to --break-on-existing'
+
+
+class RejectedVideoReached(DownloadCancelled):
+    """ --break-on-reject triggered """
+    msg = 'Encountered a video that did not match filter, stopping due to --break-on-reject'
+
+
+class MaxDownloadsReached(DownloadCancelled):
+    """ --max-downloads limit has been reached. """
+    msg = 'Maximum number of downloads reached, stopping due to --max-downloads'
+
+
+class ReExtractInfo(YoutubeDLError):
+    """ Video info needs to be re-extracted. """
+
+    def __init__(self, msg, expected=False):
+        super().__init__(msg)
+        self.expected = expected
+
+
+class ThrottledDownload(ReExtractInfo):
+    """ Download speed below --throttled-rate. """
+    msg = 'The download speed is below throttle limit'
+
+    def __init__(self):
+        super().__init__(self.msg, expected=False)
+
+
+class UnavailableVideoError(YoutubeDLError):
+    """Unavailable Format exception.
+
+    This exception will be thrown when a video is requested
+    in a format that is not available for that video.
+    """
+    msg = 'Unable to download video'
+
+    def __init__(self, err=None):
+        if err is not None:
+            self.msg += f': {err}'
+        super().__init__(self.msg)
+
+
+class ContentTooShortError(YoutubeDLError):
+    """Content Too Short exception.
+
+    This exception may be raised by FileDownloader objects when a file they
+    download is too small for what the server announced first, indicating
+    the connection was probably interrupted.
+    """
+
+    def __init__(self, downloaded, expected):
+        super(ContentTooShortError, self).__init__(
+            'Downloaded {0} bytes, expected {1} bytes'.format(downloaded, expected)
+        )
+        # Both in bytes
+        self.downloaded = downloaded
+        self.expected = expected
+
+
+class XAttrMetadataError(YoutubeDLError):
+    def __init__(self, code=None, msg='Unknown error'):
+        super(XAttrMetadataError, self).__init__(msg)
+        self.code = code
+        self.msg = msg
+
+        # Parsing code and msg
+        if (self.code in (errno.ENOSPC, errno.EDQUOT)
+                or 'No space left' in self.msg or 'Disk quota exceeded' in self.msg):
+            self.reason = 'NO_SPACE'
+        elif self.code == errno.E2BIG or 'Argument list too long' in self.msg:
+            self.reason = 'VALUE_TOO_LONG'
+        else:
+            self.reason = 'NOT_SUPPORTED'
+
+
+class XAttrUnavailableError(YoutubeDLError):
+    pass
+
+
 def extract_timezone(date_str):
     m = re.search(
         r'''(?x)
@@ -819,6 +1159,19 @@ def unified_timestamp(date_str, day_first=True):
     timetuple = email.utils.parsedate_tz(date_str)
     if timetuple:
         return calendar.timegm(timetuple) + pm_delta * 3600
+
+
+def determine_ext(url, default_ext='unknown_video'):
+    if url is None or '.' not in url:
+        return default_ext
+    guess = url.partition('?')[0].rpartition('.')[2]
+    if re.match(r'^[A-Za-z0-9]+$', guess):
+        return guess
+    # Try extract ext from URLs like http://example.com/foo/bar.mp4/?download
+    elif guess.rstrip('/') in KNOWN_EXTENSIONS:
+        return guess.rstrip('/')
+    else:
+        return default_ext
 
 
 def subtitles_filename(filename, sub_lang, sub_format, expected_real_ext=None):
@@ -1135,6 +1488,17 @@ def format_bytes(bytes):
     return format_decimal_suffix(bytes, '%.2f%sB', factor=1024) or 'N/A'
 
 
+def lookup_unit_table(unit_table, s):
+    units_re = '|'.join(re.escape(u) for u in unit_table)
+    m = re.match(
+        r'(?P<num>[0-9]+(?:[,.][0-9]*)?)\s*(?P<unit>%s)\b' % units_re, s)
+    if not m:
+        return None
+    num_str = m.group('num').replace(',', '.')
+    mult = unit_table[m.group('unit')]
+    return int(float(num_str) * mult)
+
+
 def parse_filesize(s):
     if s is None:
         return None
@@ -1204,6 +1568,35 @@ def parse_filesize(s):
     }
 
     return lookup_unit_table(_UNIT_TABLE, s)
+
+
+def parse_count(s):
+    if s is None:
+        return None
+
+    s = re.sub(r'^[^\d]+\s', '', s).strip()
+
+    if re.match(r'^[\d,.]+$', s):
+        return str_to_int(s)
+
+    _UNIT_TABLE = {
+        'k': 1000,
+        'K': 1000,
+        'm': 1000 ** 2,
+        'M': 1000 ** 2,
+        'kk': 1000 ** 2,
+        'KK': 1000 ** 2,
+        'b': 1000 ** 3,
+        'B': 1000 ** 3,
+    }
+
+    ret = lookup_unit_table(_UNIT_TABLE, s)
+    if ret is not None:
+        return ret
+
+    mobj = re.match(r'([\d,.]+)(?:$|\s)', s)
+    if mobj:
+        return str_to_int(mobj.group(1))
 
 
 def parse_resolution(s):
@@ -1337,8 +1730,26 @@ def urljoin(base, path):
     return compat_urlparse.urljoin(base, path)
 
 
+def int_or_none(v, scale=1, default=None, get_attr=None, invscale=1):
+    if get_attr and v is not None:
+        v = getattr(v, get_attr, None)
+    try:
+        return int(v) * invscale // scale
+    except (ValueError, TypeError, OverflowError):
+        return default
+
+
 def str_or_none(v, default=None):
     return default if v is None else compat_str(v)
+
+
+def str_to_int(int_str):
+    """ A more relaxed version of int_or_none """
+    if isinstance(int_str, int):
+        return int_str
+    elif isinstance(int_str, compat_str):
+        int_str = re.sub(r'[,\.\+]', '', int_str)
+        return int_or_none(int_str)
 
 
 def float_or_none(v, scale=1, invscale=1, default=None):
@@ -1500,6 +1911,96 @@ def get_exe_version(exe, args=['--version'],
     return detect_exe_version(out, version_re, unrecognized) if out else False
 
 
+class LazyList(collections.abc.Sequence):
+    ''' Lazy immutable list from an iterable
+    Note that slices of a LazyList are lists and not LazyList'''
+
+    class IndexError(IndexError):
+        pass
+
+    def __init__(self, iterable, *, reverse=False, _cache=None):
+        self.__iterable = iter(iterable)
+        self.__cache = [] if _cache is None else _cache
+        self.__reversed = reverse
+
+    def __iter__(self):
+        if self.__reversed:
+            # We need to consume the entire iterable to iterate in reverse
+            yield from self.exhaust()
+            return
+        yield from self.__cache
+        for item in self.__iterable:
+            self.__cache.append(item)
+            yield item
+
+    def __exhaust(self):
+        self.__cache.extend(self.__iterable)
+        # Discard the emptied iterable to make it pickle-able
+        self.__iterable = []
+        return self.__cache
+
+    def exhaust(self):
+        ''' Evaluate the entire iterable '''
+        return self.__exhaust()[::-1 if self.__reversed else 1]
+
+    @staticmethod
+    def __reverse_index(x):
+        return None if x is None else -(x + 1)
+
+    def __getitem__(self, idx):
+        if isinstance(idx, slice):
+            if self.__reversed:
+                idx = slice(self.__reverse_index(idx.start), self.__reverse_index(idx.stop), -(idx.step or 1))
+            start, stop, step = idx.start, idx.stop, idx.step or 1
+        elif isinstance(idx, int):
+            if self.__reversed:
+                idx = self.__reverse_index(idx)
+            start, stop, step = idx, idx, 0
+        else:
+            raise TypeError('indices must be integers or slices')
+        if ((start or 0) < 0 or (stop or 0) < 0
+                or (start is None and step < 0)
+                or (stop is None and step > 0)):
+            # We need to consume the entire iterable to be able to slice from the end
+            # Obviously, never use this with infinite iterables
+            self.__exhaust()
+            try:
+                return self.__cache[idx]
+            except IndexError as e:
+                raise self.IndexError(e) from e
+        n = max(start or 0, stop or 0) - len(self.__cache) + 1
+        if n > 0:
+            self.__cache.extend(itertools.islice(self.__iterable, n))
+        try:
+            return self.__cache[idx]
+        except IndexError as e:
+            raise self.IndexError(e) from e
+
+    def __bool__(self):
+        try:
+            self[-1] if self.__reversed else self[0]
+        except self.IndexError:
+            return False
+        return True
+
+    def __len__(self):
+        self.__exhaust()
+        return len(self.__cache)
+
+    def __reversed__(self):
+        return type(self)(self.__iterable, reverse=not self.__reversed, _cache=self.__cache)
+
+    def __copy__(self):
+        return type(self)(self.__iterable, reverse=self.__reversed, _cache=self.__cache)
+
+    def __repr__(self):
+        # repr and str should mimic a list. So we exhaust the iterable
+        return repr(self.exhaust())
+
+    def __str__(self):
+        return repr(self.exhaust())
+
+
 class PagedList:
 
     class IndexError(IndexError):
@@ -1604,6 +2105,23 @@ def lowercase_escape(s):
         r'\\u[0-9a-fA-F]{4}',
         lambda m: unicode_escape(m.group(0))[0],
         s)
+
+
+def escape_rfc3986(s):
+    """Escape non-ASCII characters as suggested by RFC 3986"""
+    return compat_urllib_parse.quote(s, b"%/;:@&=+$,!~*'()?#[]")
+
+
+def escape_url(url):
+    """Escape URL as suggested by RFC 3986"""
+    url_parsed = compat_urllib_parse_urlparse(url)
+    return url_parsed._replace(
+        netloc=url_parsed.netloc.encode('idna').decode('ascii'),
+        path=escape_rfc3986(url_parsed.path),
+        params=escape_rfc3986(url_parsed.params),
+        query=escape_rfc3986(url_parsed.query),
+        fragment=escape_rfc3986(url_parsed.fragment)
+    ).geturl()
 
 
 def parse_qs(url):
@@ -2080,6 +2598,28 @@ def is_html(first_bytes):
         s = first_bytes.decode('utf-8', 'replace')
 
     return re.match(r'^\s*<', s)
+
+
+def determine_protocol(info_dict):
+    protocol = info_dict.get('protocol')
+    if protocol is not None:
+        return protocol
+
+    url = sanitize_url(info_dict['url'])
+    if url.startswith('rtmp'):
+        return 'rtmp'
+    elif url.startswith('mms'):
+        return 'mms'
+    elif url.startswith('rtsp'):
+        return 'rtsp'
+
+    ext = determine_ext(url)
+    if ext == 'm3u8':
+        return 'm3u8'
+    elif ext == 'f4m':
+        return 'f4m'
+
+    return compat_urllib_parse_urlparse(url).scheme
 
 
 def render_table(header_row, data, delim=False, extra_gap=0, hide_empty=False):
@@ -3321,6 +3861,90 @@ def urshift(val, n):
     return val >> n if val >= 0 else (val + 0x100000000) >> n
 
 
+def write_xattr(path, key, value):
+    # This mess below finds the best xattr tool for the job
+    try:
+        # try the pyxattr module...
+        import xattr
+
+        if hasattr(xattr, 'set'):  # pyxattr
+            # Unicode arguments are not supported in python-pyxattr until
+            # version 0.5.0
+            # See https://github.com/ytdl-org/youtube-dl/issues/5498
+            pyxattr_required_version = '0.5.0'
+            if version_tuple(xattr.__version__) < version_tuple(pyxattr_required_version):
+                # TODO: fallback to CLI tools
+                raise XAttrUnavailableError(
+                    'python-pyxattr is detected but is too old. '
+                    'yt-dlp requires %s or above while your version is %s. '
+                    'Falling back to other xattr implementations' % (
+                        pyxattr_required_version, xattr.__version__))
+
+            setxattr = xattr.set
+        else:  # xattr
+            setxattr = xattr.setxattr
+
+        try:
+            setxattr(path, key, value)
+        except EnvironmentError as e:
+            raise XAttrMetadataError(e.errno, e.strerror)
+
+    except ImportError:
+        if compat_os_name == 'nt':
+            # Write xattrs to NTFS Alternate Data Streams:
+            # http://en.wikipedia.org/wiki/NTFS#Alternate_data_streams_.28ADS.29
+            assert ':' not in key
+            assert os.path.exists(path)
+
+            ads_fn = path + ':' + key
+            try:
+                with open(ads_fn, 'wb') as f:
+                    f.write(value)
+            except EnvironmentError as e:
+                raise XAttrMetadataError(e.errno, e.strerror)
+        else:
+            user_has_setfattr = check_executable('setfattr', ['--version'])
+            user_has_xattr = check_executable('xattr', ['-h'])
+
+            if user_has_setfattr or user_has_xattr:
+
+                value = value.decode('utf-8')
+                if user_has_setfattr:
+                    executable = 'setfattr'
+                    opts = ['-n', key, '-v', value]
+                elif user_has_xattr:
+                    executable = 'xattr'
+                    opts = ['-w', key, value]
+
+                cmd = ([encodeFilename(executable, True)]
+                       + [encodeArgument(o) for o in opts]
+                       + [encodeFilename(path, True)])
+
+                try:
+                    p = Popen(
+                        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
+                except EnvironmentError as e:
+                    raise XAttrMetadataError(e.errno, e.strerror)
+                stdout, stderr = p.communicate_or_kill()
+                stderr = stderr.decode('utf-8', 'replace')
+                if p.returncode != 0:
+                    raise XAttrMetadataError(p.returncode, stderr)
+
+            else:
+                # On Unix, and can't find pyxattr, setfattr, or xattr.
+                if sys.platform.startswith('linux'):
+                    raise XAttrUnavailableError(
+                        "Couldn't find a tool to set the xattrs. "
+                        "Install either the python 'pyxattr' or 'xattr' "
+                        "modules, or the GNU 'attr' package "
+                        "(which contains the 'setfattr' tool).")
+                else:
+                    raise XAttrUnavailableError(
+                        "Couldn't find a tool to set the xattrs. "
+                        "Install either the python 'xattr' module, "
+                        "or the 'xattr' binary.")
+
+
 def random_birthday(year_field, month_field, day_field):
     start_date = datetime.date(1950, 1, 1)
     end_date = datetime.date(1995, 12, 31)
@@ -3418,6 +4042,13 @@ def to_high_limit_path(path):
     return path
 
 
+def format_field(obj, field=None, template='%s', ignore=(None, ''), default='', func=None):
+    val = traverse_obj(obj, *variadic(field))
+    if val in ignore:
+        return default
+    return template % (func(val) if func else val)
+
+
 def clean_podcast_url(url):
     return re.sub(r'''(?x)
         (?:
@@ -3476,6 +4107,115 @@ def load_plugins(name, suffix, namespace):
     except FileNotFoundError:
         pass
     return classes
+
+
+def traverse_obj(
+        obj, *path_list, default=None, expected_type=None, get_all=True,
+        casesense=True, is_user_input=False, traverse_string=False):
+    ''' Traverse nested list/dict/tuple
+    @param path_list        A list of paths which are checked one by one.
+                            Each path is a list of keys where each key is a string,
+                            a function, a tuple of strings/None or "...".
+                            When a fuction is given, it takes the key as argument and
+                            returns whether the key matches or not. When a tuple is given,
+                            all the keys given in the tuple are traversed, and
+                            "..." traverses all the keys in the object
+                            "None" returns the object without traversal
+    @param default          Default value to return
+    @param expected_type    Only accept final value of this type (Can also be any callable)
+    @param get_all          Return all the values obtained from a path or only the first one
+    @param casesense        Whether to consider dictionary keys as case sensitive
+    @param is_user_input    Whether the keys are generated from user input. If True,
+                            strings are converted to int/slice if necessary
+    @param traverse_string  Whether to traverse inside strings. If True, any
+                            non-compatible object will also be converted into a string
+    # TODO: Write tests
+    '''
+    if not casesense:
+        _lower = lambda k: (k.lower() if isinstance(k, str) else k)
+        path_list = (map(_lower, variadic(path)) for path in path_list)
+
+    def _traverse_obj(obj, path, _current_depth=0):
+        nonlocal depth
+        path = tuple(variadic(path))
+        for i, key in enumerate(path):
+            if None in (key, obj):
+                return obj
+            if isinstance(key, (list, tuple)):
+                obj = [_traverse_obj(obj, sub_key, _current_depth) for sub_key in key]
+                key = ...
+            if key is ...:
+                obj = (obj.values() if isinstance(obj, dict)
+                       else obj if isinstance(obj, (list, tuple, LazyList))
+                       else str(obj) if traverse_string else [])
+                _current_depth += 1
+                depth = max(depth, _current_depth)
+                return [_traverse_obj(inner_obj, path[i + 1:], _current_depth) for inner_obj in obj]
+            elif callable(key):
+                if isinstance(obj, (list, tuple, LazyList)):
+                    obj = enumerate(obj)
+                elif isinstance(obj, dict):
+                    obj = obj.items()
+                else:
+                    if not traverse_string:
+                        return None
+                    obj = str(obj)
+                _current_depth += 1
+                depth = max(depth, _current_depth)
+                return [_traverse_obj(v, path[i + 1:], _current_depth) for k, v in obj if key(k)]
+            elif isinstance(obj, dict) and not (is_user_input and key == ':'):
+                obj = (obj.get(key) if casesense or (key in obj)
+                       else next((v for k, v in obj.items() if _lower(k) == key), None))
+            else:
+                if is_user_input:
+                    key = (int_or_none(key) if ':' not in key
+                           else slice(*map(int_or_none, key.split(':'))))
+                    if key == slice(None):
+                        return _traverse_obj(obj, (..., *path[i + 1:]), _current_depth)
+                if not isinstance(key, (int, slice)):
+                    return None
+                if not isinstance(obj, (list, tuple, LazyList)):
+                    if not traverse_string:
+                        return None
+                    obj = str(obj)
+                try:
+                    obj = obj[key]
+                except IndexError:
+                    return None
+        return obj
+
+    if isinstance(expected_type, type):
+        type_test = lambda val: val if isinstance(val, expected_type) else None
+    elif expected_type is not None:
+        type_test = expected_type
+    else:
+        type_test = lambda val: val
+
+    for path in path_list:
+        depth = 0
+        val = _traverse_obj(obj, path)
+        if val is not None:
+            if depth:
+                for _ in range(depth - 1):
+                    val = itertools.chain.from_iterable(v for v in val if v is not None)
+                val = [v for v in map(type_test, val) if v is not None]
+                if val:
+                    return val if get_all else val[0]
+            else:
+                val = type_test(val)
+                if val is not None:
+                    return val
+    return default
+
+
+def traverse_dict(dictn, keys, casesense=True):
+    write_string('DeprecationWarning: yt_dlp.utils.traverse_dict is deprecated '
+                 'and may be removed in a future version. Use yt_dlp.utils.traverse_obj instead')
+    return traverse_obj(dictn, keys, casesense=casesense, is_user_input=True, traverse_string=True)
+
+
+def variadic(x, allowed_types=(str, bytes, dict)):
+    return x if isinstance(x, collections.abc.Iterable) and not isinstance(x, allowed_types) else (x,)
 
 
 # create a JSON Web Signature (jws) with HS256 algorithm
@@ -3640,448 +4380,3 @@ class YDLLogger:
     def error(self, message):
         if self._ydl:
             self._ydl.report_error(message)
-
-
-def format_field(obj, field=None, template='%s', ignore=(None, ''), default='', func=None):
-    val = traverse_obj(obj, *variadic(field))
-    if val in ignore:
-        return default
-    return template % (func(val) if func else val)
-
-
-def traverse_obj(
-        obj, *path_list, default=None, expected_type=None, get_all=True,
-        casesense=True, is_user_input=False, traverse_string=False):
-    ''' Traverse nested list/dict/tuple
-    @param path_list        A list of paths which are checked one by one.
-                            Each path is a list of keys where each key is a string,
-                            a function, a tuple of strings/None or "...".
-                            When a fuction is given, it takes the key as argument and
-                            returns whether the key matches or not. When a tuple is given,
-                            all the keys given in the tuple are traversed, and
-                            "..." traverses all the keys in the object
-                            "None" returns the object without traversal
-    @param default          Default value to return
-    @param expected_type    Only accept final value of this type (Can also be any callable)
-    @param get_all          Return all the values obtained from a path or only the first one
-    @param casesense        Whether to consider dictionary keys as case sensitive
-    @param is_user_input    Whether the keys are generated from user input. If True,
-                            strings are converted to int/slice if necessary
-    @param traverse_string  Whether to traverse inside strings. If True, any
-                            non-compatible object will also be converted into a string
-    # TODO: Write tests
-    '''
-    if not casesense:
-        _lower = lambda k: (k.lower() if isinstance(k, str) else k)
-        path_list = (map(_lower, variadic(path)) for path in path_list)
-
-    def _traverse_obj(obj, path, _current_depth=0):
-        nonlocal depth
-        path = tuple(variadic(path))
-        for i, key in enumerate(path):
-            if None in (key, obj):
-                return obj
-            if isinstance(key, (list, tuple)):
-                obj = [_traverse_obj(obj, sub_key, _current_depth) for sub_key in key]
-                key = ...
-            if key is ...:
-                obj = (obj.values() if isinstance(obj, dict)
-                       else obj if isinstance(obj, (list, tuple, LazyList))
-                       else str(obj) if traverse_string else [])
-                _current_depth += 1
-                depth = max(depth, _current_depth)
-                return [_traverse_obj(inner_obj, path[i + 1:], _current_depth) for inner_obj in obj]
-            elif callable(key):
-                if isinstance(obj, (list, tuple, LazyList)):
-                    obj = enumerate(obj)
-                elif isinstance(obj, dict):
-                    obj = obj.items()
-                else:
-                    if not traverse_string:
-                        return None
-                    obj = str(obj)
-                _current_depth += 1
-                depth = max(depth, _current_depth)
-                return [_traverse_obj(v, path[i + 1:], _current_depth) for k, v in obj if key(k)]
-            elif isinstance(obj, dict) and not (is_user_input and key == ':'):
-                obj = (obj.get(key) if casesense or (key in obj)
-                       else next((v for k, v in obj.items() if _lower(k) == key), None))
-            else:
-                if is_user_input:
-                    key = (int_or_none(key) if ':' not in key
-                           else slice(*map(int_or_none, key.split(':'))))
-                    if key == slice(None):
-                        return _traverse_obj(obj, (..., *path[i + 1:]), _current_depth)
-                if not isinstance(key, (int, slice)):
-                    return None
-                if not isinstance(obj, (list, tuple, LazyList)):
-                    if not traverse_string:
-                        return None
-                    obj = str(obj)
-                try:
-                    obj = obj[key]
-                except IndexError:
-                    return None
-        return obj
-
-    if isinstance(expected_type, type):
-        type_test = lambda val: val if isinstance(val, expected_type) else None
-    elif expected_type is not None:
-        type_test = expected_type
-    else:
-        type_test = lambda val: val
-
-    for path in path_list:
-        depth = 0
-        val = _traverse_obj(obj, path)
-        if val is not None:
-            if depth:
-                for _ in range(depth - 1):
-                    val = itertools.chain.from_iterable(v for v in val if v is not None)
-                val = [v for v in map(type_test, val) if v is not None]
-                if val:
-                    return val if get_all else val[0]
-            else:
-                val = type_test(val)
-                if val is not None:
-                    return val
-    return default
-
-
-def int_or_none(v, scale=1, default=None, get_attr=None, invscale=1):
-    if get_attr and v is not None:
-        v = getattr(v, get_attr, None)
-    try:
-        return int(v) * invscale // scale
-    except (ValueError, TypeError, OverflowError):
-        return default
-
-
-def variadic(x, allowed_types=(str, bytes, dict)):
-    return x if isinstance(x, collections.abc.Iterable) and not isinstance(x, allowed_types) else (x,)
-
-
-class LazyList(collections.abc.Sequence):
-    ''' Lazy immutable list from an iterable
-    Note that slices of a LazyList are lists and not LazyList'''
-
-    class IndexError(IndexError):
-        pass
-
-    def __init__(self, iterable, *, reverse=False, _cache=None):
-        self.__iterable = iter(iterable)
-        self.__cache = [] if _cache is None else _cache
-        self.__reversed = reverse
-
-    def __iter__(self):
-        if self.__reversed:
-            # We need to consume the entire iterable to iterate in reverse
-            yield from self.exhaust()
-            return
-        yield from self.__cache
-        for item in self.__iterable:
-            self.__cache.append(item)
-            yield item
-
-    def __exhaust(self):
-        self.__cache.extend(self.__iterable)
-        # Discard the emptied iterable to make it pickle-able
-        self.__iterable = []
-        return self.__cache
-
-    def exhaust(self):
-        ''' Evaluate the entire iterable '''
-        return self.__exhaust()[::-1 if self.__reversed else 1]
-
-    @staticmethod
-    def __reverse_index(x):
-        return None if x is None else -(x + 1)
-
-    def __getitem__(self, idx):
-        if isinstance(idx, slice):
-            if self.__reversed:
-                idx = slice(self.__reverse_index(idx.start), self.__reverse_index(idx.stop), -(idx.step or 1))
-            start, stop, step = idx.start, idx.stop, idx.step or 1
-        elif isinstance(idx, int):
-            if self.__reversed:
-                idx = self.__reverse_index(idx)
-            start, stop, step = idx, idx, 0
-        else:
-            raise TypeError('indices must be integers or slices')
-        if ((start or 0) < 0 or (stop or 0) < 0
-                or (start is None and step < 0)
-                or (stop is None and step > 0)):
-            # We need to consume the entire iterable to be able to slice from the end
-            # Obviously, never use this with infinite iterables
-            self.__exhaust()
-            try:
-                return self.__cache[idx]
-            except IndexError as e:
-                raise self.IndexError(e) from e
-        n = max(start or 0, stop or 0) - len(self.__cache) + 1
-        if n > 0:
-            self.__cache.extend(itertools.islice(self.__iterable, n))
-        try:
-            return self.__cache[idx]
-        except IndexError as e:
-            raise self.IndexError(e) from e
-
-    def __bool__(self):
-        try:
-            self[-1] if self.__reversed else self[0]
-        except self.IndexError:
-            return False
-        return True
-
-    def __len__(self):
-        self.__exhaust()
-        return len(self.__cache)
-
-    def __reversed__(self):
-        return type(self)(self.__iterable, reverse=not self.__reversed, _cache=self.__cache)
-
-    def __copy__(self):
-        return type(self)(self.__iterable, reverse=self.__reversed, _cache=self.__cache)
-
-    def __repr__(self):
-        # repr and str should mimic a list. So we exhaust the iterable
-        return repr(self.exhaust())
-
-    def __str__(self):
-        return repr(self.exhaust())
-
-
-def str_to_int(int_str):
-    """ A more relaxed version of int_or_none """
-    if isinstance(int_str, int):
-        return int_str
-    elif isinstance(int_str, compat_str):
-        int_str = re.sub(r'[,\.\+]', '', int_str)
-        return int_or_none(int_str)
-
-
-def parse_count(s):
-    if s is None:
-        return None
-
-    s = re.sub(r'^[^\d]+\s', '', s).strip()
-
-    if re.match(r'^[\d,.]+$', s):
-        return str_to_int(s)
-
-    _UNIT_TABLE = {
-        'k': 1000,
-        'K': 1000,
-        'm': 1000 ** 2,
-        'M': 1000 ** 2,
-        'kk': 1000 ** 2,
-        'KK': 1000 ** 2,
-        'b': 1000 ** 3,
-        'B': 1000 ** 3,
-    }
-
-    ret = lookup_unit_table(_UNIT_TABLE, s)
-    if ret is not None:
-        return ret
-
-    mobj = re.match(r'([\d,.]+)(?:$|\s)', s)
-    if mobj:
-        return str_to_int(mobj.group(1))
-
-
-def lookup_unit_table(unit_table, s):
-    units_re = '|'.join(re.escape(u) for u in unit_table)
-    m = re.match(
-        r'(?P<num>[0-9]+(?:[,.][0-9]*)?)\s*(?P<unit>%s)\b' % units_re, s)
-    if not m:
-        return None
-    num_str = m.group('num').replace(',', '.')
-    mult = unit_table[m.group('unit')]
-    return int(float(num_str) * mult)
-
-
-KNOWN_EXTENSIONS = (
-    'mp4', 'm4a', 'm4p', 'm4b', 'm4r', 'm4v', 'aac',
-    'flv', 'f4v', 'f4a', 'f4b',
-    'webm', 'ogg', 'ogv', 'oga', 'ogx', 'spx', 'opus',
-    'mkv', 'mka', 'mk3d',
-    'avi', 'divx',
-    'mov',
-    'asf', 'wmv', 'wma',
-    '3gp', '3g2',
-    'mp3',
-    'flac',
-    'ape',
-    'wav',
-    'f4f', 'f4m', 'm3u8', 'smil')
-
-
-def determine_ext(url, default_ext='unknown_video'):
-    if url is None or '.' not in url:
-        return default_ext
-    guess = url.partition('?')[0].rpartition('.')[2]
-    if re.match(r'^[A-Za-z0-9]+$', guess):
-        return guess
-    # Try extract ext from URLs like http://example.com/foo/bar.mp4/?download
-    elif guess.rstrip('/') in KNOWN_EXTENSIONS:
-        return guess.rstrip('/')
-    else:
-        return default_ext
-
-# On python2.6 the xml.etree.ElementTree.Element methods don't support
-# the namespace parameter
-def find_xpath_attr(node, xpath, key, val=None):
-    """ Find the xpath xpath[@key=val] """
-    assert re.match(r'^[a-zA-Z_-]+$', key)
-    expr = xpath + ('[@%s]' % key if val is None else "[@%s='%s']" % (key, val))
-    return node.find(expr)
-
-
-def xpath_with_ns(path, ns_map):
-    components = [c.split(':') for c in path.split('/')]
-    replaced = []
-    for c in components:
-        if len(c) == 1:
-            replaced.append(c[0])
-        else:
-            ns, tag = c
-            replaced.append('{%s}%s' % (ns_map[ns], tag))
-    return '/'.join(replaced)
-
-
-def xpath_element(node, xpath, name=None, fatal=False, default=NO_DEFAULT):
-    from .exceptions import ExtractorError
-    def _find_xpath(xpath):
-        return node.find(xpath)
-
-    if isinstance(xpath, (str, compat_str)):
-        n = _find_xpath(xpath)
-    else:
-        for xp in xpath:
-            n = _find_xpath(xp)
-            if n is not None:
-                break
-
-    if n is None:
-        if default is not NO_DEFAULT:
-            return default
-        elif fatal:
-            name = xpath if name is None else name
-            raise ExtractorError('Could not find XML element %s' % name)
-        else:
-            return None
-    return n
-
-
-def xpath_text(node, xpath, name=None, fatal=False, default=NO_DEFAULT):
-    n = xpath_element(node, xpath, name, fatal=fatal, default=default)
-    if n is None or n == default:
-        return n
-    if n.text is None:
-        if default is not NO_DEFAULT:
-            return default
-        elif fatal:
-            name = xpath if name is None else name
-            raise ExtractorError('Could not find XML element\'s text %s' % name)
-        else:
-            return None
-    return n.text
-
-
-def xpath_attr(node, xpath, key, name=None, fatal=False, default=NO_DEFAULT):
-    from .exceptions import ExtractorError
-    n = find_xpath_attr(node, xpath, key)
-    if n is None:
-        if default is not NO_DEFAULT:
-            return default
-        elif fatal:
-            name = '%s[@%s]' % (xpath, key) if name is None else name
-            raise ExtractorError('Could not find XML attribute %s' % name)
-        else:
-            return None
-    return n.attrib[key]
-
-
-def write_xattr(path, key, value):
-    from .exceptions import XAttrUnavailableError, XAttrMetadataError
-    # This mess below finds the best xattr tool for the job
-    try:
-        # try the pyxattr module...
-        import xattr
-
-        if hasattr(xattr, 'set'):  # pyxattr
-            # Unicode arguments are not supported in python-pyxattr until
-            # version 0.5.0
-            # See https://github.com/ytdl-org/youtube-dl/issues/5498
-            pyxattr_required_version = '0.5.0'
-            if version_tuple(xattr.__version__) < version_tuple(pyxattr_required_version):
-                # TODO: fallback to CLI tools
-                raise XAttrUnavailableError(
-                    'python-pyxattr is detected but is too old. '
-                    'yt-dlp requires %s or above while your version is %s. '
-                    'Falling back to other xattr implementations' % (
-                        pyxattr_required_version, xattr.__version__))
-
-            setxattr = xattr.set
-        else:  # xattr
-            setxattr = xattr.setxattr
-
-        try:
-            setxattr(path, key, value)
-        except EnvironmentError as e:
-            raise XAttrMetadataError(e.errno, e.strerror)
-
-    except ImportError:
-        if compat_os_name == 'nt':
-            # Write xattrs to NTFS Alternate Data Streams:
-            # http://en.wikipedia.org/wiki/NTFS#Alternate_data_streams_.28ADS.29
-            assert ':' not in key
-            assert os.path.exists(path)
-
-            ads_fn = path + ':' + key
-            try:
-                with open(ads_fn, 'wb') as f:
-                    f.write(value)
-            except EnvironmentError as e:
-                raise XAttrMetadataError(e.errno, e.strerror)
-        else:
-            user_has_setfattr = check_executable('setfattr', ['--version'])
-            user_has_xattr = check_executable('xattr', ['-h'])
-
-            if user_has_setfattr or user_has_xattr:
-
-                value = value.decode('utf-8')
-                if user_has_setfattr:
-                    executable = 'setfattr'
-                    opts = ['-n', key, '-v', value]
-                elif user_has_xattr:
-                    executable = 'xattr'
-                    opts = ['-w', key, value]
-
-                cmd = ([encodeFilename(executable, True)]
-                       + [encodeArgument(o) for o in opts]
-                       + [encodeFilename(path, True)])
-
-                try:
-                    p = Popen(
-                        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
-                except EnvironmentError as e:
-                    raise XAttrMetadataError(e.errno, e.strerror)
-                stdout, stderr = p.communicate_or_kill()
-                stderr = stderr.decode('utf-8', 'replace')
-                if p.returncode != 0:
-                    raise XAttrMetadataError(p.returncode, stderr)
-
-            else:
-                # On Unix, and can't find pyxattr, setfattr, or xattr.
-                if sys.platform.startswith('linux'):
-                    raise XAttrUnavailableError(
-                        "Couldn't find a tool to set the xattrs. "
-                        "Install either the python 'pyxattr' or 'xattr' "
-                        "modules, or the GNU 'attr' package "
-                        "(which contains the 'setfattr' tool).")
-                else:
-                    raise XAttrUnavailableError(
-                        "Couldn't find a tool to set the xattrs. "
-                        "Install either the python 'xattr' module, "
-                        "or the 'xattr' binary.")

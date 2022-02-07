@@ -2,10 +2,11 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
+    determine_ext,
+    int_or_none,
     mimetype2ext,
-    parse_iso8601, determine_ext,
+    parse_iso8601,
 )
-from ..utils import int_or_none
 
 
 class FusionIE(InfoExtractor):

@@ -5,11 +5,11 @@ import re
 from .common import InfoExtractor
 from ..utils import (
     clean_html,
+    int_or_none,
     parse_iso8601,
     qualities,
     unescapeHTML,
 )
-from ..utils import int_or_none
 
 
 class Channel9IE(InfoExtractor):

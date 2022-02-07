@@ -6,10 +6,10 @@ from ..compat import (
     compat_str,
 )
 from ..utils import (
+    ExtractorError,
     lowercase_escape,
     try_get,
 )
-from ..exceptions import ExtractorError
 
 
 class StripchatIE(InfoExtractor):

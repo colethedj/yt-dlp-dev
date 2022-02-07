@@ -5,11 +5,13 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
+    determine_ext,
+    ExtractorError,
+    int_or_none,
     parse_qs,
-    qualities, determine_ext, xpath_text,
+    xpath_text,
+    qualities,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class PladformIE(InfoExtractor):

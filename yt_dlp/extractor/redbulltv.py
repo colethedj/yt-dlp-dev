@@ -6,8 +6,8 @@ from .common import InfoExtractor
 from ..compat import compat_HTTPError
 from ..utils import (
     float_or_none,
+    ExtractorError,
 )
-from ..exceptions import ExtractorError
 
 
 class RedBullTVIE(InfoExtractor):

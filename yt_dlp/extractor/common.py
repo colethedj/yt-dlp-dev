@@ -13,7 +13,6 @@ import sys
 import time
 import math
 
-import yt_dlp.exceptions
 from ..compat import (
     compat_cookiejar_Cookie,
     compat_cookies_SimpleCookie,
@@ -40,14 +39,21 @@ from ..downloader.f4m import (
 from ..utils import (
     age_restricted,
     base_url,
+    bug_reports_message,
     clean_html,
+    determine_ext,
+    determine_protocol,
     dict_get,
     encode_data_uri,
     error_to_compat_str,
     extract_attributes,
+    ExtractorError,
     fix_xml_ampersands,
     float_or_none,
+    format_field,
+    GeoRestrictedError,
     GeoUtils,
+    int_or_none,
     join_nonempty,
     js_to_json,
     JSON_LD_RE,
@@ -60,23 +66,28 @@ from ..utils import (
     parse_iso8601,
     parse_m3u8_attributes,
     parse_resolution,
+    RegexNotFoundError,
     sanitize_filename,
+    sanitized_Request,
     str_or_none,
+    str_to_int,
     strip_or_none,
+    traverse_obj,
     unescapeHTML,
+    UnsupportedError,
     unified_strdate,
     unified_timestamp,
     update_url_query,
     url_basename,
     url_or_none,
     urljoin,
-    format_field, traverse_obj, variadic, str_to_int, determine_ext, xpath_with_ns, xpath_element, xpath_text,
+    variadic,
+    xpath_element,
+    xpath_text,
+    xpath_with_ns,
 )
-from ..network.utils import determine_protocol
-from ..utils import int_or_none
-from ..exceptions import ExtractorError, UnsupportedError, RegexNotFoundError, GeoRestrictedError, network_exceptions, \
-    bug_reports_message
-from ..network.backends import update_Request, sanitized_Request
+from ..network.backends import update_Request
+from ..network.utils import network_exceptions
 
 
 class InfoExtractor(object):
@@ -667,7 +678,7 @@ class InfoExtractor(object):
 
     @staticmethod
     def __can_accept_status_code(err, expected_status):
-        assert isinstance(err, yt_dlp.exceptions.HTTPError)
+        assert isinstance(err, compat_urllib_error.HTTPError)
         if expected_status is None:
             return False
         elif callable(expected_status):
@@ -717,7 +728,7 @@ class InfoExtractor(object):
         try:
             return self._downloader.urlopen(url_or_request)
         except network_exceptions as err:
-            if isinstance(err, yt_dlp.exceptions.HTTPError):
+            if isinstance(err, compat_urllib_error.HTTPError):
                 if self.__can_accept_status_code(err, expected_status):
                     # Retain reference to error to prevent file object from
                     # being closed before it can be read. Works around the

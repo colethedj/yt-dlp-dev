@@ -3,10 +3,12 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
+    determine_ext,
+    int_or_none,
     strip_or_none,
-    determine_ext, xpath_text, xpath_attr,
+    xpath_attr,
+    xpath_text,
 )
-from ..utils import int_or_none
 
 
 class InaIE(InfoExtractor):

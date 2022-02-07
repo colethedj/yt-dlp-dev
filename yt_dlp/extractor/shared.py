@@ -6,14 +6,16 @@ from ..compat import (
     compat_urllib_parse_unquote_plus,
 )
 from ..utils import (
+    determine_ext,
+    ExtractorError,
+    int_or_none,
     js_to_json,
+    KNOWN_EXTENSIONS,
     parse_filesize,
     rot47,
     url_or_none,
-    urlencode_postdata, KNOWN_EXTENSIONS, determine_ext,
+    urlencode_postdata,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class SharedBaseIE(InfoExtractor):

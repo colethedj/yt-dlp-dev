@@ -6,11 +6,12 @@ import time
 
 from .common import InfoExtractor
 from ..utils import (
+    determine_ext,
     js_to_json,
     urlencode_postdata,
-    parse_qs, determine_ext
+    ExtractorError,
+    parse_qs
 )
-from ..exceptions import ExtractorError
 
 
 class IPrimaIE(InfoExtractor):

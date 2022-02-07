@@ -4,7 +4,8 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
-    unescapeHTML, determine_ext,
+    determine_ext,
+    unescapeHTML,
 )
 
 

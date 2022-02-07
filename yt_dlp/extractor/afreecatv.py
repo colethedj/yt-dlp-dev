@@ -6,16 +6,18 @@ import re
 from .common import InfoExtractor
 from ..utils import (
     date_from_str,
+    determine_ext,
+    ExtractorError,
+    int_or_none,
     qualities,
+    traverse_obj,
     unified_strdate,
     unified_timestamp,
     update_url_query,
     url_or_none,
     urlencode_postdata,
-    traverse_obj, determine_ext, xpath_text,
+    xpath_text,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class AfreecaTVIE(InfoExtractor):

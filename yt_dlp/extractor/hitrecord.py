@@ -5,9 +5,9 @@ from ..compat import compat_str
 from ..utils import (
     clean_html,
     float_or_none,
+    int_or_none,
     try_get,
 )
-from ..utils import int_or_none
 
 
 class HitRecordIE(InfoExtractor):

@@ -4,7 +4,8 @@ from __future__ import unicode_literals
 from .common import InfoExtractor
 
 from ..utils import (
-    float_or_none, xpath_text
+    float_or_none,
+    xpath_text
 )
 
 

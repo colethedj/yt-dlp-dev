@@ -5,10 +5,10 @@ from ..compat import (
     compat_str,
 )
 from ..utils import (
+    int_or_none,
     parse_qs,
     unified_timestamp,
 )
-from ..utils import int_or_none
 
 
 class BeegIE(InfoExtractor):

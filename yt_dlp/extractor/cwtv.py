@@ -3,13 +3,13 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
+    ExtractorError,
+    int_or_none,
     parse_age_limit,
     parse_iso8601,
     smuggle_url,
     str_or_none,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class CWTVIE(InfoExtractor):

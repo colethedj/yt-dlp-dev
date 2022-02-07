@@ -10,14 +10,15 @@ from ..compat import (
     compat_urlparse,
 )
 from ..utils import (
+    int_or_none,
     parse_duration,
     parse_iso8601,
     str_or_none,
+    str_to_int,
     try_get,
     unified_timestamp,
-    url_or_none, str_to_int,
+    url_or_none,
 )
-from ..utils import int_or_none
 
 
 class FourTubeBaseIE(InfoExtractor):

@@ -3,9 +3,10 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
-    unified_timestamp, traverse_obj,
+    ExtractorError,
+    traverse_obj,
+    unified_timestamp,
 )
-from ..exceptions import ExtractorError
 
 
 class PixivSketchBaseIE(InfoExtractor):

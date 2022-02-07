@@ -7,11 +7,12 @@ from ..compat import (
     compat_urllib_parse_urlparse,
 )
 from ..utils import (
+    format_field,
     float_or_none,
+    int_or_none,
     parse_iso8601,
-    remove_start, format_field,
+    remove_start,
 )
-from ..utils import int_or_none
 
 
 class ArnesIE(InfoExtractor):

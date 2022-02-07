@@ -5,7 +5,8 @@ from __future__ import unicode_literals
 from .common import InfoExtractor
 from ..utils import (
     parse_duration,
-    parse_filesize, str_to_int,
+    parse_filesize,
+    str_to_int,
 )
 
 

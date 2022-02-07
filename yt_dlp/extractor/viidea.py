@@ -9,11 +9,11 @@ from ..compat import (
     compat_urlparse,
 )
 from ..utils import (
+    ExtractorError,
     js_to_json,
     parse_duration,
     parse_iso8601,
 )
-from ..exceptions import ExtractorError
 
 
 class ViideaIE(InfoExtractor):

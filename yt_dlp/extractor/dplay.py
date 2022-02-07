@@ -7,13 +7,14 @@ import uuid
 from .common import InfoExtractor
 from ..compat import compat_HTTPError
 from ..utils import (
+    determine_ext,
+    ExtractorError,
     float_or_none,
+    int_or_none,
     strip_or_none,
     try_get,
-    unified_timestamp, determine_ext,
+    unified_timestamp,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class DPlayBaseIE(InfoExtractor):

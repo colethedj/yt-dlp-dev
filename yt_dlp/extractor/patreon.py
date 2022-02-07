@@ -9,13 +9,15 @@ from .vimeo import VimeoIE
 from ..compat import compat_urllib_parse_unquote
 from ..utils import (
     clean_html,
+    determine_ext,
+    int_or_none,
+    KNOWN_EXTENSIONS,
     mimetype2ext,
     parse_iso8601,
     str_or_none,
     try_get,
-    url_or_none, KNOWN_EXTENSIONS, determine_ext,
+    url_or_none,
 )
-from ..utils import int_or_none
 
 
 class PatreonIE(InfoExtractor):

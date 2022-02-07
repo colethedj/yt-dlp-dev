@@ -6,10 +6,10 @@ import json
 from .common import InfoExtractor
 from ..compat import compat_urlparse
 from ..utils import (
+    int_or_none,
     parse_duration,
     unified_strdate,
 )
-from ..utils import int_or_none
 
 
 class AppleTrailersIE(InfoExtractor):

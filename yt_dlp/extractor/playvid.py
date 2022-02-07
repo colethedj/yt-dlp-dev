@@ -9,8 +9,8 @@ from ..compat import (
 )
 from ..utils import (
     clean_html,
+    ExtractorError,
 )
-from ..exceptions import ExtractorError
 
 
 class PlayvidIE(InfoExtractor):

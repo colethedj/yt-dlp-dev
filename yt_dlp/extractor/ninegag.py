@@ -2,12 +2,13 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
+    ExtractorError,
+    determine_ext,
+    int_or_none,
     try_get,
     unescapeHTML,
-    url_or_none, determine_ext,
+    url_or_none,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class NineGagIE(InfoExtractor):

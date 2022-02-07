@@ -6,14 +6,15 @@ import re
 from .adobepass import AdobePassIE
 from ..compat import compat_str
 from ..utils import (
+    int_or_none,
+    determine_ext,
     parse_age_limit,
     remove_start,
     remove_end,
     try_get,
-    urlencode_postdata, determine_ext,
+    urlencode_postdata,
+    ExtractorError,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class GoIE(AdobePassIE):

@@ -3,8 +3,11 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 
-from ..utils import xpath_with_ns, xpath_text
-from ..network.backends import sanitized_Request
+from ..utils import (
+    sanitized_Request,
+    xpath_text,
+    xpath_with_ns,
+)
 
 
 class RegioTVIE(InfoExtractor):

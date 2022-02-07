@@ -1,7 +1,6 @@
 # coding: utf-8
 from .common import InfoExtractor
-from ..utils import parse_iso8601
-from ..utils import int_or_none
+from ..utils import int_or_none, parse_iso8601
 
 
 class StreamFFIE(InfoExtractor):

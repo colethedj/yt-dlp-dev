@@ -6,15 +6,16 @@ import re
 from .common import InfoExtractor
 from ..utils import (
     clean_html,
+    determine_ext,
+    ExtractorError,
     float_or_none,
     get_element_by_class,
     get_element_by_id,
     parse_duration,
     remove_end,
     urlencode_postdata,
-    urljoin, determine_ext,
+    urljoin,
 )
-from ..exceptions import ExtractorError
 
 
 class TeamTreeHouseIE(InfoExtractor):

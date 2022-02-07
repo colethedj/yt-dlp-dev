@@ -10,13 +10,13 @@ from ..compat import compat_HTTPError
 from ..utils import (
     age_restricted,
     clean_html,
+    ExtractorError,
+    int_or_none,
     OnDemandPagedList,
     try_get,
     unescapeHTML,
     urlencode_postdata,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class DailymotionBaseInfoExtractor(InfoExtractor):

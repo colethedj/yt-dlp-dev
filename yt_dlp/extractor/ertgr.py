@@ -8,7 +8,10 @@ from .common import InfoExtractor
 from ..compat import compat_str
 from ..utils import (
     clean_html,
+    determine_ext,
+    ExtractorError,
     dict_get,
+    int_or_none,
     merge_dicts,
     parse_qs,
     parse_age_limit,
@@ -16,10 +19,9 @@ from ..utils import (
     str_or_none,
     try_get,
     unescapeHTML,
-    url_or_none, variadic, determine_ext,
+    url_or_none,
+    variadic,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class ERTFlixBaseIE(InfoExtractor):

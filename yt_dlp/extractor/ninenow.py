@@ -4,6 +4,8 @@ from __future__ import unicode_literals
 from .common import InfoExtractor
 from ..compat import compat_str
 from ..utils import (
+    ExtractorError,
+    int_or_none,
     float_or_none,
     smuggle_url,
     str_or_none,
@@ -11,8 +13,6 @@ from ..utils import (
     unified_strdate,
     unified_timestamp,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class NineNowIE(InfoExtractor):

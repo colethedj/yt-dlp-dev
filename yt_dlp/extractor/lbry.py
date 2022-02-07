@@ -10,14 +10,15 @@ from ..compat import (
     compat_urllib_parse_unquote,
 )
 from ..utils import (
+    determine_ext,
+    ExtractorError,
+    int_or_none,
     mimetype2ext,
     parse_qs,
     OnDemandPagedList,
     try_get,
-    urljoin, determine_ext,
+    urljoin,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class LBRYBaseIE(InfoExtractor):

@@ -5,11 +5,12 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
+    int_or_none,
     unified_strdate,
+    determine_ext,
     join_nonempty,
-    update_url_query, determine_ext,
+    update_url_query,
 )
-from ..utils import int_or_none
 
 
 class DisneyIE(InfoExtractor):

@@ -5,12 +5,13 @@ from .common import InfoExtractor
 from .kaltura import KalturaIE
 from .youtube import YoutubeIE
 from ..utils import (
+    determine_ext,
+    int_or_none,
     NO_DEFAULT,
     parse_iso8601,
     smuggle_url,
-    determine_ext, xpath_text,
+    xpath_text,
 )
-from ..utils import int_or_none
 
 
 class HeiseIE(InfoExtractor):

@@ -10,14 +10,15 @@ from ..compat import (
     compat_struct_unpack,
 )
 from ..utils import (
+    determine_ext,
+    ExtractorError,
     float_or_none,
     qualities,
     remove_end,
     remove_start,
     std_headers,
-    try_get, determine_ext,
+    try_get,
 )
-from ..exceptions import ExtractorError
 
 
 class RTVEALaCartaIE(InfoExtractor):

@@ -5,7 +5,6 @@ import binascii
 import io
 import struct
 
-import yt_dlp.exceptions
 from .fragment import FragmentFD
 from ..compat import (
     compat_urllib_error,
@@ -274,7 +273,7 @@ class IsmFD(FragmentFD):
                         extra_state['ism_track_written'] = True
                     self._append_fragment(ctx, frag_content)
                     break
-                except yt_dlp.exceptions.HTTPError as err:
+                except compat_urllib_error.HTTPError as err:
                     count += 1
                     if count <= fragment_retries:
                         self.report_retry_fragment(err, frag_index, count, fragment_retries)

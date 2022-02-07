@@ -8,7 +8,8 @@ from ..utils import (
     qualities,
     compat_str,
     parse_duration,
-    parse_iso8601, str_to_int,
+    parse_iso8601,
+    str_to_int,
 )
 
 

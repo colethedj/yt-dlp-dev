@@ -4,9 +4,9 @@ import operator
 import re
 
 from .utils import (
+    ExtractorError,
     remove_quotes,
 )
-from .exceptions import ExtractorError
 
 _OPERATORS = [
     ('|', operator.or_),

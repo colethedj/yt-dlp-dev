@@ -6,12 +6,14 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
+    ExtractorError,
     unified_strdate,
     urlencode_postdata,
+    xpath_element,
+    xpath_text,
     update_url_query,
-    js_to_json, xpath_element, xpath_text,
+    js_to_json,
 )
-from ..exceptions import ExtractorError
 
 
 class Laola1TvEmbedIE(InfoExtractor):

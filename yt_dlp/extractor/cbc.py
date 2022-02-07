@@ -11,15 +11,15 @@ from ..compat import (
     compat_str,
 )
 from ..utils import (
+    int_or_none,
     join_nonempty,
     js_to_json,
     orderedSet,
     smuggle_url,
     strip_or_none,
     try_get,
+    ExtractorError,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class CBCIE(InfoExtractor):

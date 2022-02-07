@@ -16,24 +16,29 @@ from ..compat import (
     compat_xml_parse_error,
 )
 from ..utils import (
+    determine_ext,
+    ExtractorError,
     float_or_none,
+    int_or_none,
     is_html,
     js_to_json,
+    KNOWN_EXTENSIONS,
     merge_dicts,
     mimetype2ext,
     orderedSet,
     parse_duration,
     parse_resolution,
+    sanitized_Request,
     smuggle_url,
     unescapeHTML,
     unified_timestamp,
     unsmuggle_url,
+    UnsupportedError,
     url_or_none,
-    KNOWN_EXTENSIONS, determine_ext, xpath_with_ns, xpath_text, xpath_attr,
+    xpath_attr,
+    xpath_text,
+    xpath_with_ns,
 )
-from ..network.backends import sanitized_Request
-from ..utils import int_or_none
-from ..exceptions import ExtractorError, UnsupportedError
 from ..network.common import HEADRequest
 from .commonprotocols import RtmpIE
 from .brightcove import (

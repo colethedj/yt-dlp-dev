@@ -16,11 +16,12 @@ from ..compat import (
     compat_urllib_parse,
 )
 from ..utils import (
+    ExtractorError,
     float_or_none,
-    join_nonempty, traverse_obj,
+    int_or_none,
+    join_nonempty,
+    traverse_obj,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class VRVBaseIE(InfoExtractor):

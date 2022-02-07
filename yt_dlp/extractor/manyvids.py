@@ -3,9 +3,11 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
-    urlencode_postdata, str_to_int, determine_ext,
+    determine_ext,
+    int_or_none,
+    str_to_int,
+    urlencode_postdata,
 )
-from ..utils import int_or_none
 
 
 class ManyVidsIE(InfoExtractor):

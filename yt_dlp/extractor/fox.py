@@ -11,13 +11,13 @@ from ..compat import (
     compat_urllib_parse_unquote,
 )
 from ..utils import (
+    ExtractorError,
+    int_or_none,
     parse_age_limit,
     parse_duration,
     try_get,
     unified_timestamp,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class FOXIE(InfoExtractor):

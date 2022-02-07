@@ -5,10 +5,10 @@ import json
 
 from .common import InfoExtractor
 from ..utils import (
+    ExtractorError,
+    int_or_none,
     clean_html,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 from ..network.common import HEADRequest
 
 

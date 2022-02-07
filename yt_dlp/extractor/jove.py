@@ -3,9 +3,9 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
+    ExtractorError,
     unified_strdate
 )
-from ..exceptions import ExtractorError
 
 
 class JoveIE(InfoExtractor):

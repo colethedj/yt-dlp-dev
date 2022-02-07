@@ -16,7 +16,10 @@ from ..compat import (
 )
 from ..utils import (
     error_to_compat_str,
+    ExtractorError,
     float_or_none,
+    int_or_none,
+    KNOWN_EXTENSIONS,
     mimetype2ext,
     remove_end,
     parse_qs,
@@ -25,11 +28,9 @@ from ..utils import (
     unified_timestamp,
     update_url_query,
     url_or_none,
-    urlhandle_detect_ext, KNOWN_EXTENSIONS,
+    urlhandle_detect_ext,
+    sanitized_Request,
 )
-from ..network.backends import sanitized_Request
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 from ..network.common import HEADRequest
 
 

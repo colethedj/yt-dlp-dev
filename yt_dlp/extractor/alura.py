@@ -12,10 +12,10 @@ from ..compat import (
 from ..utils import (
     urlencode_postdata,
     urljoin,
-    clean_html
+    int_or_none,
+    clean_html,
+    ExtractorError
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class AluraIE(InfoExtractor):

@@ -2,8 +2,7 @@
 from __future__ import unicode_literals
 
 from .common import InfoExtractor
-from ..utils import parse_qs, traverse_obj, determine_ext
-from ..exceptions import ExtractorError
+from ..utils import ExtractorError, determine_ext, parse_qs, traverse_obj
 
 
 class SkebIE(InfoExtractor):

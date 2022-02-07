@@ -13,13 +13,14 @@ from ..aes import aes_encrypt
 from ..compat import compat_str
 from ..utils import (
     bytes_to_intlist,
+    determine_ext,
     intlist_to_bytes,
+    int_or_none,
     join_nonempty,
     strip_jsonp,
     unescapeHTML,
-    unsmuggle_url, determine_ext,
+    unsmuggle_url,
 )
-from ..utils import int_or_none
 
 # This import causes a ModuleNotFoundError on some systems for unknown reason.
 # See issues:

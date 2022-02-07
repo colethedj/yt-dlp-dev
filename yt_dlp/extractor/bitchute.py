@@ -6,11 +6,12 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
+    ExtractorError,
+    GeoRestrictedError,
     orderedSet,
     unified_strdate,
     urlencode_postdata,
 )
-from ..exceptions import ExtractorError, GeoRestrictedError
 
 
 class BitChuteIE(InfoExtractor):

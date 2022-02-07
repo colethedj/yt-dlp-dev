@@ -5,11 +5,12 @@ import re
 from .common import InfoExtractor
 from ..utils import (
     clean_html,
+    determine_ext,
+    int_or_none,
     js_to_json,
     mimetype2ext,
-    parse_filesize, determine_ext,
+    parse_filesize,
 )
-from ..utils import int_or_none
 
 
 class MassengeschmackTVIE(InfoExtractor):

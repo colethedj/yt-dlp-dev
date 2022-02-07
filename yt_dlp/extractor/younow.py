@@ -6,10 +6,11 @@ import itertools
 from .common import InfoExtractor
 from ..compat import compat_str
 from ..utils import (
-    try_get, format_field,
+    ExtractorError,
+    format_field,
+    int_or_none,
+    try_get,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 CDN_API_BASE = 'https://cdn.younow.com/php/api'
 MOMENT_URL_FORMAT = '%s/moment/fetch/id=%%s' % CDN_API_BASE

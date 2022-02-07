@@ -9,11 +9,12 @@ from ..compat import (
     compat_urlparse,
 )
 from ..utils import (
+    determine_ext,
+    ExtractorError,
+    int_or_none,
     parse_iso8601,
-    remove_end, determine_ext,
+    remove_end,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class LifeNewsIE(InfoExtractor):

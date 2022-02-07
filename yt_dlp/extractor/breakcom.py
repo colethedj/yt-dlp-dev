@@ -4,9 +4,9 @@ from __future__ import unicode_literals
 from .common import InfoExtractor
 from .youtube import YoutubeIE
 from ..utils import (
+    int_or_none,
     url_or_none,
 )
-from ..utils import int_or_none
 
 
 class BreakIE(InfoExtractor):

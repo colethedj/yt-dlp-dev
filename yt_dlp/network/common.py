@@ -1,14 +1,25 @@
 from __future__ import unicode_literals
 
+import abc
+import bisect
+import http.cookiejar
+import http.client
 import io
+import sys
 import urllib.parse
+from collections import OrderedDict
+from typing import List
+from urllib.error import HTTPError
 from abc import ABC, abstractmethod
 from http import HTTPStatus
 from email.message import Message
 import urllib.request
+import tempfile
 import urllib.response
 
-from .utils import extract_basic_auth, sanitize_url, escape_url
+from ..compat import compat_urllib_request
+from ..utils import YoutubeDLError
+from ..utils import extract_basic_auth, escape_url, sanitize_url
 
 
 class YDLRequest:
@@ -304,3 +315,146 @@ This is used for communication between the network backends and youtube-dl only
 Network backends are responsible for validating and parsing the url, etc.
 """
 
+
+# TODO: deal with msg in places where we don't always want to specify it
+class RequestError(YoutubeDLError):
+    def __init__(self, url=None, msg=None):
+        super().__init__(msg)
+        self.url = url
+
+
+# TODO: Add tests for reading, closing, trying to read again etc.
+# Test for making sure connection is released
+# TODO: what parameters do we want? code/reason, response or both?
+# Similar API as urllib.error.HTTPError
+class HTTPError(RequestError, tempfile._TemporaryFileWrapper):
+    def __init__(self, response: HTTPResponse, url):
+        self.response = self.fp = response
+        self.code = response.code
+        msg = f'HTTP Error {self.code}: {response.reason}'
+        if 400 <= self.code < 500:
+            msg = '[Client Error] ' + msg
+        elif 500 <= self.code < 600:
+            msg = '[Server Error] ' + msg
+        super().__init__(msg, url)
+        tempfile._TemporaryFileWrapper.__init__(self, response, '<yt-dlp response>', delete=False)
+
+
+class TransportError(RequestError):
+    def __init__(self, url=None, msg=None, cause=None):
+        if msg and cause:
+            msg = msg + f' (caused by {cause!r})'  # TODO
+        super().__init__(msg, url)
+        self.cause = cause
+
+
+class Timeout(RequestError):
+    """Timeout error"""
+
+
+class ReadTimeoutError(TransportError, Timeout):
+    """timeout error occurred when reading data"""
+
+
+class ConnectionTimeoutError(TransportError, Timeout):
+    """timeout error occurred when trying to connect to server"""
+
+
+class ResolveHostError(TransportError):
+    def __init__(self, url=None, cause=None, host=None):
+        msg = f'Failed to resolve host' + f' {host or urllib.parse.urlparse(url).hostname if url else ""}'
+        super().__init__(url, msg=msg, cause=cause)
+
+
+class ConnectionReset(TransportError):
+    msg = 'The connection was reset'
+
+
+class IncompleteRead(TransportError, http.client.IncompleteRead):
+    def __init__(self, partial, url=None, cause=None, expected=None):
+        self.partial = partial
+        self.expected = expected
+        super().__init__(repr(self), url, cause)  # TODO: since we override with repr() in http.client.IncompleteRead
+
+
+class SSLError(TransportError):
+    pass
+
+
+class ProxyError(TransportError):
+    pass
+
+
+class ContentDecodingError(RequestError):
+    pass
+
+
+class MaxRedirectsError(RequestError):
+    pass
+
+"""
+RequestError
+    HTTPError
+    MaxRedirectsError
+    SSLError
+    TimeoutError
+        ReadTimeoutError (also inherits transport error)
+        ConnectionTimeoutError (also inherits transport error)
+    
+    TransportError
+        ConnectionResetError
+        ResolveHostError
+        ProxyError
+        SSLError
+    ContentDecodingError
+    MaxRedirectsError
+
+BackendError
+    RequestError
+        HTTPError (similar to urllib.error.HTTPError)
+        
+        TimeoutError
+            ReadTimeoutError (also inherits NetworkError)
+            ConnectionTimeoutError (also inherits NetworkError)
+        
+        NetworkError # TODO
+            # making req
+            ResolveHostnameError (host name resolution error, DNS Error)
+            
+            # during req/response
+            IncompleteReadError
+            # Covers HTTPExceptions: connection reset, incomplete read, remote disconnected, etc.
+        
+        SSLError
+            CertificateError (for help text)
+            ... ?
+        ProxyError
+            Socks proxy error, etc.
+        
+        ContentDecodingError
+        MaxRedirectsError
+        
+
+Other notes:
+- add original request obj to every RequestError
+- each BackendError will have backend details 
+"""
+
+"""
+
+
+  
+        #TransportError / Connection error / Network error (?). Prob most of our socket errors here
+       #  ProtocolError - errors during request/response (?)
+            # todo:
+            # HTTPException like Errors - related to reading the response
+            #    ConnectionResetError
+            #    RemoteDisconnected
+            #    Incomplete read
+            #    ...
+            
+                
+
+    
+
+"""

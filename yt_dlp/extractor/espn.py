@@ -6,11 +6,12 @@ from .common import InfoExtractor
 from .once import OnceIE
 from ..compat import compat_str
 from ..utils import (
+    determine_ext,
     dict_get,
+    int_or_none,
     unified_strdate,
-    unified_timestamp, determine_ext,
+    unified_timestamp,
 )
-from ..utils import int_or_none
 
 
 class ESPNIE(OnceIE):

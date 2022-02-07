@@ -16,16 +16,19 @@ from ..compat import (
 from .openload import PhantomJSwrapper
 from ..utils import (
     clean_html,
+    determine_ext,
+    ExtractorError,
+    format_field,
+    int_or_none,
     merge_dicts,
     NO_DEFAULT,
     orderedSet,
     remove_quotes,
+    str_to_int,
     update_url_query,
     urlencode_postdata,
-    url_or_none, format_field, str_to_int, determine_ext,
+    url_or_none,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class PornHubBaseIE(InfoExtractor):

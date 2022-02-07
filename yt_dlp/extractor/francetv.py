@@ -5,10 +5,12 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
+    determine_ext,
+    ExtractorError,
+    format_field,
     parse_iso8601,
-    parse_qs, format_field, determine_ext,
+    parse_qs,
 )
-from ..exceptions import ExtractorError
 from .dailymotion import DailymotionIE
 
 

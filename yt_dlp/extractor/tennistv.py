@@ -6,9 +6,9 @@ import json
 from .common import InfoExtractor
 
 from ..utils import (
+    ExtractorError,
     unified_timestamp,
 )
-from ..exceptions import ExtractorError
 
 
 class TennisTVIE(InfoExtractor):

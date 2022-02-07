@@ -3,7 +3,9 @@ from __future__ import unicode_literals
 import time
 
 from .common import InfoExtractor
-from ..utils import int_or_none
+from ..utils import (
+    int_or_none,
+)
 from ..network.common import HEADRequest
 
 

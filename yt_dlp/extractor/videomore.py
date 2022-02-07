@@ -8,9 +8,9 @@ from ..compat import (
     compat_str,
 )
 from ..utils import (
+    int_or_none,
     parse_qs,
 )
-from ..utils import int_or_none
 
 
 class VideomoreBaseIE(InfoExtractor):

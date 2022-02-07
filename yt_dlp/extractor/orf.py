@@ -7,8 +7,10 @@ import re
 from .common import InfoExtractor
 from ..utils import (
     clean_html,
+    determine_ext,
     float_or_none,
     InAdvancePagedList,
+    int_or_none,
     join_nonempty,
     orderedSet,
     remove_end,
@@ -18,9 +20,8 @@ from ..utils import (
     unescapeHTML,
     unified_strdate,
     unsmuggle_url,
-    url_or_none, determine_ext,
+    url_or_none,
 )
-from ..utils import int_or_none
 from ..network.common import HEADRequest
 
 

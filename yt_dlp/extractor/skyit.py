@@ -8,10 +8,10 @@ from ..compat import (
 )
 from ..utils import (
     dict_get,
+    int_or_none,
     parse_duration,
     unified_timestamp,
 )
-from ..utils import int_or_none
 
 
 class SkyItPlayerIE(InfoExtractor):

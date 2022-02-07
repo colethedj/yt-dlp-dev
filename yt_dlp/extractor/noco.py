@@ -11,14 +11,14 @@ from ..compat import (
 )
 from ..utils import (
     clean_html,
+    ExtractorError,
+    int_or_none,
     float_or_none,
     parse_iso8601,
     parse_qs,
+    sanitized_Request,
     urlencode_postdata,
 )
-from ..network.backends import sanitized_Request
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class NocoIE(InfoExtractor):

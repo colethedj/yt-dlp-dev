@@ -5,7 +5,8 @@ import re
 from .common import InfoExtractor
 from .youtube import YoutubeIE
 from ..utils import (
-    parse_iso8601, str_to_int,
+    parse_iso8601,
+    str_to_int,
 )
 
 

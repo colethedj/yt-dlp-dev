@@ -3,9 +3,10 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
-    parse_duration, xpath_text,
+    xpath_text,
+    parse_duration,
+    ExtractorError,
 )
-from ..exceptions import ExtractorError
 
 
 class EyedoTVIE(InfoExtractor):

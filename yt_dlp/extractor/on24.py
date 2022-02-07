@@ -3,11 +3,11 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
+    int_or_none,
     strip_or_none,
     try_get,
     urljoin,
 )
-from ..utils import int_or_none
 
 
 class On24IE(InfoExtractor):

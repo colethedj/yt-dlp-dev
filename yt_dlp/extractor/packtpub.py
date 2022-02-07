@@ -9,13 +9,13 @@ from ..compat import (
 )
 from ..utils import (
     clean_html,
+    ExtractorError,
     # remove_end,
     str_or_none,
     strip_or_none,
     unified_timestamp,
     # urljoin,
 )
-from ..exceptions import ExtractorError
 
 
 class PacktPubBaseIE(InfoExtractor):

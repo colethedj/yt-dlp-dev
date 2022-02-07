@@ -4,12 +4,15 @@ from __future__ import unicode_literals
 from .common import InfoExtractor
 from ..compat import compat_urllib_parse_urlparse
 from ..utils import (
+    determine_ext,
+    ExtractorError,
+    find_xpath_attr,
+    int_or_none,
     unified_strdate,
     url_or_none,
-    determine_ext, find_xpath_attr, xpath_text, xpath_attr,
+    xpath_attr,
+    xpath_text,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class RuutuIE(InfoExtractor):

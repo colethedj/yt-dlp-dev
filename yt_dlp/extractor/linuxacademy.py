@@ -11,6 +11,7 @@ from ..compat import (
 )
 from ..utils import (
     clean_html,
+    ExtractorError,
     js_to_json,
     parse_duration,
     try_get,
@@ -18,7 +19,6 @@ from ..utils import (
     urlencode_postdata,
     urljoin,
 )
-from ..exceptions import ExtractorError
 
 
 class LinuxAcademyIE(InfoExtractor):

@@ -4,11 +4,11 @@ from __future__ import unicode_literals
 from .adobepass import AdobePassIE
 from ..utils import (
     extract_attributes,
+    int_or_none,
     parse_age_limit,
     smuggle_url,
     update_url_query,
 )
-from ..utils import int_or_none
 
 
 class FXNetworksIE(AdobePassIE):

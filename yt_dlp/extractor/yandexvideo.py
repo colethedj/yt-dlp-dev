@@ -6,12 +6,13 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
+    determine_ext,
     extract_attributes,
+    int_or_none,
     try_get,
     url_or_none,
-    lowercase_escape, determine_ext,
+    lowercase_escape,
 )
-from ..utils import int_or_none
 
 
 class YandexVideoIE(InfoExtractor):

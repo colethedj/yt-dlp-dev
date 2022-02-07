@@ -5,9 +5,11 @@ from __future__ import unicode_literals
 from .common import InfoExtractor
 from ..compat import compat_str
 from ..utils import (
-    unified_timestamp, format_field, determine_ext,
+    determine_ext,
+    format_field,
+    int_or_none,
+    unified_timestamp,
 )
-from ..utils import int_or_none
 
 
 class VineIE(InfoExtractor):

@@ -5,9 +5,9 @@ import re
 from .common import InfoExtractor
 from ..utils import (
     extract_attributes,
+    ExtractorError,
     get_element_by_class,
 )
-from ..exceptions import ExtractorError
 
 
 class SteamIE(InfoExtractor):

@@ -8,7 +8,10 @@ import time
 from .common import InfoExtractor
 from ..compat import compat_str
 from ..utils import (
+    ExtractorError,
     float_or_none,
+    int_or_none,
+    KNOWN_EXTENSIONS,
     parse_filesize,
     str_or_none,
     try_get,
@@ -16,10 +19,8 @@ from ..utils import (
     unified_strdate,
     unified_timestamp,
     url_or_none,
-    urljoin, KNOWN_EXTENSIONS,
+    urljoin,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class BandcampIE(InfoExtractor):

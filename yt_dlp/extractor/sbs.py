@@ -4,8 +4,8 @@ from __future__ import unicode_literals
 from .common import InfoExtractor
 from ..utils import (
     smuggle_url,
+    ExtractorError,
 )
-from ..exceptions import ExtractorError
 
 
 class SBSIE(InfoExtractor):

@@ -9,20 +9,24 @@ from ..compat import (
     compat_urlparse,
 )
 from ..utils import (
+    determine_ext,
+    ExtractorError,
+    find_xpath_attr,
     fix_xml_ampersands,
+    GeoRestrictedError,
+    int_or_none,
     join_nonempty,
     parse_duration,
     remove_start,
     strip_or_none,
+    traverse_obj,
     try_get,
     unified_strdate,
     unified_timestamp,
     update_url_query,
     urljoin,
-    traverse_obj, determine_ext, find_xpath_attr, xpath_text,
+    xpath_text,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError, GeoRestrictedError
 from ..network.common import HEADRequest
 
 

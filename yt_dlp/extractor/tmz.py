@@ -5,9 +5,9 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
+    ExtractorError,
     get_element_by_attribute,
 )
-from ..exceptions import ExtractorError
 
 
 class TMZIE(InfoExtractor):

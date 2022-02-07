@@ -15,8 +15,8 @@ from ..compat import (
 from ..utils import (
     parse_m3u8_attributes,
     update_url_query,
+    bug_reports_message,
 )
-from ..exceptions import bug_reports_message
 from .. import webvtt
 
 

@@ -4,10 +4,11 @@ import json
 from .common import InfoExtractor
 from ..utils import (
     float_or_none,
+    int_or_none,
     parse_codecs,
-    urljoin, traverse_obj,
+    traverse_obj,
+    urljoin,
 )
-from ..utils import int_or_none
 
 
 class StreamCZIE(InfoExtractor):

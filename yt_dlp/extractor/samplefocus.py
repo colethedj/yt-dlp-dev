@@ -7,8 +7,8 @@ from .common import InfoExtractor
 from ..utils import (
     extract_attributes,
     get_element_by_attribute,
+    int_or_none,
 )
-from ..utils import int_or_none
 
 
 class SampleFocusIE(InfoExtractor):

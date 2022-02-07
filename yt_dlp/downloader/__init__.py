@@ -2,9 +2,9 @@ from __future__ import unicode_literals
 
 from ..compat import compat_str
 from ..utils import (
+    determine_protocol,
     NO_DEFAULT
 )
-from ..network.utils import determine_protocol
 
 
 def get_suitable_downloader(info_dict, params={}, default=NO_DEFAULT, protocol=None, to_stdout=False):

@@ -5,10 +5,11 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
+    determine_ext,
+    int_or_none,
     unescapeHTML,
-    unified_timestamp, determine_ext,
+    unified_timestamp,
 )
-from ..utils import int_or_none
 
 
 class ExpressenIE(InfoExtractor):

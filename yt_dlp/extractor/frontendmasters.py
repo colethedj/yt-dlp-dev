@@ -9,11 +9,11 @@ from ..compat import (
     compat_urlparse,
 )
 from ..utils import (
+    ExtractorError,
     parse_duration,
     url_or_none,
     urlencode_postdata,
 )
-from ..exceptions import ExtractorError
 
 
 class FrontendMastersBaseIE(InfoExtractor):

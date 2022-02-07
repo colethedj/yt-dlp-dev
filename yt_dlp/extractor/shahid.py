@@ -9,13 +9,13 @@ from .aws import AWSIE
 from ..compat import compat_HTTPError
 from ..utils import (
     clean_html,
+    ExtractorError,
     InAdvancePagedList,
+    int_or_none,
     parse_iso8601,
     str_or_none,
     urlencode_postdata,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class ShahidBaseIE(AWSIE):

@@ -4,8 +4,10 @@ from __future__ import unicode_literals
 import re
 
 from .common import InfoExtractor
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
+from ..utils import (
+    ExtractorError,
+    int_or_none
+)
 
 
 class RUTVIE(InfoExtractor):

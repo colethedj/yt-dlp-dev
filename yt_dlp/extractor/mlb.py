@@ -4,11 +4,12 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
+    determine_ext,
+    int_or_none,
     parse_duration,
     parse_iso8601,
-    try_get, determine_ext,
+    try_get,
 )
-from ..utils import int_or_none
 
 
 class MLBBaseIE(InfoExtractor):

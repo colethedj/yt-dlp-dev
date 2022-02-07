@@ -31,11 +31,15 @@ from ..compat import (
 )
 from ..jsinterp import JSInterpreter
 from ..utils import (
+    bug_reports_message,
     clean_html,
     datetime_from_str,
     dict_get,
     error_to_compat_str,
+    ExtractorError,
     float_or_none,
+    format_field,
+    int_or_none,
     is_html,
     join_nonempty,
     js_to_json,
@@ -43,6 +47,7 @@ from ..utils import (
     NO_DEFAULT,
     orderedSet,
     parse_codecs,
+    parse_count,
     parse_duration,
     parse_iso8601,
     parse_qs,
@@ -51,7 +56,9 @@ from ..utils import (
     remove_start,
     smuggle_url,
     str_or_none,
+    str_to_int,
     strftime_or_none,
+    traverse_obj,
     try_get,
     unescapeHTML,
     unified_strdate,
@@ -59,10 +66,10 @@ from ..utils import (
     unsmuggle_url,
     update_url_query,
     url_or_none,
-    urljoin, format_field, traverse_obj, variadic, str_to_int, parse_count,
+    urljoin,
+    variadic,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError, network_exceptions, bug_reports_message
+from ..network.utils import network_exceptions
 
 
 def get_first(obj, keys, **kwargs):

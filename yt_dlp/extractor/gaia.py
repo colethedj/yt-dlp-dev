@@ -8,13 +8,13 @@ from ..compat import (
     compat_urllib_parse_unquote,
 )
 from ..utils import (
+    ExtractorError,
+    int_or_none,
     str_or_none,
     strip_or_none,
     try_get,
     urlencode_postdata,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class GaiaIE(InfoExtractor):

@@ -8,11 +8,11 @@ import datetime
 
 from .common import InfoExtractor
 from ..utils import (
+    ExtractorError,
     update_url_query,
     clean_html,
     unified_timestamp,
 )
-from ..exceptions import ExtractorError
 from ..compat import compat_urllib_parse
 
 

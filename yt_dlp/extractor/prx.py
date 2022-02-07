@@ -5,13 +5,14 @@ import itertools
 from .common import InfoExtractor, SearchInfoExtractor
 from ..utils import (
     urljoin,
+    traverse_obj,
+    int_or_none,
     mimetype2ext,
     clean_html,
     url_or_none,
     unified_timestamp,
-    str_or_none, traverse_obj,
+    str_or_none,
 )
-from ..utils import int_or_none
 
 
 class PRXBaseIE(InfoExtractor):

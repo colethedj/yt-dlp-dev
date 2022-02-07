@@ -6,11 +6,11 @@ import re
 from .common import InfoExtractor
 from ..compat import compat_str
 from ..utils import (
+    int_or_none,
+    determine_protocol,
     try_get,
     unescapeHTML,
 )
-from ..network.utils import determine_protocol
-from ..utils import int_or_none
 
 
 class DailyMailIE(InfoExtractor):

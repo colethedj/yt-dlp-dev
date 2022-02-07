@@ -3,9 +3,10 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
-    str_or_none, determine_ext,
+    determine_ext,
+    int_or_none,
+    str_or_none,
 )
-from ..utils import int_or_none
 
 
 class SverigesRadioBaseIE(InfoExtractor):

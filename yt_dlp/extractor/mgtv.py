@@ -10,8 +10,10 @@ from ..compat import (
     compat_HTTPError,
     compat_str,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
+from ..utils import (
+    ExtractorError,
+    int_or_none,
+)
 
 
 class MGTVIE(InfoExtractor):

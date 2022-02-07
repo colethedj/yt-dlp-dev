@@ -8,12 +8,12 @@ import re
 from .common import InfoExtractor
 from ..compat import compat_urllib_parse_unquote
 from ..utils import (
+    int_or_none,
     parse_duration,
     remove_end,
     try_get,
     urljoin,
 )
-from ..utils import int_or_none
 
 
 class MailRuIE(InfoExtractor):

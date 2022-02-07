@@ -5,10 +5,11 @@ import itertools
 
 from .common import InfoExtractor
 from ..utils import (
+    int_or_none,
     str_or_none,
-    unified_strdate, traverse_obj,
+    traverse_obj,
+    unified_strdate,
 )
-from ..utils import int_or_none
 
 
 class NateIE(InfoExtractor):

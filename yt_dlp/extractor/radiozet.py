@@ -1,7 +1,8 @@
 # coding: utf-8
 from .common import InfoExtractor
 from ..utils import (
-    strip_or_none, traverse_obj,
+    traverse_obj,
+    strip_or_none,
 )
 
 

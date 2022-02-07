@@ -3,9 +3,10 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
-    extract_attributes, determine_ext,
+    determine_ext,
+    extract_attributes,
+    int_or_none,
 )
-from ..utils import int_or_none
 
 
 class FranceCultureIE(InfoExtractor):

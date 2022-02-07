@@ -6,10 +6,10 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
+    ExtractorError,
+    int_or_none,
     qualities,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class IviIE(InfoExtractor):

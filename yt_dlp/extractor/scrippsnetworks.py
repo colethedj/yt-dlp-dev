@@ -9,7 +9,8 @@ from .anvato import AnvatoIE
 from .common import InfoExtractor
 from ..utils import (
     smuggle_url,
-    urlencode_postdata, xpath_text,
+    urlencode_postdata,
+    xpath_text,
 )
 
 

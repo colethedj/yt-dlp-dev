@@ -6,7 +6,9 @@ from ..compat import (
     compat_parse_qs,
     compat_urllib_request,
 )
-from ..exceptions import ExtractorError
+from ..utils import (
+    ExtractorError,
+)
 
 
 class ScreencastIE(InfoExtractor):

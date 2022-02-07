@@ -7,8 +7,8 @@ from ..utils import (
     decodeFilename,
     encodeFilename,
     make_dir,
+    PostProcessingError,
 )
-from ..exceptions import PostProcessingError
 
 
 class MoveFilesAfterDownloadPP(PostProcessor):

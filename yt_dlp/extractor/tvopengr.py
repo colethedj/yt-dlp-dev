@@ -5,9 +5,10 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
+    determine_ext,
     get_elements_text_and_html_by_attribute,
     merge_dicts,
-    unescapeHTML, determine_ext,
+    unescapeHTML,
 )
 
 

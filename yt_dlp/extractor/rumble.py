@@ -7,11 +7,12 @@ import re
 from .common import InfoExtractor
 from ..compat import compat_str, compat_HTTPError
 from ..utils import (
+    determine_ext,
+    int_or_none,
     parse_iso8601,
-    try_get, determine_ext,
+    try_get,
+    ExtractorError,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class RumbleEmbedIE(InfoExtractor):

@@ -6,9 +6,9 @@ from ..utils import (
     parse_duration,
     parse_filesize,
     extract_attributes,
+    int_or_none,
     js_to_json
 )
-from ..utils import int_or_none
 
 
 class VuploadIE(InfoExtractor):

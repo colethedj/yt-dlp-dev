@@ -5,10 +5,11 @@ from __future__ import unicode_literals
 from .common import InfoExtractor
 from ..compat import compat_HTTPError
 from ..utils import (
-    unified_strdate, determine_ext,
+    determine_ext,
+    ExtractorError,
+    int_or_none,
+    unified_strdate,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class RadioCanadaIE(InfoExtractor):

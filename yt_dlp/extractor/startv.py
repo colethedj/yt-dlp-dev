@@ -6,10 +6,11 @@ from ..compat import (
     compat_str,
 )
 from ..utils import (
-    clean_html, traverse_obj,
+    clean_html,
+    ExtractorError,
+    traverse_obj,
+    int_or_none,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class StarTVIE(InfoExtractor):

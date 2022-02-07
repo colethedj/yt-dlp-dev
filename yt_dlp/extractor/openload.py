@@ -12,12 +12,12 @@ from ..compat import (
 from ..utils import (
     check_executable,
     encodeArgument,
+    ExtractorError,
     get_exe_version,
     is_outdated_version,
     std_headers,
     Popen,
 )
-from ..exceptions import ExtractorError
 
 
 def cookie_to_dict(cookie):

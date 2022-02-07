@@ -2,7 +2,7 @@
 from __future__ import unicode_literals
 
 from .common import InfoExtractor
-from ..exceptions import ExtractorError
+from ..utils import ExtractorError
 
 
 class YinYueTaiIE(InfoExtractor):

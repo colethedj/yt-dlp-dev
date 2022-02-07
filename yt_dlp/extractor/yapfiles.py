@@ -5,12 +5,12 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
+    ExtractorError,
+    int_or_none,
     qualities,
     unescapeHTML,
     url_or_none,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class YapFilesIE(InfoExtractor):

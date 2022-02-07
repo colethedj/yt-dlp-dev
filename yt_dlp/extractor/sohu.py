@@ -9,10 +9,10 @@ from ..compat import (
     compat_urllib_parse_urlencode,
 )
 from ..utils import (
+    ExtractorError,
+    int_or_none,
     try_get,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class SohuIE(InfoExtractor):

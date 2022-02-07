@@ -3,12 +3,12 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
+    ExtractorError,
     get_element_by_attribute,
     parse_duration,
     try_get,
     update_url_query,
 )
-from ..exceptions import ExtractorError
 from ..compat import compat_str
 
 

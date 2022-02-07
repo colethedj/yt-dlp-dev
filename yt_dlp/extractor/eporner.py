@@ -5,12 +5,13 @@ from __future__ import unicode_literals
 from .common import InfoExtractor
 from ..utils import (
     encode_base_n,
+    ExtractorError,
+    int_or_none,
     merge_dicts,
     parse_duration,
-    url_or_none, str_to_int,
+    str_to_int,
+    url_or_none,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class EpornerIE(InfoExtractor):

@@ -4,10 +4,10 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
+    ExtractorError,
     orderedSet,
     unescapeHTML,
 )
-from ..exceptions import ExtractorError
 
 
 class StanfordOpenClassroomIE(InfoExtractor):

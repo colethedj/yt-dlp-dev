@@ -8,12 +8,12 @@ from ..compat import (
 )
 from ..utils import (
     clean_html,
+    int_or_none,
     parse_duration,
     parse_iso8601,
     qualities,
     update_url_query,
 )
-from ..utils import int_or_none
 
 
 class UOLIE(InfoExtractor):

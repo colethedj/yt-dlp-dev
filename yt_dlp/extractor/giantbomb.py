@@ -4,10 +4,11 @@ import json
 
 from .common import InfoExtractor
 from ..utils import (
+    determine_ext,
+    int_or_none,
     qualities,
-    unescapeHTML, determine_ext,
+    unescapeHTML,
 )
-from ..utils import int_or_none
 
 
 class GiantBombIE(InfoExtractor):

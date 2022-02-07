@@ -10,7 +10,9 @@ from ..compat import compat_str
 from ..utils import (
     base_url,
     clean_html,
+    determine_ext,
     extract_attributes,
+    ExtractorError,
     get_element_by_class,
     JSON_LD_RE,
     merge_dicts,
@@ -19,9 +21,8 @@ from ..utils import (
     try_get,
     url_or_none,
     url_basename,
-    urljoin, determine_ext,
+    urljoin,
 )
-from ..exceptions import ExtractorError
 
 
 class ITVIE(InfoExtractor):

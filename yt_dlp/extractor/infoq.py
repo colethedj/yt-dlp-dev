@@ -8,7 +8,8 @@ from ..compat import (
     compat_urlparse,
 )
 from ..utils import (
-    update_url_query, determine_ext,
+    determine_ext,
+    update_url_query,
 )
 from .bokecc import BokeCCBaseIE
 

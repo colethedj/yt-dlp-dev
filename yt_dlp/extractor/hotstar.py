@@ -14,12 +14,13 @@ from ..compat import (
     compat_str
 )
 from ..utils import (
+    determine_ext,
+    ExtractorError,
+    int_or_none,
     str_or_none,
     try_get,
-    url_or_none, determine_ext,
+    url_or_none,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class HotStarBaseIE(InfoExtractor):

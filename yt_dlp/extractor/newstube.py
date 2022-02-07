@@ -7,10 +7,10 @@ import hashlib
 from .common import InfoExtractor
 from ..aes import aes_cbc_decrypt_bytes, unpad_pkcs7
 from ..utils import (
+    int_or_none,
     parse_codecs,
     parse_duration,
 )
-from ..utils import int_or_none
 
 
 class NewstubeIE(InfoExtractor):

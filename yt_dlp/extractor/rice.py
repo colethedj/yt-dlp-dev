@@ -6,10 +6,12 @@ import re
 from .common import InfoExtractor
 from ..compat import compat_parse_qs
 from ..utils import (
-    parse_iso8601, xpath_element, xpath_text,
+    xpath_text,
+    xpath_element,
+    int_or_none,
+    parse_iso8601,
+    ExtractorError,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class RICEIE(InfoExtractor):

@@ -3,13 +3,14 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
+    determine_ext,
+    int_or_none,
     parse_duration,
     qualities,
     try_get,
     unified_strdate,
-    urljoin, determine_ext,
+    urljoin,
 )
-from ..utils import int_or_none
 
 
 class NDRBaseIE(InfoExtractor):

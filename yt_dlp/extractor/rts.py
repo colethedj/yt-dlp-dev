@@ -6,12 +6,13 @@ import re
 from .srgssr import SRGSSRIE
 from ..compat import compat_str
 from ..utils import (
+    determine_ext,
+    int_or_none,
     parse_duration,
     parse_iso8601,
     unescapeHTML,
-    urljoin, determine_ext,
+    urljoin,
 )
-from ..utils import int_or_none
 
 
 class RTSIE(SRGSSRIE):

@@ -5,9 +5,10 @@ import json
 
 from .common import InfoExtractor
 from ..utils import (
+    determine_ext,
     parse_iso8601,
     # try_get,
-    update_url_query, determine_ext,
+    update_url_query,
 )
 
 

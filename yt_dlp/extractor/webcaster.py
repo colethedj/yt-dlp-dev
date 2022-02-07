@@ -5,8 +5,9 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
+    determine_ext,
     join_nonempty,
-    determine_ext, xpath_text,
+    xpath_text,
 )
 
 

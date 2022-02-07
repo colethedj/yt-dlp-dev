@@ -6,10 +6,11 @@ import re
 from .common import InfoExtractor
 from ..compat import compat_str
 from ..utils import (
-    qualities, xpath_text,
+    ExtractorError,
+    int_or_none,
+    qualities,
+    xpath_text,
 )
-from ..utils import int_or_none
-from ..exceptions import ExtractorError
 
 
 class TurboIE(InfoExtractor):

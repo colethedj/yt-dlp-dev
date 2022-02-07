@@ -3,7 +3,11 @@ from __future__ import unicode_literals
 
 
 from .common import InfoExtractor
-from ..utils import str_to_int, KNOWN_EXTENSIONS, determine_ext
+from ..utils import (
+    determine_ext,
+    KNOWN_EXTENSIONS,
+    str_to_int,
+)
 
 
 class HearThisAtIE(InfoExtractor):

@@ -5,9 +5,12 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
-    parse_iso8601, find_xpath_attr, xpath_with_ns, xpath_text,
+    int_or_none,
+    parse_iso8601,
+    xpath_with_ns,
+    xpath_text,
+    find_xpath_attr,
 )
-from ..utils import int_or_none
 
 
 class XstreamIE(InfoExtractor):

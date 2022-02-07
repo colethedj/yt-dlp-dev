@@ -5,12 +5,12 @@ from .common import InfoExtractor
 from ..utils import (
     clean_html,
     float_or_none,
+    int_or_none,
     parse_iso8601,
     parse_qs,
     strip_or_none,
     try_get,
 )
-from ..utils import int_or_none
 
 
 class SportDeutschlandIE(InfoExtractor):

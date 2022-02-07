@@ -3,9 +3,10 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
-    smuggle_url, traverse_obj,
+    ExtractorError,
+    smuggle_url,
+    traverse_obj,
 )
-from ..exceptions import ExtractorError
 
 
 class NTVCoJpCUIE(InfoExtractor):

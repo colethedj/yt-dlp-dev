@@ -6,12 +6,12 @@ import re
 from .common import InfoExtractor
 from ..utils import (
     clean_html,
+    ExtractorError,
     js_to_json,
     base_url,
     url_basename,
     urljoin,
 )
-from ..exceptions import ExtractorError
 
 
 class RCSBaseIE(InfoExtractor):

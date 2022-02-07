@@ -7,9 +7,9 @@ from ..compat import compat_str
 from ..utils import (
     _configuration_args,
     encodeFilename,
+    PostProcessingError,
     write_string,
 )
-from ..exceptions import PostProcessingError
 
 
 class PostProcessorMetaClass(type):

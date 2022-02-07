@@ -9,15 +9,16 @@ from ..compat import (
     compat_urlparse,
 )
 from ..utils import (
+    determine_ext,
     extract_attributes,
+    int_or_none,
     js_to_json,
     mimetype2ext,
     orderedSet,
     parse_iso8601,
     strip_or_none,
-    try_get, determine_ext,
+    try_get,
 )
-from ..utils import int_or_none
 
 
 class CondeNastIE(InfoExtractor):

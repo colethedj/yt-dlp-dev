@@ -5,10 +5,11 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
+    determine_ext,
+    int_or_none,
     js_to_json,
-    merge_dicts, determine_ext,
+    merge_dicts,
 )
-from ..utils import int_or_none
 
 
 class SportBoxIE(InfoExtractor):

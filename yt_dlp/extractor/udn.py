@@ -5,9 +5,10 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
-    js_to_json, determine_ext,
+    determine_ext,
+    int_or_none,
+    js_to_json,
 )
-from ..utils import int_or_none
 from ..compat import compat_urlparse
 
 

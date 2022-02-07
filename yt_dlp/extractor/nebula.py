@@ -6,12 +6,11 @@ import json
 import time
 import urllib
 
-import yt_dlp.exceptions
 from ..utils import (
+    ExtractorError,
     parse_iso8601,
     try_get,
 )
-from ..exceptions import ExtractorError
 from .common import InfoExtractor
 
 
@@ -85,7 +84,7 @@ class NebulaBaseIE(InfoExtractor):
             return inner_call()
         except ExtractorError as exc:
             # if 401 or 403, attempt credential re-auth and retry
-            if exc.cause and isinstance(exc.cause, yt_dlp.exceptions.HTTPError) and exc.cause.code in (401, 403):
+            if exc.cause and isinstance(exc.cause, urllib.error.HTTPError) and exc.cause.code in (401, 403):
                 self.to_screen(f'Reauthenticating to Nebula and retrying, because last {auth_type} call resulted in error {exc.cause.code}')
                 self._login()
                 return inner_call()

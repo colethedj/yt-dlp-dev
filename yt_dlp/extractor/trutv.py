@@ -4,9 +4,9 @@ from __future__ import unicode_literals
 
 from .turner import TurnerBaseIE
 from ..utils import (
+    int_or_none,
     parse_iso8601,
 )
-from ..utils import int_or_none
 
 
 class TruTVIE(TurnerBaseIE):

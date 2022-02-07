@@ -6,11 +6,11 @@ import re
 from .common import InfoExtractor
 from .brightcove import BrightcoveNewIE
 from ..utils import (
+    int_or_none,
     parse_age_limit,
     smuggle_url,
     unescapeHTML,
 )
-from ..utils import int_or_none
 
 
 class VrakIE(InfoExtractor):

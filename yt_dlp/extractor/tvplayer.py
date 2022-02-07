@@ -10,8 +10,8 @@ from ..utils import (
     extract_attributes,
     try_get,
     urlencode_postdata,
+    ExtractorError,
 )
-from ..exceptions import ExtractorError
 
 
 class TVPlayerIE(InfoExtractor):
