@@ -40,4 +40,3 @@ class HttplibResponseAdapter(HTTPResponse):
 
     def tell(self) -> int:
         return self._res.tell()
-

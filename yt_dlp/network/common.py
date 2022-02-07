@@ -177,12 +177,31 @@ class HTTPResponse(ABC, io.IOBase):
         raise NotImplementedError
 
 
-class BackendHandler:
+class BaseBackendHandler:
+
+    _next_handler = None
+
+    def handle(self, request: YDLRequest, **req_kwargs):
+        if self.can_handle(request, **req_kwargs):
+            res = self._real_handle(request, **req_kwargs)
+            if res:
+                return res
+        if self._next_handler:
+            return self._next_handler.handle(request, **req_kwargs)
+
+    @classmethod
+    def can_handle(cls, request: YDLRequest, **req_kwargs) -> bool:
+        """Validate if handler is suitable for given request. Can override in subclasses."""
+
+    def _real_handle(self, request: YDLRequest, **kwargs) -> HTTPResponse:
+        """Real request handling process. Redefine in subclasses"""
+
+
+class YDLBackendHandler(BaseBackendHandler):
 
     _SUPPORTED_PROTOCOLS: list
 
     def __init__(self, youtubedl_params: dict, ydl_logger, cookies):
-        self._next_handler = None
         self.params = youtubedl_params
         self.logger = ydl_logger
         self.cookies = cookies
@@ -213,12 +232,8 @@ class BackendHandler:
         """Validate if handler is suitable for given request. Can override in subclasses."""
         return cls._is_supported_protocol(request)
 
-    def _real_handle(self, request: YDLRequest, **kwargs) -> HTTPResponse:
-        """Real request handling process. Redefine in subclasses"""
-        pass
 
-
-class UnsupportedBackendHandler(BackendHandler):
+class UnsupportedBackendHandler(BaseBackendHandler):
     def can_handle(self, request: YDLRequest, **req_kwargs):
         raise Exception('This request is not supported')
 
