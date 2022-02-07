@@ -20,23 +20,21 @@ from ..compat import (
     compat_urlparse,
 )
 from ..utils import (
-    ExtractorError,
     bytes_to_intlist,
     extract_attributes,
     float_or_none,
-    format_field,
     intlist_to_bytes,
-    int_or_none,
     join_nonempty,
     lowercase_escape,
     merge_dicts,
     qualities,
     remove_end,
-    sanitized_Request,
-    traverse_obj,
     try_get,
-    xpath_text,
+    format_field, traverse_obj, xpath_text,
 )
+from ..network.backends import sanitized_Request
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 from ..aes import (
     aes_cbc_decrypt,
 )

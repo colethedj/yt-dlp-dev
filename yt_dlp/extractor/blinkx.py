@@ -5,8 +5,8 @@ import json
 from .common import InfoExtractor
 from ..utils import (
     remove_start,
-    int_or_none,
 )
+from ..utils import int_or_none
 
 
 class BlinkxIE(InfoExtractor):

@@ -4,11 +4,9 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
-    parse_iso8601,
-    int_or_none,
-    xpath_attr,
-    xpath_element,
+    parse_iso8601, xpath_element, xpath_attr,
 )
+from ..utils import int_or_none
 
 
 class TwentyFourVideoIE(InfoExtractor):

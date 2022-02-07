@@ -14,17 +14,13 @@ from ..compat import (
 )
 from ..utils import (
     clean_html,
-    determine_ext,
-    ExtractorError,
     get_element_by_class,
     js_to_json,
-    int_or_none,
     merge_dicts,
     OnDemandPagedList,
     parse_filesize,
     parse_iso8601,
     parse_qs,
-    sanitized_Request,
     smuggle_url,
     std_headers,
     str_or_none,
@@ -34,8 +30,11 @@ from ..utils import (
     urlencode_postdata,
     urljoin,
     unescapeHTML,
-    urlhandle_detect_ext,
+    urlhandle_detect_ext, determine_ext,
 )
+from ..network.backends import sanitized_Request
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 from ..network.common import HEADRequest
 
 

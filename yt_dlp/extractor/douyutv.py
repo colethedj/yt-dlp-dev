@@ -7,11 +7,11 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
-    ExtractorError,
     unescapeHTML,
     unified_strdate,
     urljoin,
 )
+from ..exceptions import ExtractorError
 
 
 class DouyuTVIE(InfoExtractor):

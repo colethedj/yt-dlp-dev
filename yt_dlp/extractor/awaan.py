@@ -9,13 +9,12 @@ from ..compat import (
     compat_str,
 )
 from ..utils import (
-    format_field,
-    int_or_none,
     parse_iso8601,
     smuggle_url,
     unsmuggle_url,
-    urlencode_postdata,
+    urlencode_postdata, format_field,
 )
+from ..utils import int_or_none
 
 
 class AWAANIE(InfoExtractor):

@@ -4,11 +4,10 @@ from __future__ import unicode_literals
 from .common import InfoExtractor
 from ..compat import compat_str
 from ..utils import (
-    determine_ext,
-    int_or_none,
     parse_iso8601,
-    parse_duration,
+    parse_duration, determine_ext,
 )
+from ..utils import int_or_none
 
 
 class NHLBaseIE(InfoExtractor):

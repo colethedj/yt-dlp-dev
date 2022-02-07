@@ -10,18 +10,17 @@ from ..compat import (
     compat_urlparse,
 )
 from ..utils import (
-    determine_ext,
     extract_attributes,
-    ExtractorError,
     float_or_none,
-    int_or_none,
     js_to_json,
-    sanitized_Request,
     try_get,
     unescapeHTML,
     url_or_none,
-    urlencode_postdata,
+    urlencode_postdata, determine_ext,
 )
+from ..network.backends import sanitized_Request
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class UdemyIE(InfoExtractor):

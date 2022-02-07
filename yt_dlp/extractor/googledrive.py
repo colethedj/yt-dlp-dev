@@ -5,14 +5,13 @@ import re
 from .common import InfoExtractor
 from ..compat import compat_parse_qs
 from ..utils import (
-    determine_ext,
-    ExtractorError,
     get_element_by_class,
-    int_or_none,
     lowercase_escape,
     try_get,
-    update_url_query,
+    update_url_query, determine_ext,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class GoogleDriveIE(InfoExtractor):

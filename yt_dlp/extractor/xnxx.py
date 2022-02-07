@@ -5,11 +5,9 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
-    determine_ext,
-    int_or_none,
-    NO_DEFAULT,
-    str_to_int,
+    NO_DEFAULT, str_to_int, determine_ext,
 )
+from ..utils import int_or_none
 
 
 class XNXXIE(InfoExtractor):

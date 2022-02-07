@@ -4,14 +4,12 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
-    determine_ext,
-    ExtractorError,
-    int_or_none,
     merge_dicts,
-    str_to_int,
     unified_strdate,
-    url_or_none,
+    url_or_none, str_to_int, determine_ext,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class RedTubeIE(InfoExtractor):

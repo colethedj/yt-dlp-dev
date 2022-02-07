@@ -10,7 +10,6 @@ from ..compat import (
     compat_urlparse,
 )
 from ..utils import (
-    ExtractorError,
     float_or_none,
     mimetype2ext,
     str_or_none,
@@ -20,7 +19,7 @@ from ..utils import (
     url_or_none,
     urljoin,
 )
-
+from ..exceptions import ExtractorError
 
 _ID_RE = r'(?:[0-9a-f]{32,34}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12,14})'
 

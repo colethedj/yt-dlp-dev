@@ -3,8 +3,8 @@
 from .common import InfoExtractor
 from ..utils import (
     try_get,
-    ExtractorError,
 )
+from ..exceptions import ExtractorError
 
 import json
 import random

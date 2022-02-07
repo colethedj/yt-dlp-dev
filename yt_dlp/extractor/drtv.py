@@ -10,8 +10,6 @@ from .common import InfoExtractor
 from ..aes import aes_cbc_decrypt_bytes, unpad_pkcs7
 from ..compat import compat_urllib_parse_unquote
 from ..utils import (
-    ExtractorError,
-    int_or_none,
     float_or_none,
     mimetype2ext,
     str_or_none,
@@ -20,6 +18,8 @@ from ..utils import (
     update_url_query,
     url_or_none,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class DRTVIE(InfoExtractor):

@@ -7,11 +7,11 @@ from .common import InfoExtractor
 from ..utils import (
     clean_html,
     float_or_none,
-    int_or_none,
     parse_qs,
     try_get,
     urlencode_postdata,
 )
+from ..utils import int_or_none
 
 
 class CiscoLiveBaseIE(InfoExtractor):

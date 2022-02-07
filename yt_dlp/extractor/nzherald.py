@@ -5,10 +5,8 @@ from .brightcove import BrightcoveNewIE
 from .common import InfoExtractor
 
 from ..compat import compat_str
-from ..utils import (
-    ExtractorError,
-    traverse_obj
-)
+from ..utils import traverse_obj
+from ..exceptions import ExtractorError
 
 
 class NZHeraldIE(InfoExtractor):

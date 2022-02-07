@@ -11,12 +11,12 @@ from ..compat import (
     compat_urllib_parse_unquote,
 )
 from ..utils import (
-    ExtractorError,
-    int_or_none,
     parse_iso8601,
     strip_or_none,
     try_get,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class MixcloudBaseIE(InfoExtractor):

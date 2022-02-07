@@ -7,12 +7,12 @@ import time
 
 from .common import InfoExtractor
 from ..utils import (
-    ExtractorError,
-    int_or_none,
     parse_age_limit,
     parse_iso8601,
     try_get,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class VikiBaseIE(InfoExtractor):

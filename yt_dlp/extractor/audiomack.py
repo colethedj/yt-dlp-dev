@@ -8,9 +8,9 @@ from .common import InfoExtractor
 from .soundcloud import SoundcloudIE
 from ..compat import compat_str
 from ..utils import (
-    ExtractorError,
     url_basename,
 )
+from ..exceptions import ExtractorError
 
 
 class AudiomackIE(InfoExtractor):

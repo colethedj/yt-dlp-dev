@@ -6,11 +6,10 @@ import re
 from .common import InfoExtractor
 from ..compat import compat_str
 from ..utils import (
-    determine_ext,
-    ExtractorError,
-    int_or_none,
-    unescapeHTML,
+    unescapeHTML, determine_ext,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class MSNIE(InfoExtractor):

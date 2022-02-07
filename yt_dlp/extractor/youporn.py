@@ -5,11 +5,10 @@ import re
 from .common import InfoExtractor
 from ..utils import (
     extract_attributes,
-    int_or_none,
-    str_to_int,
     unified_strdate,
-    url_or_none,
+    url_or_none, str_to_int,
 )
+from ..utils import int_or_none
 
 
 class YouPornIE(InfoExtractor):

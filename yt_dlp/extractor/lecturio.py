@@ -6,15 +6,14 @@ import re
 from .common import InfoExtractor
 from ..utils import (
     clean_html,
-    determine_ext,
-    ExtractorError,
     float_or_none,
-    int_or_none,
     str_or_none,
     url_or_none,
     urlencode_postdata,
-    urljoin,
+    urljoin, determine_ext,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class LecturioBaseIE(InfoExtractor):

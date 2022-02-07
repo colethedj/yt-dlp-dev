@@ -8,12 +8,12 @@ from .common import InfoExtractor
 from ..utils import (
     clean_html,
     extract_timezone,
-    int_or_none,
     parse_duration,
     parse_resolution,
     try_get,
     url_or_none,
 )
+from ..utils import int_or_none
 
 
 class CCMAIE(InfoExtractor):

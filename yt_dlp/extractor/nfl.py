@@ -6,8 +6,7 @@ import re
 from .common import InfoExtractor
 from ..utils import (
     clean_html,
-    determine_ext,
-    get_element_by_class,
+    get_element_by_class, determine_ext,
 )
 
 

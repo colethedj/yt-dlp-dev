@@ -9,7 +9,6 @@ from ..compat import (
     compat_urllib_parse_unquote,
 )
 from ..utils import (
-    int_or_none,
     merge_dicts,
     OnDemandPagedList,
     parse_duration,
@@ -19,6 +18,7 @@ from ..utils import (
     update_url_query,
     urljoin,
 )
+from ..utils import int_or_none
 
 
 class NBACVPBaseIE(TurnerBaseIE):

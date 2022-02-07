@@ -7,13 +7,12 @@ from hashlib import sha1
 from .common import InfoExtractor
 from ..compat import compat_str
 from ..utils import (
-    ExtractorError,
-    determine_ext,
     float_or_none,
-    int_or_none,
     merge_dicts,
-    unified_strdate,
+    unified_strdate, determine_ext,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class ProSiebenSat1BaseIE(InfoExtractor):

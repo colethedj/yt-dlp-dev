@@ -5,11 +5,10 @@ import functools
 
 from .common import InfoExtractor
 from ..utils import (
-    format_field,
-    int_or_none,
     OnDemandPagedList,
-    smuggle_url,
+    smuggle_url, format_field,
 )
+from ..utils import int_or_none
 
 
 class StoryFireBaseIE(InfoExtractor):

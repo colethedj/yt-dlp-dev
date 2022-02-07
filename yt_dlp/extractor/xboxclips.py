@@ -5,11 +5,11 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
-    int_or_none,
     month_by_abbreviation,
     parse_filesize,
     parse_qs,
 )
+from ..utils import int_or_none
 
 
 class XboxClipsIE(InfoExtractor):

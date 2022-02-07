@@ -12,14 +12,14 @@ from ..compat import (
 )
 from ..utils import (
     clean_html,
-    ExtractorError,
-    int_or_none,
     mimetype2ext,
     parse_iso8601,
     smuggle_url,
     try_get,
     url_or_none,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 from .brightcove import BrightcoveNewIE
 from .youtube import YoutubeIE

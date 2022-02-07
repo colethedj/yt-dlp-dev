@@ -6,11 +6,11 @@ from .common import InfoExtractor
 from ..utils import (
     compat_str,
     float_or_none,
-    int_or_none,
     smuggle_url,
     str_or_none,
     try_get,
 )
+from ..utils import int_or_none
 
 
 class STVPlayerIE(InfoExtractor):

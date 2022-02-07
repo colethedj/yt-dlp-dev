@@ -1,10 +1,13 @@
 from __future__ import unicode_literals
 
-import socket
+import base64
+import re
 import ssl
 import sys
 
-from yt_dlp.compat import compat_urllib_error, compat_http_client
+from ..compat import compat_urlparse, compat_urllib_parse_urlparse, \
+    compat_urllib_parse
+from ..utils import determine_ext
 
 
 def _ssl_load_windows_store_certs(ssl_context, storename):
@@ -47,7 +50,72 @@ def make_ssl_context(params):
     return context
 
 
-network_exceptions = [compat_urllib_error.URLError, compat_http_client.HTTPException, socket.error]
-if hasattr(ssl, 'CertificateError'):
-    network_exceptions.append(ssl.CertificateError)
-network_exceptions = tuple(network_exceptions)
+def extract_basic_auth(url):
+    parts = compat_urlparse.urlsplit(url)
+    if parts.username is None:
+        return url, None
+    url = compat_urlparse.urlunsplit(parts._replace(netloc=(
+        parts.hostname if parts.port is None
+        else '%s:%d' % (parts.hostname, parts.port))))
+    auth_payload = base64.b64encode(
+        ('%s:%s' % (parts.username, parts.password or '')).encode('utf-8'))
+    return url, 'Basic ' + auth_payload.decode('utf-8')
+
+
+def sanitize_url(url):
+    # Prepend protocol-less URLs with `http:` scheme in order to mitigate
+    # the number of unwanted failures due to missing protocol
+    if url.startswith('//'):
+        return 'http:%s' % url
+    # Fix some common typos seen so far
+    COMMON_TYPOS = (
+        # https://github.com/ytdl-org/youtube-dl/issues/15649
+        (r'^httpss://', r'https://'),
+        # https://bx1.be/lives/direct-tv/
+        (r'^rmtp([es]?)://', r'rtmp\1://'),
+    )
+    for mistake, fixup in COMMON_TYPOS:
+        if re.match(mistake, url):
+            return re.sub(mistake, fixup, url)
+    return url
+
+
+def escape_url(url):
+    """Escape URL as suggested by RFC 3986"""
+    url_parsed = compat_urllib_parse_urlparse(url)
+    return url_parsed._replace(
+        netloc=url_parsed.netloc.encode('idna').decode('ascii'),
+        path=escape_rfc3986(url_parsed.path),
+        params=escape_rfc3986(url_parsed.params),
+        query=escape_rfc3986(url_parsed.query),
+        fragment=escape_rfc3986(url_parsed.fragment)
+    ).geturl()
+
+
+def determine_protocol(info_dict):
+    protocol = info_dict.get('protocol')
+    if protocol is not None:
+        return protocol
+
+    url = sanitize_url(info_dict['url'])
+    if url.startswith('rtmp'):
+        return 'rtmp'
+    elif url.startswith('mms'):
+        return 'mms'
+    elif url.startswith('rtsp'):
+        return 'rtsp'
+
+    ext = determine_ext(url)
+    if ext == 'm3u8':
+        return 'm3u8'
+    elif ext == 'f4m':
+        return 'f4m'
+
+    return compat_urllib_parse_urlparse(url).scheme
+
+
+def escape_rfc3986(s):
+    """Escape non-ASCII characters as suggested by RFC 3986"""
+    return compat_urllib_parse.quote(s, b"%/;:@&=+$,!~*'()?#[]")
+
+

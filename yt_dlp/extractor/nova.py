@@ -6,14 +6,12 @@ import re
 from .common import InfoExtractor
 from ..utils import (
     clean_html,
-    determine_ext,
-    int_or_none,
     js_to_json,
     qualities,
-    traverse_obj,
     unified_strdate,
-    url_or_none,
+    url_or_none, traverse_obj, determine_ext,
 )
+from ..utils import int_or_none
 
 
 class NovaEmbedIE(InfoExtractor):

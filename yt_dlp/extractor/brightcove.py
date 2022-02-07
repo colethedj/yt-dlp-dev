@@ -18,11 +18,8 @@ from ..utils import (
     clean_html,
     dict_get,
     extract_attributes,
-    ExtractorError,
-    find_xpath_attr,
     fix_xml_ampersands,
     float_or_none,
-    int_or_none,
     js_to_json,
     mimetype2ext,
     parse_iso8601,
@@ -32,10 +29,11 @@ from ..utils import (
     try_get,
     unescapeHTML,
     unsmuggle_url,
-    UnsupportedError,
     update_url_query,
-    url_or_none,
+    url_or_none, find_xpath_attr,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError, UnsupportedError
 
 
 class BrightcoveLegacyIE(InfoExtractor):

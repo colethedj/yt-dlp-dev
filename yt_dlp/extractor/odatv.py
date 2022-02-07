@@ -3,10 +3,10 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
-    ExtractorError,
     NO_DEFAULT,
     remove_start
 )
+from ..exceptions import ExtractorError
 
 
 class OdaTVIE(InfoExtractor):

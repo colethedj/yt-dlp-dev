@@ -5,8 +5,7 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
-    js_to_json,
-    determine_ext,
+    js_to_json, determine_ext,
 )
 
 

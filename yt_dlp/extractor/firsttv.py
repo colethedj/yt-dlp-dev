@@ -7,11 +7,11 @@ from ..compat import (
     compat_urlparse,
 )
 from ..utils import (
-    int_or_none,
     qualities,
     unified_strdate,
     url_or_none,
 )
+from ..utils import int_or_none
 
 
 class FirstTVIE(InfoExtractor):

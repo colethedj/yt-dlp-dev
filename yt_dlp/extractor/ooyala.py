@@ -9,12 +9,11 @@ from ..compat import (
     compat_str,
 )
 from ..utils import (
-    determine_ext,
     float_or_none,
-    int_or_none,
     try_get,
-    unsmuggle_url,
+    unsmuggle_url, determine_ext,
 )
+from ..utils import int_or_none
 
 
 class OoyalaBaseIE(InfoExtractor):

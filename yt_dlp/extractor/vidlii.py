@@ -5,15 +5,13 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
-    format_field,
     float_or_none,
     get_element_by_id,
-    int_or_none,
-    str_to_int,
     strip_or_none,
     unified_strdate,
-    urljoin,
+    urljoin, format_field, str_to_int,
 )
+from ..utils import int_or_none
 from ..network.common import HEADRequest
 
 

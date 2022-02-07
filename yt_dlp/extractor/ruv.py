@@ -3,8 +3,7 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
-    determine_ext,
-    unified_timestamp,
+    unified_timestamp, determine_ext,
 )
 
 

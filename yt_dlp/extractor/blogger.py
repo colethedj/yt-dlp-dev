@@ -7,8 +7,7 @@ from ..utils import (
     mimetype2ext,
     parse_duration,
     parse_qs,
-    str_or_none,
-    traverse_obj,
+    str_or_none, traverse_obj,
 )
 from .common import InfoExtractor
 

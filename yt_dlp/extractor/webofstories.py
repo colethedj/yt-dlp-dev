@@ -5,9 +5,9 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
-    int_or_none,
     orderedSet,
 )
+from ..utils import int_or_none
 
 
 class WebOfStoriesIE(InfoExtractor):

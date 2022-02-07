@@ -6,9 +6,7 @@ from ..compat import (
     compat_str,
     compat_urlparse,
 )
-from ..utils import (
-    determine_ext,
-)
+from ..utils import determine_ext
 
 
 class GolemIE(InfoExtractor):

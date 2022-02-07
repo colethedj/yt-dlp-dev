@@ -10,10 +10,9 @@ from .ffmpeg import (
 from .sponsorblock import SponsorBlockPP
 from ..utils import (
     orderedSet,
-    PostProcessingError,
     prepend_extension,
 )
-
+from ..exceptions import PostProcessingError
 
 _TINY_CHAPTER_DURATION = 1
 DEFAULT_SPONSORBLOCK_CHAPTER_TITLE = '[SponsorBlock]: %(category_names)l'

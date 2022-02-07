@@ -13,17 +13,15 @@ from ..compat import (
     compat_urllib_parse_urlparse
 )
 from ..utils import (
-    ExtractorError,
-    int_or_none,
     join_nonempty,
-    LazyList,
     srt_subtitles_timecode,
     str_or_none,
-    traverse_obj,
     try_get,
     url_or_none,
-    qualities,
+    qualities, traverse_obj, LazyList,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class TikTokBaseIE(InfoExtractor):

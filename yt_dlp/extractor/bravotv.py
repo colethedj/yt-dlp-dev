@@ -7,11 +7,11 @@ from .adobepass import AdobePassIE
 from ..utils import (
     smuggle_url,
     update_url_query,
-    int_or_none,
     float_or_none,
     try_get,
     dict_get,
 )
+from ..utils import int_or_none
 
 
 class BravoTVIE(AdobePassIE):

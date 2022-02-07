@@ -7,12 +7,11 @@ from ..compat import (
     compat_str,
 )
 from ..utils import (
-    determine_ext,
-    int_or_none,
     parse_qs,
     try_get,
-    qualities,
+    qualities, determine_ext,
 )
+from ..utils import int_or_none
 
 
 class SixPlayIE(InfoExtractor):

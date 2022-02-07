@@ -14,13 +14,9 @@ from ..compat import (
     compat_urllib_parse_urlparse
 )
 from ..utils import (
-    ExtractorError,
-    int_or_none,
     float_or_none,
     mimetype2ext,
     parse_iso8601,
-    traverse_obj,
-    parse_count,
     smuggle_url,
     srt_subtitles_timecode,
     str_or_none,
@@ -29,8 +25,10 @@ from ..utils import (
     unsmuggle_url,
     urlencode_postdata,
     url_or_none,
-    OnDemandPagedList
+    OnDemandPagedList, traverse_obj, parse_count
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class BiliBiliIE(InfoExtractor):

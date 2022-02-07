@@ -4,14 +4,14 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
-    ExtractorError,
     float_or_none,
-    int_or_none,
     join_nonempty,
     parse_iso8601,
     qualities,
     try_get,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class SRGSSRIE(InfoExtractor):

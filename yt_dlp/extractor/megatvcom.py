@@ -6,15 +6,14 @@ import re
 from .common import InfoExtractor
 from ..utils import (
     clean_html,
-    determine_ext,
-    ExtractorError,
     extract_attributes,
     get_element_by_class,
     get_element_html_by_id,
     parse_qs,
     unescapeHTML,
-    unified_timestamp,
+    unified_timestamp, determine_ext,
 )
+from ..exceptions import ExtractorError
 from ..network.common import HEADRequest
 
 

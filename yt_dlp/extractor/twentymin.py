@@ -5,9 +5,9 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
-    int_or_none,
     try_get,
 )
+from ..utils import int_or_none
 
 
 class TwentyMinutenIE(InfoExtractor):

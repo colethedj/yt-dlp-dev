@@ -4,11 +4,11 @@ from __future__ import unicode_literals
 from .common import InfoExtractor
 from ..utils import (
     get_element_by_class,
-    int_or_none,
     remove_start,
     strip_or_none,
     unified_strdate,
 )
+from ..utils import int_or_none
 
 
 class ScreencastOMaticIE(InfoExtractor):

@@ -16,24 +16,20 @@ import zlib
 
 from .common import (
     HTTPResponse,
-    IncompleteRead,
-    ReadTimeoutError,
-    TransportError,
-    ConnectionReset,
     YDLBackendHandler, YDLRequest,
-    HTTPError,
-    ConnectionTimeoutError, ResolveHostError,
-    SSLError, HEADRequest
+    HEADRequest
 )
 import http.client
 
 from .socksproxy import ProxyType, sockssocket
-from .utils import make_ssl_context
+from .utils import make_ssl_context, extract_basic_auth, sanitize_url, escape_url
 from ..compat import compat_urllib_request_DataHandler, compat_urllib_request, compat_http_client, compat_brotli, \
     compat_urlparse, compat_urllib_parse_unquote_plus, compat_cookiejar, compat_str, compat_HTTPError
 from ..utils import (
-    std_headers, escape_url, UnsupportedError, bug_reports_message, update_url_query
+    std_headers, update_url_query
 )
+from ..exceptions import UnsupportedError, HTTPError, TransportError, ReadTimeoutError, ConnectionTimeoutError, \
+    ResolveHostError, ConnectionReset, IncompleteRead, SSLError, bug_reports_message
 
 from ..compat import compat_brotli
 
@@ -685,3 +681,11 @@ class PerRequestProxyHandler(compat_urllib_request.ProxyHandler):
             return None
         return compat_urllib_request.ProxyHandler.proxy_open(
             self, req, proxy, type)
+
+
+def sanitized_Request(url, *args, **kwargs):
+    url, auth_header = extract_basic_auth(escape_url(sanitize_url(url)))
+    if auth_header is not None:
+        headers = args[1] if len(args) >= 2 else kwargs.setdefault('headers', {})
+        headers['Authorization'] = auth_header
+    return compat_urllib_request.Request(url, *args, **kwargs)

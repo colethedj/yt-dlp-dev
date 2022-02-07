@@ -5,9 +5,9 @@ import re
 from .common import InfoExtractor
 from ..utils import (
     float_or_none,
-    int_or_none,
     unified_strdate,
 )
+from ..utils import int_or_none
 
 
 class GaskrankIE(InfoExtractor):

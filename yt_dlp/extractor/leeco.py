@@ -14,16 +14,15 @@ from ..compat import (
     compat_urllib_parse_urlencode,
 )
 from ..utils import (
-    determine_ext,
     encode_data_uri,
-    ExtractorError,
-    int_or_none,
     orderedSet,
     parse_iso8601,
     str_or_none,
     url_basename,
-    urshift,
+    urshift, determine_ext,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class LeIE(InfoExtractor):

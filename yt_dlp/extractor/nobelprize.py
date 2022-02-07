@@ -5,11 +5,10 @@ from .common import InfoExtractor
 from ..utils import (
     js_to_json,
     mimetype2ext,
-    determine_ext,
     update_url_query,
-    get_element_by_attribute,
-    int_or_none,
+    get_element_by_attribute, determine_ext,
 )
+from ..utils import int_or_none
 
 
 class NobelPrizeIE(InfoExtractor):

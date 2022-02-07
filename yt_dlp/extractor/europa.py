@@ -3,14 +3,13 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
-    int_or_none,
     orderedSet,
     parse_duration,
     parse_qs,
     qualities,
-    unified_strdate,
-    xpath_text
+    unified_strdate, xpath_text
 )
+from ..utils import int_or_none
 
 
 class EuropaIE(InfoExtractor):

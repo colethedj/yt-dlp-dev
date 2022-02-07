@@ -6,10 +6,10 @@ from .common import InfoExtractor
 from .kaltura import KalturaIE
 from ..utils import (
     remove_start,
-    sanitized_Request,
     smuggle_url,
     urlencode_postdata,
 )
+from ..network.backends import sanitized_Request
 from ..network.common import HEADRequest
 
 

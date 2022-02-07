@@ -32,11 +32,10 @@ from yt_dlp.compat import (
     compat_HTTPError,
 )
 from yt_dlp.utils import (
-    DownloadError,
-    ExtractorError,
     format_bytes,
-    UnavailableVideoError,
 )
+from yt_dlp import DownloadError
+from yt_dlp.exceptions import ExtractorError, UnavailableVideoError
 from yt_dlp.extractor import get_info_extractor
 
 RETRIES = 3

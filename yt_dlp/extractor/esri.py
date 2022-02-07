@@ -6,10 +6,10 @@ import re
 from .common import InfoExtractor
 from ..compat import compat_urlparse
 from ..utils import (
-    int_or_none,
     parse_filesize,
     unified_strdate,
 )
+from ..utils import int_or_none
 
 
 class EsriVideoIE(InfoExtractor):

@@ -8,8 +8,8 @@ from ..utils import (
     js_to_json,
     extract_attributes,
     try_get,
-    int_or_none,
 )
+from ..utils import int_or_none
 
 
 class TagesschauIE(InfoExtractor):

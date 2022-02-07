@@ -3,11 +3,11 @@ from __future__ import unicode_literals
 from .common import InfoExtractor
 from ..compat import compat_urlparse
 from ..utils import (
-    int_or_none,
     js_to_json,
     remove_end,
     unified_strdate,
 )
+from ..utils import int_or_none
 
 
 class VidbitIE(InfoExtractor):

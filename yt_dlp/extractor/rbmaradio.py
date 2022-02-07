@@ -5,10 +5,10 @@ from .common import InfoExtractor
 from ..compat import compat_str
 from ..utils import (
     clean_html,
-    int_or_none,
     unified_timestamp,
     update_url_query,
 )
+from ..utils import int_or_none
 
 
 class RBMARadioIE(InfoExtractor):

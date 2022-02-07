@@ -4,11 +4,10 @@ from __future__ import unicode_literals
 from .common import InfoExtractor
 from ..compat import compat_str
 from ..utils import (
-    format_field,
     float_or_none,
-    int_or_none,
-    try_get,
+    try_get, format_field,
 )
+from ..utils import int_or_none
 
 from .videomore import VideomoreIE
 

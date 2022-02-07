@@ -4,13 +4,13 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
-    ExtractorError,
-    int_or_none,
     js_to_json,
     parse_filesize,
     urlencode_postdata,
     urljoin,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class ZoomIE(InfoExtractor):

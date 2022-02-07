@@ -8,18 +8,16 @@ import string
 from .common import InfoExtractor
 from ..compat import compat_HTTPError
 from ..utils import (
-    determine_ext,
-    int_or_none,
     join_nonempty,
     js_to_json,
     orderedSet,
     qualities,
     str_or_none,
-    traverse_obj,
     try_get,
-    urlencode_postdata,
-    ExtractorError,
+    urlencode_postdata, traverse_obj, determine_ext,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class FunimationBaseIE(InfoExtractor):

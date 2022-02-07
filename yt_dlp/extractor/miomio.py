@@ -5,12 +5,10 @@ import random
 
 from .common import InfoExtractor
 from ..compat import compat_urlparse
-from ..utils import (
-    xpath_text,
-    int_or_none,
-    ExtractorError,
-    sanitized_Request,
-)
+from ..network.backends import sanitized_Request
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
+from ..utils import xpath_text
 
 
 class MioMioIE(InfoExtractor):

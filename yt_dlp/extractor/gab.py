@@ -6,12 +6,11 @@ import re
 from .common import InfoExtractor
 from ..utils import (
     clean_html,
-    int_or_none,
     parse_codecs,
     parse_duration,
-    str_to_int,
-    unified_timestamp
+    unified_timestamp, str_to_int
 )
+from ..utils import int_or_none
 
 
 class GabTVIE(InfoExtractor):

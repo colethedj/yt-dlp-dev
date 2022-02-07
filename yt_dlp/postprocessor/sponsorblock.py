@@ -6,8 +6,8 @@ import time
 
 from .ffmpeg import FFmpegPostProcessor
 from ..compat import compat_urllib_parse_urlencode, compat_HTTPError
-from ..utils import PostProcessingError, sanitized_Request
-from ..network.utils import network_exceptions
+from ..network.backends import sanitized_Request
+from ..exceptions import PostProcessingError, network_exceptions
 
 
 class SponsorBlockPP(FFmpegPostProcessor):

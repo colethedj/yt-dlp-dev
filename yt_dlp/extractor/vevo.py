@@ -9,11 +9,11 @@ from ..compat import (
     compat_HTTPError,
 )
 from ..utils import (
-    ExtractorError,
-    int_or_none,
     parse_iso8601,
     parse_qs,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class VevoBaseIE(InfoExtractor):

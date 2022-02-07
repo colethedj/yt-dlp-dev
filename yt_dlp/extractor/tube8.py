@@ -2,10 +2,8 @@ from __future__ import unicode_literals
 
 import re
 
-from ..utils import (
-    int_or_none,
-    str_to_int,
-)
+from ..utils import str_to_int
+from ..utils import int_or_none
 from .keezmovies import KeezMoviesIE
 
 

@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 import sys
 
 from .common import InfoExtractor
-from ..utils import ExtractorError
+from ..exceptions import ExtractorError
 
 
 class CommonMistakesIE(InfoExtractor):

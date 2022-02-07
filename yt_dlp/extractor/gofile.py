@@ -1,9 +1,9 @@
 # coding: utf-8
 from .common import InfoExtractor
 from ..utils import (
-    ExtractorError,
     try_get
 )
+from ..exceptions import ExtractorError
 
 
 class GofileIE(InfoExtractor):

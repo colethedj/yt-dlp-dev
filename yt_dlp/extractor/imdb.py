@@ -6,12 +6,11 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
-    determine_ext,
     mimetype2ext,
     parse_duration,
     qualities,
     try_get,
-    url_or_none,
+    url_or_none, determine_ext,
 )
 
 

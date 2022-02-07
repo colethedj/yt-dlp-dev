@@ -3,10 +3,10 @@ from __future__ import unicode_literals
 from .common import InfoExtractor
 from ..compat import compat_b64decode
 from ..utils import (
-    ExtractorError,
-    sanitized_Request,
     urlencode_postdata,
 )
+from ..network.backends import sanitized_Request
+from ..exceptions import ExtractorError
 from ..network.common import HEADRequest
 
 

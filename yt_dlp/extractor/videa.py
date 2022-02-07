@@ -7,16 +7,14 @@ import string
 
 from .common import InfoExtractor
 from ..utils import (
-    ExtractorError,
-    int_or_none,
     mimetype2ext,
     parse_codecs,
     parse_qs,
     update_url_query,
-    urljoin,
-    xpath_element,
-    xpath_text,
+    urljoin, xpath_element, xpath_text,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 from ..compat import (
     compat_b64decode,
     compat_ord,

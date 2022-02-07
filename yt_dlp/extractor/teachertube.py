@@ -5,10 +5,9 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
-    determine_ext,
-    ExtractorError,
-    qualities,
+    qualities, determine_ext,
 )
+from ..exceptions import ExtractorError
 
 
 class TeacherTubeIE(InfoExtractor):

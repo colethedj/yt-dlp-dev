@@ -6,14 +6,13 @@ import re
 from .common import InfoExtractor
 from ..compat import compat_HTTPError
 from ..utils import (
-    determine_ext,
     float_or_none,
-    int_or_none,
     smuggle_url,
     try_get,
-    unsmuggle_url,
-    ExtractorError,
+    unsmuggle_url, determine_ext,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class LimelightBaseIE(InfoExtractor):

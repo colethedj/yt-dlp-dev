@@ -9,17 +9,15 @@ from ..compat import (
     compat_urlparse,
 )
 from ..utils import (
-    determine_ext,
-    ExtractorError,
-    int_or_none,
     parse_iso8601,
     qualities,
-    traverse_obj,
     try_get,
     update_url_query,
     url_or_none,
-    urljoin,
+    urljoin, traverse_obj, determine_ext,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class TVPlayIE(InfoExtractor):

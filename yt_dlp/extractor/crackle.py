@@ -9,15 +9,14 @@ import time
 from .common import InfoExtractor
 from ..compat import compat_HTTPError
 from ..utils import (
-    determine_ext,
     float_or_none,
-    int_or_none,
     orderedSet,
     parse_age_limit,
     parse_duration,
-    url_or_none,
-    ExtractorError
+    url_or_none, determine_ext
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class CrackleIE(InfoExtractor):

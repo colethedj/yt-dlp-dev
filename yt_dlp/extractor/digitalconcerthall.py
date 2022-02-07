@@ -4,12 +4,11 @@ from __future__ import unicode_literals
 from .common import InfoExtractor
 
 from ..utils import (
-    ExtractorError,
     parse_resolution,
-    traverse_obj,
     try_get,
-    urlencode_postdata,
+    urlencode_postdata, traverse_obj,
 )
+from ..exceptions import ExtractorError
 
 
 class DigitalConcertHallIE(InfoExtractor):

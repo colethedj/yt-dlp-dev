@@ -3,8 +3,7 @@
 from .common import InfoExtractor
 from ..utils import (
     clean_html,
-    traverse_obj,
-    unescapeHTML,
+    unescapeHTML, traverse_obj,
 )
 
 import itertools

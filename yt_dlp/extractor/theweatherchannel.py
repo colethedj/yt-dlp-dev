@@ -5,9 +5,8 @@ import json
 
 from .theplatform import ThePlatformIE
 from ..utils import (
-    determine_ext,
     parse_duration,
-    parse_iso8601,
+    parse_iso8601, determine_ext,
 )
 
 

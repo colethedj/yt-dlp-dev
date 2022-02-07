@@ -6,13 +6,10 @@ import math
 from .common import InfoExtractor
 from ..compat import compat_urllib_parse_unquote
 from ..utils import (
-    determine_ext,
-    format_field,
-    int_or_none,
     str_or_none,
-    traverse_obj,
-    try_get
+    try_get, format_field, traverse_obj, determine_ext
 )
+from ..utils import int_or_none
 
 
 class GameJoltBaseIE(InfoExtractor):

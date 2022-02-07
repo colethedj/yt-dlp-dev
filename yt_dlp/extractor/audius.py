@@ -4,7 +4,8 @@ from __future__ import unicode_literals
 import random
 
 from .common import InfoExtractor
-from ..utils import ExtractorError, try_get, compat_str, str_or_none
+from ..utils import try_get, compat_str, str_or_none
+from ..exceptions import ExtractorError
 from ..compat import compat_urllib_parse_unquote
 
 

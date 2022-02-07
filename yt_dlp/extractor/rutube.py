@@ -9,14 +9,13 @@ from ..compat import (
     compat_str,
 )
 from ..utils import (
-    determine_ext,
     bool_or_none,
-    int_or_none,
     parse_qs,
     try_get,
     unified_timestamp,
-    url_or_none,
+    url_or_none, determine_ext,
 )
+from ..utils import int_or_none
 
 
 class RutubeBaseIE(InfoExtractor):
@@ -297,7 +296,8 @@ class RutubePlaylistIE(RutubePlaylistBaseIE):
 
     @classmethod
     def suitable(cls, url):
-        from ..utils import int_or_none, parse_qs
+        from ..utils import int_or_none
+        from ..utils import parse_qs
 
         if not super(RutubePlaylistIE, cls).suitable(url):
             return False

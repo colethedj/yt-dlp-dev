@@ -1,10 +1,8 @@
 from __future__ import unicode_literals
 
 from .common import InfoExtractor
-from ..utils import (
-    ExtractorError,
-    traverse_obj,
-)
+from ..utils import traverse_obj
+from ..exceptions import ExtractorError
 
 
 class MixchIE(InfoExtractor):

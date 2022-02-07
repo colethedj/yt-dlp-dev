@@ -8,10 +8,9 @@ from ..utils import (
     clean_html,
     parse_iso8601,
     float_or_none,
-    int_or_none,
-    compat_str,
-    determine_ext,
+    compat_str, determine_ext,
 )
+from ..utils import int_or_none
 
 
 class HitboxIE(InfoExtractor):

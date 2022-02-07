@@ -6,11 +6,10 @@ from .common import InfoExtractor
 from ..utils import (
     clean_html,
     compat_str,
-    format_field,
-    int_or_none,
     parse_iso8601,
-    unified_strdate,
+    unified_strdate, format_field,
 )
+from ..utils import int_or_none
 
 
 class LnkGoIE(InfoExtractor):

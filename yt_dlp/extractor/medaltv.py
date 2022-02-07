@@ -6,13 +6,12 @@ import re
 from .common import InfoExtractor
 from ..compat import compat_str
 from ..utils import (
-    ExtractorError,
-    format_field,
     float_or_none,
-    int_or_none,
     str_or_none,
-    try_get,
+    try_get, format_field,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class MedalTVIE(InfoExtractor):

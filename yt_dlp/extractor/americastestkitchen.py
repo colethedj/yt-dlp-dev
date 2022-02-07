@@ -6,11 +6,11 @@ import json
 from .common import InfoExtractor
 from ..utils import (
     clean_html,
-    int_or_none,
     try_get,
     unified_strdate,
     unified_timestamp,
 )
+from ..utils import int_or_none
 
 
 class AmericasTestKitchenIE(InfoExtractor):

@@ -4,9 +4,9 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
-    int_or_none,
     remove_end,
 )
+from ..utils import int_or_none
 
 
 class GameStarIE(InfoExtractor):

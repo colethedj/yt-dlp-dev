@@ -13,26 +13,21 @@ from ..compat import (
 )
 from ..utils import (
     clean_html,
-    determine_ext,
     error_to_compat_str,
-    ExtractorError,
     float_or_none,
     get_element_by_id,
-    int_or_none,
     js_to_json,
     merge_dicts,
-    parse_count,
     parse_qs,
     qualities,
-    sanitized_Request,
-    traverse_obj,
     try_get,
     url_or_none,
     urlencode_postdata,
-    urljoin,
-    variadic,
+    urljoin, traverse_obj, variadic, parse_count, determine_ext,
 )
-from ..network.utils import network_exceptions
+from ..network.backends import sanitized_Request
+from ..utils import int_or_none
+from ..exceptions import ExtractorError, network_exceptions
 
 
 class FacebookIE(InfoExtractor):

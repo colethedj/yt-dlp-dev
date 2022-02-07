@@ -14,21 +14,19 @@ from ..compat import (
     compat_urllib_parse_urlparse,
 )
 from ..utils import (
-    ExtractorError,
     dict_get,
     float_or_none,
-    int_or_none,
     OnDemandPagedList,
     parse_duration,
     parse_iso8601,
-    PostProcessingError,
     remove_start,
     str_or_none,
     try_get,
     unified_timestamp,
-    urlencode_postdata,
-    xpath_text,
+    urlencode_postdata, xpath_text,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError, PostProcessingError
 
 
 class NiconicoIE(InfoExtractor):

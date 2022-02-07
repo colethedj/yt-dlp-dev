@@ -17,12 +17,11 @@ from ..utils import (
     cli_valueless_option,
     cli_bool_option,
     _configuration_args,
-    determine_ext,
     encodeFilename,
     encodeArgument,
     check_executable,
     Popen,
-    remove_end,
+    remove_end, determine_ext,
 )
 from ..network.backends import handle_youtubedl_headers
 

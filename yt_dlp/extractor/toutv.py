@@ -6,10 +6,10 @@ import json
 from .radiocanada import RadioCanadaIE
 from ..compat import compat_HTTPError
 from ..utils import (
-    ExtractorError,
-    int_or_none,
     merge_dicts,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class TouTvIE(RadioCanadaIE):

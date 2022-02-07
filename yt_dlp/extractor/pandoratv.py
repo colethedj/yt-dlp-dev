@@ -7,13 +7,12 @@ from ..compat import (
     compat_str,
 )
 from ..utils import (
-    ExtractorError,
     float_or_none,
     parse_duration,
     parse_qs,
-    str_to_int,
-    urlencode_postdata,
+    urlencode_postdata, str_to_int,
 )
+from ..exceptions import ExtractorError
 
 
 class PandoraTVIE(InfoExtractor):

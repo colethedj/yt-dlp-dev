@@ -12,8 +12,8 @@ from ..utils import (
     try_get,
     unescapeHTML,
     url_or_none,
-    ExtractorError,
 )
+from ..exceptions import ExtractorError
 
 
 class RteBaseIE(InfoExtractor):

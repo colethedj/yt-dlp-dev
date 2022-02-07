@@ -1,10 +1,9 @@
 # coding: utf-8
 from .common import InfoExtractor
 from ..utils import (
-    traverse_obj,
-    float_or_none,
-    int_or_none
+    float_or_none, traverse_obj
 )
+from ..utils import int_or_none
 
 
 class CallinIE(InfoExtractor):

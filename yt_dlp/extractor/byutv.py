@@ -3,10 +3,9 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
-    determine_ext,
     merge_dicts,
     parse_duration,
-    url_or_none,
+    url_or_none, determine_ext,
 )
 
 

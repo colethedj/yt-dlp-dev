@@ -5,9 +5,9 @@ from .common import InfoExtractor
 from .pladform import PladformIE
 from ..utils import (
     unescapeHTML,
-    int_or_none,
-    ExtractorError,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class METAIE(InfoExtractor):

@@ -4,16 +4,14 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
-    determine_ext,
-    ExtractorError,
     merge_dicts,
     parse_duration,
     parse_resolution,
-    str_to_int,
     url_or_none,
     urlencode_postdata,
-    urljoin,
+    urljoin, str_to_int, determine_ext,
 )
+from ..exceptions import ExtractorError
 
 
 class SpankBangIE(InfoExtractor):

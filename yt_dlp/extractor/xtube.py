@@ -5,14 +5,13 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
-    int_or_none,
     js_to_json,
     orderedSet,
     parse_duration,
-    sanitized_Request,
-    str_to_int,
-    url_or_none,
+    url_or_none, str_to_int,
 )
+from ..network.backends import sanitized_Request
+from ..utils import int_or_none
 
 
 class XTubeIE(InfoExtractor):

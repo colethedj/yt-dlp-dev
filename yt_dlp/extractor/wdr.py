@@ -9,16 +9,15 @@ from ..compat import (
     compat_urlparse,
 )
 from ..utils import (
-    determine_ext,
-    ExtractorError,
     js_to_json,
     strip_jsonp,
     try_get,
     unified_strdate,
     update_url_query,
     urlhandle_detect_ext,
-    url_or_none,
+    url_or_none, determine_ext,
 )
+from ..exceptions import ExtractorError
 
 
 class WDRIE(InfoExtractor):

@@ -2,12 +2,10 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
-    find_xpath_attr,
-    int_or_none,
     js_to_json,
-    unescapeHTML,
-    determine_ext,
+    unescapeHTML, determine_ext, find_xpath_attr,
 )
+from ..utils import int_or_none
 
 
 class HowStuffWorksIE(InfoExtractor):

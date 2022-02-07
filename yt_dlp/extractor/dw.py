@@ -3,10 +3,10 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
-    int_or_none,
     unified_strdate,
     url_or_none,
 )
+from ..utils import int_or_none
 from ..compat import compat_urlparse
 
 

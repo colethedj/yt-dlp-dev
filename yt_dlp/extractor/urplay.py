@@ -4,9 +4,9 @@ from __future__ import unicode_literals
 from .common import InfoExtractor
 from ..utils import (
     dict_get,
-    int_or_none,
     unified_timestamp,
 )
+from ..utils import int_or_none
 
 
 class URPlayIE(InfoExtractor):

@@ -10,12 +10,11 @@ from ..compat import (
     compat_urllib_parse_unquote,
 )
 from ..utils import (
-    determine_ext,
-    ExtractorError,
-    int_or_none,
     get_element_by_attribute,
-    mimetype2ext,
+    mimetype2ext, determine_ext,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class MetacafeIE(InfoExtractor):

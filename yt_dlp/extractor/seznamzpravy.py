@@ -10,11 +10,11 @@ from ..compat import (
 )
 from ..utils import (
     urljoin,
-    int_or_none,
     parse_codecs,
     parse_qs,
     try_get,
 )
+from ..utils import int_or_none
 
 
 def _raw_id(src_url):

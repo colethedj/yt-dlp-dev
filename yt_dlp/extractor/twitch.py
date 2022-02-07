@@ -17,21 +17,20 @@ from ..compat import (
 from ..utils import (
     clean_html,
     dict_get,
-    ExtractorError,
     float_or_none,
-    int_or_none,
     parse_duration,
     parse_iso8601,
     parse_qs,
     qualities,
     str_or_none,
-    traverse_obj,
     try_get,
     unified_timestamp,
     update_url_query,
     url_or_none,
-    urljoin,
+    urljoin, traverse_obj,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class TwitchBaseIE(InfoExtractor):

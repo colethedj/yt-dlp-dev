@@ -27,10 +27,10 @@ from ..utils import (
     encodeFilename,
     error_to_compat_str,
     Popen,
-    PostProcessingError,
     prepend_extension,
     shell_quote,
 )
+from ..exceptions import PostProcessingError
 
 
 class EmbedThumbnailPPError(PostProcessingError):

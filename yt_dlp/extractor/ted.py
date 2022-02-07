@@ -4,13 +4,12 @@ import re
 from .common import InfoExtractor
 
 from ..utils import (
-    int_or_none,
-    str_to_int,
     try_get,
     url_or_none,
     unified_strdate,
-    parse_duration,
+    parse_duration, str_to_int,
 )
+from ..utils import int_or_none
 
 
 class TedBaseIE(InfoExtractor):

@@ -5,15 +5,14 @@ import json
 
 from .turner import TurnerBaseIE
 from ..utils import (
-    determine_ext,
     float_or_none,
-    int_or_none,
     mimetype2ext,
     parse_age_limit,
     parse_iso8601,
     strip_or_none,
-    try_get,
+    try_get, determine_ext,
 )
+from ..utils import int_or_none
 
 
 class AdultSwimIE(TurnerBaseIE):

@@ -8,10 +8,7 @@ from ..compat import (
     compat_str,
 )
 from ..utils import (
-    determine_ext,
-    ExtractorError,
     fix_xml_ampersands,
-    int_or_none,
     merge_dicts,
     orderedSet,
     parse_duration,
@@ -21,8 +18,10 @@ from ..utils import (
     unified_strdate,
     unified_timestamp,
     url_or_none,
-    urlencode_postdata,
+    urlencode_postdata, determine_ext,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class NPOBaseIE(InfoExtractor):

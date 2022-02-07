@@ -4,12 +4,11 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
-    int_or_none,
     parse_duration,
     smuggle_url,
-    unsmuggle_url,
-    xpath_text,
+    unsmuggle_url, xpath_text,
 )
+from ..utils import int_or_none
 
 
 class MicrosoftVirtualAcademyBaseIE(InfoExtractor):

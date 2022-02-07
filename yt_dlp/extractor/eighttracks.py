@@ -8,9 +8,7 @@ from .common import InfoExtractor
 from ..compat import (
     compat_str,
 )
-from ..utils import (
-    ExtractorError,
-)
+from ..exceptions import ExtractorError
 
 
 class EightTracksIE(InfoExtractor):

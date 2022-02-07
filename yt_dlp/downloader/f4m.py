@@ -4,6 +4,7 @@ import io
 import itertools
 import time
 
+import yt_dlp.exceptions
 from .fragment import FragmentFD
 from ..compat import (
     compat_b64decode,
@@ -15,8 +16,7 @@ from ..compat import (
     compat_struct_unpack,
 )
 from ..utils import (
-    fix_xml_ampersands,
-    xpath_text,
+    fix_xml_ampersands, xpath_text,
 )
 
 
@@ -417,7 +417,7 @@ class F4mFD(FragmentFD):
                     if box_type == b'mdat':
                         self._append_fragment(ctx, box_data)
                         break
-            except (compat_urllib_error.HTTPError, ) as err:
+            except (yt_dlp.exceptions.HTTPError,) as err:
                 if live and (err.code == 404 or err.code == 410):
                     # We didn't keep up with the live window. Continue
                     # with the next available fragment.

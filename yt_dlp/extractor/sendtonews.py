@@ -8,10 +8,10 @@ from ..utils import (
     float_or_none,
     parse_iso8601,
     update_url_query,
-    int_or_none,
-    determine_protocol,
     unescapeHTML,
 )
+from ..network.utils import determine_protocol
+from ..utils import int_or_none
 
 
 class SendtoNewsIE(InfoExtractor):

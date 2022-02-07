@@ -4,13 +4,13 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
-    ExtractorError,
-    int_or_none,
     update_url_query,
     qualities,
     get_element_by_attribute,
     clean_html,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 from ..network.common import HEADRequest
 
 

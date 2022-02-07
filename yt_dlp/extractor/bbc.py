@@ -14,13 +14,11 @@ from ..compat import (
     compat_urlparse,
 )
 from ..utils import (
-    ExtractorError,
     OnDemandPagedList,
     clean_html,
     dict_get,
     float_or_none,
     get_element_by_class,
-    int_or_none,
     js_to_json,
     parse_duration,
     parse_iso8601,
@@ -33,6 +31,8 @@ from ..utils import (
     urlencode_postdata,
     urljoin,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class BBCCoUkIE(InfoExtractor):

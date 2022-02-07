@@ -13,7 +13,6 @@ from .common import AudioConversionError, PostProcessor
 
 from ..compat import compat_str
 from ..utils import (
-    determine_ext,
     dfxp2srt,
     encodeArgument,
     encodeFilename,
@@ -24,15 +23,12 @@ from ..utils import (
     ISO639Utils,
     orderedSet,
     Popen,
-    PostProcessingError,
     prepend_extension,
     replace_extension,
     shell_quote,
-    traverse_obj,
-    variadic,
-    write_json_file,
+    write_json_file, traverse_obj, variadic, determine_ext,
 )
-
+from ..exceptions import PostProcessingError
 
 EXT_TO_OUT_FORMATS = {
     'aac': 'adts',

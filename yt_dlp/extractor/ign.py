@@ -8,12 +8,11 @@ from ..compat import (
     compat_urllib_parse_urlparse,
 )
 from ..utils import (
-    determine_ext,
-    int_or_none,
     parse_iso8601,
     strip_or_none,
-    try_get,
+    try_get, determine_ext,
 )
+from ..utils import int_or_none
 from ..network.common import HEADRequest
 
 

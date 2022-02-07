@@ -24,23 +24,20 @@ from .cookies import SUPPORTED_BROWSERS, SUPPORTED_KEYRINGS
 from .utils import (
     DateRange,
     decodeOption,
-    DownloadCancelled,
-    DownloadError,
     error_to_compat_str,
     expand_path,
     GeoUtils,
     float_or_none,
-    int_or_none,
     match_filter_func,
     parse_duration,
     preferredencoding,
     read_batch_urls,
     render_table,
-    SameFileError,
     setproctitle,
     std_headers,
-    write_string,
+    write_string, int_or_none,
 )
+from .exceptions import DownloadError, SameFileError, DownloadCancelled
 from .update import run_update
 from .downloader import (
     FileDownloader,

@@ -6,12 +6,11 @@ from ..compat import (
     compat_parse_qs,
 )
 from ..utils import (
-    ExtractorError,
-    sanitized_Request,
-    traverse_obj,
     urlencode_postdata,
-    urljoin,
+    urljoin, traverse_obj,
 )
+from ..network.backends import sanitized_Request
+from ..exceptions import ExtractorError
 
 
 class FC2IE(InfoExtractor):

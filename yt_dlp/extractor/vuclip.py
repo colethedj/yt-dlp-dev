@@ -7,10 +7,10 @@ from ..compat import (
     compat_urllib_parse_urlparse,
 )
 from ..utils import (
-    ExtractorError,
     parse_duration,
     remove_end,
 )
+from ..exceptions import ExtractorError
 
 
 class VuClipIE(InfoExtractor):

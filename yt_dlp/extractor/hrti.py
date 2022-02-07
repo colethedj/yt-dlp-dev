@@ -7,12 +7,12 @@ from .common import InfoExtractor
 from ..compat import compat_HTTPError
 from ..utils import (
     clean_html,
-    ExtractorError,
-    int_or_none,
     parse_age_limit,
-    sanitized_Request,
     try_get,
 )
+from ..network.backends import sanitized_Request
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class HRTiBaseIE(InfoExtractor):

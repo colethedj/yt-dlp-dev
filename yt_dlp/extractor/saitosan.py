@@ -3,7 +3,8 @@
 from __future__ import unicode_literals
 
 from .common import InfoExtractor
-from ..utils import ExtractorError, try_get
+from ..utils import try_get
+from ..exceptions import ExtractorError
 
 
 class SaitosanIE(InfoExtractor):

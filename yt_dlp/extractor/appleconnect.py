@@ -2,10 +2,8 @@
 from __future__ import unicode_literals
 
 from .common import InfoExtractor
-from ..utils import (
-    str_to_int,
-    ExtractorError
-)
+from ..utils import str_to_int
+from ..exceptions import ExtractorError
 
 
 class AppleConnectIE(InfoExtractor):

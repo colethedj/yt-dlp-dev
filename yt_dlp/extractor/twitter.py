@@ -12,18 +12,16 @@ from ..compat import (
 )
 from ..utils import (
     dict_get,
-    ExtractorError,
-    format_field,
     float_or_none,
-    int_or_none,
-    traverse_obj,
     try_get,
     strip_or_none,
     unified_timestamp,
     update_url_query,
     url_or_none,
-    xpath_text,
+    format_field, traverse_obj, xpath_text,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 from .periscope import (
     PeriscopeBaseIE,

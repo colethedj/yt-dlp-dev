@@ -5,10 +5,9 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
-    determine_ext,
-    int_or_none,
-    url_or_none,
+    url_or_none, determine_ext,
 )
+from ..utils import int_or_none
 
 
 class APAIE(InfoExtractor):

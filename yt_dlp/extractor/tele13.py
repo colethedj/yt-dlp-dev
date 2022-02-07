@@ -5,8 +5,7 @@ from .common import InfoExtractor
 from .youtube import YoutubeIE
 from ..utils import (
     js_to_json,
-    qualities,
-    determine_ext,
+    qualities, determine_ext,
 )
 
 

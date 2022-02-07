@@ -10,10 +10,10 @@ from ..compat import (
     compat_str,
 )
 from ..utils import (
-    ExtractorError,
     try_get,
     update_url_query,
 )
+from ..exceptions import ExtractorError
 
 
 class SevenPlusIE(BrightcoveNewIE):

@@ -5,11 +5,8 @@ import re
 
 from .common import InfoExtractor
 from ..compat import compat_etree_fromstring
-from ..utils import (
-    xpath_element,
-    xpath_text,
-    int_or_none,
-)
+from ..utils import xpath_element, xpath_text
+from ..utils import int_or_none
 
 
 class FazIE(InfoExtractor):

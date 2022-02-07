@@ -7,9 +7,9 @@ from .common import InfoExtractor
 from ..compat import compat_HTTPError
 from ..utils import (
     clean_html,
-    ExtractorError,
-    int_or_none,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 from ..network.common import PUTRequest
 

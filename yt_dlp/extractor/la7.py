@@ -5,12 +5,11 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
-    determine_ext,
     float_or_none,
-    int_or_none,
     parse_duration,
-    unified_strdate,
+    unified_strdate, determine_ext,
 )
+from ..utils import int_or_none
 from ..network.common import HEADRequest
 
 

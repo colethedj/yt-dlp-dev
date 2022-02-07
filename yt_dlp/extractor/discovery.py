@@ -5,7 +5,7 @@ import string
 
 from .discoverygo import DiscoveryGoBaseIE
 from ..compat import compat_urllib_parse_unquote
-from ..utils import ExtractorError
+from ..exceptions import ExtractorError
 from ..compat import compat_HTTPError
 
 

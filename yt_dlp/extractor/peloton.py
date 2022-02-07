@@ -10,12 +10,11 @@ from ..compat import (
     compat_urllib_parse,
 )
 from ..utils import (
-    ExtractorError,
     float_or_none,
     str_or_none,
-    traverse_obj,
-    url_or_none,
+    url_or_none, traverse_obj,
 )
+from ..exceptions import ExtractorError
 
 
 class PelotonIE(InfoExtractor):

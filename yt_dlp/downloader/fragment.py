@@ -6,6 +6,8 @@ import math
 import os
 import time
 
+import yt_dlp.exceptions
+
 try:
     import concurrent.futures
     can_threaded_download = True
@@ -21,11 +23,11 @@ from ..compat import (
     compat_struct_pack,
 )
 from ..utils import (
-    DownloadError,
     error_to_compat_str,
     encodeFilename,
-    sanitized_Request,
 )
+from ..network.backends import sanitized_Request
+from ..exceptions import DownloadError
 
 
 class HttpQuietDownloader(HttpFD):
@@ -449,7 +451,7 @@ class FragmentFD(FileDownloader):
                     if not success:
                         return False, frag_index
                     break
-                except (compat_urllib_error.HTTPError, http.client.IncompleteRead) as err:
+                except (yt_dlp.exceptions.HTTPError, http.client.IncompleteRead) as err:
                     # Unavailable (possibly temporary) fragments may be served.
                     # First we try to retry then either skip or abort.
                     # See https://github.com/ytdl-org/youtube-dl/issues/10165,

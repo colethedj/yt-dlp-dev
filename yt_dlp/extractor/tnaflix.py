@@ -7,12 +7,11 @@ from ..compat import compat_str
 from ..utils import (
     fix_xml_ampersands,
     float_or_none,
-    int_or_none,
     parse_duration,
-    str_to_int,
     unescapeHTML,
-    xpath_text,
+    str_to_int, xpath_text,
 )
+from ..utils import int_or_none
 
 
 class TNAFlixNetworkBaseIE(InfoExtractor):

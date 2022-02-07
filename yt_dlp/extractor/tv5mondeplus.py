@@ -3,12 +3,11 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
-    determine_ext,
     extract_attributes,
-    int_or_none,
     parse_duration,
-    try_get,
+    try_get, determine_ext,
 )
+from ..utils import int_or_none
 
 
 class TV5MondePlusIE(InfoExtractor):

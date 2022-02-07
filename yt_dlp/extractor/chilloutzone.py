@@ -6,9 +6,9 @@ from .common import InfoExtractor
 from .youtube import YoutubeIE
 from ..compat import compat_b64decode
 from ..utils import (
-    clean_html,
-    ExtractorError
+    clean_html
 )
+from ..exceptions import ExtractorError
 
 
 class ChilloutzoneIE(InfoExtractor):

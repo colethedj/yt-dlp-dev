@@ -6,13 +6,12 @@ import json
 from .common import InfoExtractor
 from ..compat import compat_str
 from ..utils import (
-    determine_ext,
     float_or_none,
-    int_or_none,
     try_get,
     unified_timestamp,
-    url_or_none,
+    url_or_none, determine_ext,
 )
+from ..utils import int_or_none
 
 
 class PinterestBaseIE(InfoExtractor):

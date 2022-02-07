@@ -8,12 +8,12 @@ from .common import InfoExtractor
 from .kaltura import KalturaIE
 from ..utils import (
     extract_attributes,
-    int_or_none,
     OnDemandPagedList,
     parse_age_limit,
     strip_or_none,
     try_get,
 )
+from ..utils import int_or_none
 
 
 class AsianCrushBaseIE(InfoExtractor):

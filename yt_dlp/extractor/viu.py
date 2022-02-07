@@ -11,12 +11,12 @@ from ..compat import (
     compat_urllib_request,
 )
 from ..utils import (
-    ExtractorError,
-    int_or_none,
     try_get,
     smuggle_url,
     unsmuggle_url,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class ViuBaseIE(InfoExtractor):

@@ -9,17 +9,12 @@ from ..compat import (
     compat_urlparse,
 )
 from ..utils import (
-    find_xpath_attr,
-    xpath_attr,
-    xpath_with_ns,
-    xpath_text,
     orderedSet,
     update_url_query,
-    int_or_none,
     float_or_none,
-    parse_iso8601,
-    determine_ext,
+    parse_iso8601, determine_ext, find_xpath_attr, xpath_with_ns, xpath_text, xpath_attr,
 )
+from ..utils import int_or_none
 
 
 class LivestreamIE(InfoExtractor):

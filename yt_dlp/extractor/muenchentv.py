@@ -5,10 +5,9 @@ import json
 
 from .common import InfoExtractor
 from ..utils import (
-    determine_ext,
-    int_or_none,
-    js_to_json,
+    js_to_json, determine_ext,
 )
+from ..utils import int_or_none
 
 
 class MuenchenTVIE(InfoExtractor):

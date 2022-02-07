@@ -6,11 +6,10 @@ from ..compat import (
     compat_urllib_parse_urlencode,
 )
 from ..utils import (
-    ExtractorError,
-    format_field,
-    int_or_none,
-    qualities,
+    qualities, format_field,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class FlickrIE(InfoExtractor):

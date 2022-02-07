@@ -5,15 +5,14 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
-    determine_ext,
     float_or_none,
-    int_or_none,
     parse_age_limit,
     qualities,
     random_birthday,
     unified_timestamp,
-    urljoin,
+    urljoin, determine_ext,
 )
+from ..utils import int_or_none
 
 
 class VideoPressIE(InfoExtractor):

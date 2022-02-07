@@ -1,5 +1,5 @@
 # coding: utf-8
-from ..utils import ExtractorError
+from ..exceptions import ExtractorError
 from .common import InfoExtractor
 
 

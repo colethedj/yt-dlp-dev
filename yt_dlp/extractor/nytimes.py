@@ -7,14 +7,13 @@ import base64
 
 from .common import InfoExtractor
 from ..utils import (
-    determine_ext,
     float_or_none,
-    int_or_none,
     js_to_json,
     mimetype2ext,
     parse_iso8601,
-    remove_start,
+    remove_start, determine_ext,
 )
+from ..utils import int_or_none
 
 
 class NYTimesBaseIE(InfoExtractor):

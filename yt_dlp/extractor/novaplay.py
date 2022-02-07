@@ -1,6 +1,7 @@
 # coding: utf-8
 from .common import InfoExtractor
-from ..utils import int_or_none, parse_duration, parse_iso8601
+from ..utils import parse_duration, parse_iso8601
+from ..utils import int_or_none
 
 
 class NovaPlayIE(InfoExtractor):

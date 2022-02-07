@@ -7,13 +7,11 @@ from ..compat import (
     compat_urllib_parse_unquote,
 )
 from ..utils import (
-    determine_ext,
     float_or_none,
     get_element_by_id,
-    int_or_none,
-    parse_iso8601,
-    str_to_int,
+    parse_iso8601, str_to_int, determine_ext,
 )
+from ..utils import int_or_none
 
 
 class IzleseneIE(InfoExtractor):

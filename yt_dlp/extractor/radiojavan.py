@@ -5,10 +5,9 @@ import re
 from .common import InfoExtractor
 from ..utils import (
     parse_resolution,
-    str_to_int,
     unified_strdate,
     urlencode_postdata,
-    urljoin,
+    urljoin, str_to_int,
 )
 
 

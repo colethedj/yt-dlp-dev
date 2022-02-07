@@ -4,20 +4,17 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
-    determine_ext,
-    ExtractorError,
     extract_attributes,
-    find_xpath_attr,
     get_element_by_attribute,
     get_element_by_class,
-    int_or_none,
     js_to_json,
     merge_dicts,
     parse_iso8601,
     smuggle_url,
-    str_to_int,
-    unescapeHTML,
+    unescapeHTML, str_to_int, determine_ext, find_xpath_attr,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 from .senategov import SenateISVPIE
 from .ustream import UstreamIE
 

@@ -7,17 +7,14 @@ from .adobepass import AdobePassIE
 from ..compat import compat_str
 from ..utils import (
     fix_xml_ampersands,
-    xpath_text,
-    int_or_none,
-    determine_ext,
     float_or_none,
     parse_duration,
-    xpath_attr,
     update_url_query,
-    ExtractorError,
     strip_or_none,
-    url_or_none,
+    url_or_none, determine_ext, xpath_text, xpath_attr,
 )
+from ..utils import int_or_none
+from ..exceptions import ExtractorError
 
 
 class TurnerBaseIE(AdobePassIE):
