@@ -294,6 +294,15 @@ class YDLHTTPHeaderStore(Message):
     def copy(self):
         return YDLHTTPHeaderStore(self)
 
+    """
+    Message requires value to be a str, but some extractors provide headers as integers.
+    """
+    def add_header(self, _name: str, _value: str, **kwargs):
+        return super().add_header(_name, str(_value) if isinstance(_value, int) else _value, **kwargs)
+
+    def replace_header(self, _name: str, _value: str, **kwargs):
+        return super().add_header(_name, str(_value) if isinstance(_value, int) else _value, **kwargs)
+
 
 class YDLUniqueHTTPHeaderStore(YDLHTTPHeaderStore):
     def add_header(self, *args, **kwargs):
