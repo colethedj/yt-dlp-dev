@@ -8,7 +8,6 @@ from ..utils import (
     _configuration_args,
     encodeFilename,
     PostProcessingError,
-    write_string,
 )
 
 
@@ -75,9 +74,8 @@ class PostProcessor(metaclass=PostProcessorMetaClass):
             return self._downloader.report_warning(text, *args, **kwargs)
 
     def deprecation_warning(self, text):
-        if self._downloader:
-            return self._downloader.deprecation_warning(text)
-        write_string(f'DeprecationWarning: {text}')
+        import warnings
+        warnings.warn(DeprecationWarning(text), stacklevel=2)
 
     def report_error(self, text, *args, **kwargs):
         # Exists only for compatibility. Do not use
