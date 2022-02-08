@@ -245,7 +245,7 @@ class HTTPError(RequestError, tempfile._TemporaryFileWrapper):
             msg = '[Client Error] ' + msg
         elif 500 <= self.code < 600:
             msg = '[Server Error] ' + msg
-        super().__init__(msg, url)
+        super().__init__(url, msg)
         tempfile._TemporaryFileWrapper.__init__(self, response, '<yt-dlp response>', delete=False)
 
 
@@ -370,7 +370,7 @@ Other notes:
 
 
 """
-network_exceptions = [compat_urllib_error.URLError, compat_http_client.HTTPException, socket.error]
+network_exceptions = [compat_urllib_error.URLError, compat_http_client.HTTPException, socket.error, HTTPError]
 if hasattr(ssl, 'CertificateError'):
     network_exceptions.append(ssl.CertificateError)
 network_exceptions = tuple(network_exceptions)

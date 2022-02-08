@@ -8,6 +8,7 @@ import socket
 import ssl
 import urllib.error
 import urllib.request
+import urllib.response
 import zlib
 
 from ...compat import (
@@ -28,7 +29,8 @@ from ...exceptions import (
     ResolveHostError,
     SSLError,
     UnsupportedError,
-    bug_reports_message
+    bug_reports_message,
+    HTTPError
 )
 from ..common import HTTPResponse, YDLBackendHandler, YDLRequest, HEADRequest
 from ..socksproxy import ProxyType, sockssocket
@@ -439,7 +441,8 @@ yt-dlp adapters
 """
 
 
-class HttplibResponseAdapter(HTTPResponse):
+# Supports both addinfourl and http.client.HTTPResponse
+class UrllibResponseAdapter(HTTPResponse):
     def __init__(self, res: http.client.HTTPResponse):
         self._res = res
         super().__init__(
@@ -506,15 +509,16 @@ class UrllibHandler(YDLBackendHandler):
         )
 
         if not request.compression:
-            urllib_req.add_header('Youtubedl-no-compression', True)
+            urllib_req.add_header('Youtubedl-no-compression', '1')
         if request.proxy:
             urllib_req.add_header('Ytdl-request-proxy',request.proxy)
         try:
             res = self._opener.open(urllib_req, timeout=request.timeout or self.socket_timeout)
 
         except urllib.error.HTTPError as e:
-            # TODO: create a HTTPResponse from HTTPError
-            raise NotImplementedError
+            # TODO: we may have an HTTPResponse and an addinfourl
+            if isinstance(e.fp, (http.client.HTTPResponse, urllib.response.addinfourl)):
+                raise HTTPError(UrllibResponseAdapter(e.fp), url=e.geturl())
 
         except urllib.error.URLError as e:
             url = e.filename
@@ -532,5 +536,6 @@ class UrllibHandler(YDLBackendHandler):
 
         except http.client.HTTPException as e:
             raise TransportError(cause=e) from e
-        return HttplibResponseAdapter(res)
+
+        return UrllibResponseAdapter(res)
 
