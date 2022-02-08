@@ -3,12 +3,11 @@ from __future__ import unicode_literals
 
 
 from .common import InfoExtractor
-from ..compat import compat_HTTPError
 from ..utils import (
     int_or_none,
     urlencode_postdata,
 )
-from ..exceptions import ExtractorError
+from ..exceptions import ExtractorError, HTTPError
 
 
 class AtresPlayerIE(InfoExtractor):
@@ -41,7 +40,7 @@ class AtresPlayerIE(InfoExtractor):
         self._login()
 
     def _handle_error(self, e, code):
-        if isinstance(e.cause, compat_HTTPError) and e.cause.code == code:
+        if isinstance(e.cause, HTTPError) and e.cause.code == code:
             error = self._parse_json(e.cause.read(), None)
             if error.get('error') == 'required_registered':
                 self.raise_login_required()

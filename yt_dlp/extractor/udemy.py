@@ -4,7 +4,6 @@ import re
 
 from .common import InfoExtractor
 from ..compat import (
-    compat_HTTPError,
     compat_str,
     compat_urllib_request,
     compat_urlparse,
@@ -21,7 +20,7 @@ from ..utils import (
     url_or_none,
     urlencode_postdata,
 )
-from ..exceptions import ExtractorError
+from ..exceptions import ExtractorError, HTTPError
 
 
 class UdemyIE(InfoExtractor):
@@ -221,7 +220,7 @@ class UdemyIE(InfoExtractor):
             lecture = self._download_lecture(course_id, lecture_id)
         except ExtractorError as e:
             # Error could possibly mean we are not enrolled in the course
-            if isinstance(e.cause, compat_HTTPError) and e.cause.code == 403:
+            if isinstance(e.cause, HTTPError) and e.cause.code == 403:
                 self._enroll_course(url, webpage, course_id)
                 lecture = self._download_lecture(course_id, lecture_id)
             else:

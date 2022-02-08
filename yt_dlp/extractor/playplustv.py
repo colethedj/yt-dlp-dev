@@ -4,12 +4,11 @@ from __future__ import unicode_literals
 import json
 
 from .common import InfoExtractor
-from ..compat import compat_HTTPError
 from ..utils import (
     clean_html,
     int_or_none,
 )
-from ..exceptions import ExtractorError
+from ..exceptions import ExtractorError, HTTPError
 
 from ..network.common import PUTRequest
 
@@ -55,7 +54,7 @@ class PlayPlusTVIE(InfoExtractor):
         try:
             self._token = self._download_json(req, None)['token']
         except ExtractorError as e:
-            if isinstance(e.cause, compat_HTTPError) and e.cause.code == 401:
+            if isinstance(e.cause, HTTPError) and e.cause.code == 401:
                 raise ExtractorError(self._parse_json(
                     e.cause.read(), None)['errorMessage'], expected=True)
             raise

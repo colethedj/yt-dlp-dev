@@ -5,9 +5,9 @@ import re
 import time
 
 from .ffmpeg import FFmpegPostProcessor
-from ..compat import compat_urllib_parse_urlencode, compat_HTTPError
+from ..compat import compat_urllib_parse_urlencode
 from ..utils import sanitized_Request
-from ..exceptions import PostProcessingError, network_exceptions
+from ..exceptions import PostProcessingError, network_exceptions, HTTPError
 
 
 class SponsorBlockPP(FFmpegPostProcessor):
@@ -107,7 +107,7 @@ class SponsorBlockPP(FFmpegPostProcessor):
                 rsp = self._downloader.urlopen(sanitized_Request(url))
                 return json.loads(rsp.read().decode(rsp.info().get_param('charset') or 'utf-8'))
             except network_exceptions as e:
-                if isinstance(e, compat_HTTPError) and e.code == 404:
+                if isinstance(e, HTTPError) and e.code == 404:
                     return []
                 if retries < max_retries:
                     self.report_warning(f'{e}. Retrying...')

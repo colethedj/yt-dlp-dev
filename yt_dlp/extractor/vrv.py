@@ -11,7 +11,6 @@ import time
 
 from .common import InfoExtractor
 from ..compat import (
-    compat_HTTPError,
     compat_urllib_parse_urlencode,
     compat_urllib_parse,
 )
@@ -21,7 +20,7 @@ from ..utils import (
     join_nonempty,
     traverse_obj,
 )
-from ..exceptions import ExtractorError
+from ..exceptions import ExtractorError, HTTPError
 
 
 class VRVBaseIE(InfoExtractor):
@@ -60,7 +59,7 @@ class VRVBaseIE(InfoExtractor):
                 '?'.join([base_url, encoded_query]), video_id,
                 note='Downloading %s JSON metadata' % note, headers=headers, data=data)
         except ExtractorError as e:
-            if isinstance(e.cause, compat_HTTPError) and e.cause.code == 401:
+            if isinstance(e.cause, HTTPError) and e.cause.code == 401:
                 raise ExtractorError(json.loads(e.cause.read().decode())['message'], expected=True)
             raise
 

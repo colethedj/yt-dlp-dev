@@ -4,7 +4,6 @@ from __future__ import unicode_literals
 import json
 
 from .common import InfoExtractor
-from ..compat import compat_HTTPError
 from ..utils import (
     clean_html,
     int_or_none,
@@ -12,7 +11,7 @@ from ..utils import (
     sanitized_Request,
     try_get,
 )
-from ..exceptions import ExtractorError
+from ..exceptions import ExtractorError, HTTPError
 
 
 class HRTiBaseIE(InfoExtractor):
@@ -80,7 +79,7 @@ class HRTiBaseIE(InfoExtractor):
                 self._login_url, None, note='Logging in', errnote='Unable to log in',
                 data=json.dumps(auth_data).encode('utf-8'))
         except ExtractorError as e:
-            if isinstance(e.cause, compat_HTTPError) and e.cause.code == 406:
+            if isinstance(e.cause, HTTPError) and e.cause.code == 406:
                 auth_info = self._parse_json(e.cause.read().encode('utf-8'), None)
             else:
                 raise

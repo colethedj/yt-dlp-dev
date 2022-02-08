@@ -9,7 +9,6 @@ import re
 
 from .common import InfoExtractor
 from ..compat import (
-    compat_HTTPError,
     compat_str,
     compat_urllib_request,
 )
@@ -28,7 +27,7 @@ from ..utils import (
     urlencode_postdata,
     url_or_none,
 )
-from ..exceptions import ExtractorError
+from ..exceptions import ExtractorError, HTTPError
 
 
 class PornHubBaseIE(InfoExtractor):
@@ -598,7 +597,7 @@ class PornHubPagedPlaylistBaseIE(PornHubPlaylistBaseIE):
                 base_url, item_id, note, query={'page': num})
 
         def is_404(e):
-            return isinstance(e.cause, compat_HTTPError) and e.cause.code == 404
+            return isinstance(e.cause, HTTPError) and e.cause.code == 404
 
         base_url = url
         has_page = page is not None

@@ -4,13 +4,12 @@ from __future__ import unicode_literals
 import re
 
 from .common import InfoExtractor
-from ..compat import compat_HTTPError
 from ..utils import (
     int_or_none,
     unsmuggle_url,
     url_or_none,
 )
-from ..exceptions import ExtractorError
+from ..exceptions import ExtractorError, HTTPError
 
 
 class EaglePlatformIE(InfoExtractor):
@@ -111,7 +110,7 @@ class EaglePlatformIE(InfoExtractor):
             response = super(EaglePlatformIE, self)._download_json(
                 url_or_request, video_id, *args, **kwargs)
         except ExtractorError as ee:
-            if isinstance(ee.cause, compat_HTTPError):
+            if isinstance(ee.cause, HTTPError):
                 response = self._parse_json(ee.cause.read().decode('utf-8'), video_id)
                 self._handle_error(response)
             raise

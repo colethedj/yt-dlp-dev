@@ -4,12 +4,11 @@ from __future__ import unicode_literals
 import json
 
 from .radiocanada import RadioCanadaIE
-from ..compat import compat_HTTPError
 from ..utils import (
     int_or_none,
     merge_dicts,
 )
-from ..exceptions import ExtractorError
+from ..exceptions import ExtractorError, HTTPError
 
 
 class TouTvIE(RadioCanadaIE):
@@ -58,7 +57,7 @@ class TouTvIE(RadioCanadaIE):
                     'Content-Type': 'application/json;charset=utf-8',
                 })['access_token']
         except ExtractorError as e:
-            if isinstance(e.cause, compat_HTTPError) and e.cause.code == 401:
+            if isinstance(e.cause, HTTPError) and e.cause.code == 401:
                 error = self._parse_json(e.cause.read().decode(), None)['Message']
                 raise ExtractorError(error, expected=True)
             raise

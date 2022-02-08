@@ -7,9 +7,6 @@ import re
 import time
 
 from .common import InfoExtractor
-from ..compat import (
-    compat_HTTPError,
-)
 from ..utils import (
     format_field,
     float_or_none,
@@ -23,7 +20,7 @@ from ..utils import (
     url_or_none,
     urlencode_postdata,
 )
-from ..exceptions import ExtractorError
+from ..exceptions import ExtractorError, HTTPError
 
 
 class InstagramBaseIE(InfoExtractor):
@@ -526,7 +523,7 @@ class InstagramPlaylistBaseIE(InstagramBaseIE):
                 except ExtractorError as e:
                     # if it's an error caused by a bad query, and there are
                     # more GIS templates to try, ignore it and keep trying
-                    if isinstance(e.cause, compat_HTTPError) and e.cause.code == 403:
+                    if isinstance(e.cause, HTTPError) and e.cause.code == 403:
                         if gis_tmpl != gis_tmpls[-1]:
                             continue
                     raise

@@ -2,7 +2,6 @@
 from __future__ import unicode_literals
 
 from .common import InfoExtractor
-from ..compat import compat_HTTPError
 from ..utils import (
     determine_ext,
     int_or_none,
@@ -11,7 +10,7 @@ from ..utils import (
     unified_timestamp,
     url_or_none
 )
-from ..exceptions import ExtractorError
+from ..exceptions import ExtractorError, HTTPError
 
 
 class TrueIDIE(InfoExtractor):
@@ -91,7 +90,7 @@ class TrueIDIE(InfoExtractor):
             stream_data = self._download_json(
                 f'https://{domain}/cmsPostProxy/contents/video/{video_id}/streamer?os=android', video_id, data=b'')['data']
         except ExtractorError as e:
-            if not isinstance(e.cause, compat_HTTPError):
+            if not isinstance(e.cause, HTTPError):
                 raise e
             errmsg = self._parse_json(e.cause.read().decode(), video_id)['meta']['message']
             if 'country' in errmsg:

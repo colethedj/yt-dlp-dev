@@ -7,8 +7,7 @@ from .common import InfoExtractor
 from .youtube import YoutubeIE, YoutubeBaseInfoExtractor
 from ..compat import (
     compat_urllib_parse_unquote,
-    compat_urllib_parse_unquote_plus,
-    compat_HTTPError
+    compat_urllib_parse_unquote_plus
 )
 from ..utils import (
     clean_html,
@@ -32,7 +31,7 @@ from ..utils import (
     urlhandle_detect_ext,
     url_or_none
 )
-from ..exceptions import bug_reports_message, ExtractorError
+from ..exceptions import bug_reports_message, ExtractorError, HTTPError
 from ..network.common import HEADRequest
 
 
@@ -624,7 +623,7 @@ class YoutubeWebArchiveIE(InfoExtractor):
                 video_id, note='Fetching archived video file url', expected_status=True)
         except ExtractorError as e:
             # HTTP Error 404 is expected if the video is not saved.
-            if isinstance(e.cause, compat_HTTPError) and e.cause.code == 404:
+            if isinstance(e.cause, HTTPError) and e.cause.code == 404:
                 self.raise_no_formats(
                     'The requested video is not archived, indexed, or there is an issue with web.archive.org',
                     expected=True)

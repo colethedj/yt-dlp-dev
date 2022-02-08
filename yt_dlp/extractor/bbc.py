@@ -9,7 +9,6 @@ import re
 from .common import InfoExtractor
 from ..compat import (
     compat_etree_Element,
-    compat_HTTPError,
     compat_str,
     compat_urlparse,
 )
@@ -32,7 +31,7 @@ from ..utils import (
     urlencode_postdata,
     urljoin,
 )
-from ..exceptions import ExtractorError
+from ..exceptions import ExtractorError, HTTPError
 
 
 class BBCCoUkIE(InfoExtractor):
@@ -476,7 +475,7 @@ class BBCCoUkIE(InfoExtractor):
 
             return programme_id, title, description, duration, formats, subtitles
         except ExtractorError as ee:
-            if not (isinstance(ee.cause, compat_HTTPError) and ee.cause.code == 404):
+            if not (isinstance(ee.cause, HTTPError) and ee.cause.code == 404):
                 raise
 
         # fallback to legacy playlist
@@ -973,7 +972,7 @@ class BBCIE(BBCCoUkIE):
                                     # Some playlist URL may fail with 500, at the same time
                                     # the other one may work fine (e.g.
                                     # http://www.bbc.com/turkce/haberler/2015/06/150615_telabyad_kentin_cogu)
-                                    if isinstance(e.cause, compat_HTTPError) and e.cause.code == 500:
+                                    if isinstance(e.cause, HTTPError) and e.cause.code == 500:
                                         continue
                                     raise
                             if entry:

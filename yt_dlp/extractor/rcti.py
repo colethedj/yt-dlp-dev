@@ -6,14 +6,13 @@ import random
 import time
 
 from .common import InfoExtractor
-from ..compat import compat_HTTPError
 from ..utils import (
     dict_get,
     strip_or_none,
     traverse_obj,
     try_get
 )
-from ..exceptions import ExtractorError
+from ..exceptions import ExtractorError, HTTPError
 
 
 class RCTIPlusBaseIE(InfoExtractor):
@@ -189,7 +188,7 @@ class RCTIPlusIE(RCTIPlusBaseIE):
         try:
             formats = self._extract_m3u8_formats(video_url, display_id, 'mp4', headers={'Referer': 'https://www.rctiplus.com/'})
         except ExtractorError as e:
-            if isinstance(e.cause, compat_HTTPError) and e.cause.code == 403:
+            if isinstance(e.cause, HTTPError) and e.cause.code == 403:
                 self.raise_geo_restricted(countries=['ID'], metadata_available=True)
             else:
                 raise e

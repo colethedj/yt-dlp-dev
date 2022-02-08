@@ -9,9 +9,7 @@ from ..utils import (
     str_or_none,
     determine_ext,
 )
-from ..exceptions import ExtractorError
-
-from ..compat import compat_HTTPError
+from ..exceptions import ExtractorError, HTTPError
 
 
 class AnimeLabBaseIE(InfoExtractor):
@@ -45,7 +43,7 @@ class AnimeLabBaseIE(InfoExtractor):
                 data=urlencode_postdata(login_form),
                 headers={'Content-Type': 'application/x-www-form-urlencoded'})
         except ExtractorError as e:
-            if isinstance(e.cause, compat_HTTPError) and e.cause.code == 400:
+            if isinstance(e.cause, HTTPError) and e.cause.code == 400:
                 raise ExtractorError('Unable to log in (wrong credentials?)', expected=True)
             else:
                 raise

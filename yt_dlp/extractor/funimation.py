@@ -6,7 +6,6 @@ import re
 import string
 
 from .common import InfoExtractor
-from ..compat import compat_HTTPError
 from ..utils import (
     determine_ext,
     int_or_none,
@@ -19,7 +18,7 @@ from ..utils import (
     try_get,
     urlencode_postdata,
 )
-from ..exceptions import ExtractorError
+from ..exceptions import ExtractorError, HTTPError
 
 
 class FunimationBaseIE(InfoExtractor):
@@ -49,7 +48,7 @@ class FunimationBaseIE(InfoExtractor):
                 }))
             return data['token']
         except ExtractorError as e:
-            if isinstance(e.cause, compat_HTTPError) and e.cause.code == 401:
+            if isinstance(e.cause, HTTPError) and e.cause.code == 401:
                 error = self._parse_json(e.cause.read().decode(), None)['error']
                 raise ExtractorError(error, expected=True)
             raise

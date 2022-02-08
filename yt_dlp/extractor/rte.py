@@ -4,7 +4,6 @@ from __future__ import unicode_literals
 import re
 
 from .common import InfoExtractor
-from ..compat import compat_HTTPError
 from ..utils import (
     float_or_none,
     parse_iso8601,
@@ -13,7 +12,7 @@ from ..utils import (
     unescapeHTML,
     url_or_none,
 )
-from ..exceptions import ExtractorError
+from ..exceptions import ExtractorError, HTTPError
 
 
 class RteBaseIE(InfoExtractor):
@@ -34,7 +33,7 @@ class RteBaseIE(InfoExtractor):
             except ExtractorError as ee:
                 if num < len(ENDPOINTS) or formats:
                     continue
-                if isinstance(ee.cause, compat_HTTPError) and ee.cause.code == 404:
+                if isinstance(ee.cause, HTTPError) and ee.cause.code == 404:
                     error_info = self._parse_json(ee.cause.read().decode(), item_id, fatal=False)
                     if error_info:
                         raise ExtractorError(

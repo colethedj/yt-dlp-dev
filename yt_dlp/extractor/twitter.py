@@ -5,7 +5,6 @@ import re
 
 from .common import InfoExtractor
 from ..compat import (
-    compat_HTTPError,
     compat_parse_qs,
     compat_urllib_parse_unquote,
     compat_urllib_parse_urlparse,
@@ -23,7 +22,7 @@ from ..utils import (
     url_or_none,
     xpath_text,
 )
-from ..exceptions import ExtractorError
+from ..exceptions import ExtractorError, HTTPError
 
 from .periscope import (
     PeriscopeBaseIE,
@@ -100,7 +99,7 @@ class TwitterBaseIE(InfoExtractor):
             return self._download_json(
                 self._API_BASE + path, video_id, headers=headers, query=query)
         except ExtractorError as e:
-            if isinstance(e.cause, compat_HTTPError) and e.cause.code == 403:
+            if isinstance(e.cause, HTTPError) and e.cause.code == 403:
                 raise ExtractorError(self._parse_json(
                     e.cause.read().decode(),
                     video_id)['errors'][0]['message'], expected=True)

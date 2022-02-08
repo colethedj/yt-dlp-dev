@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..compat import (
-    compat_HTTPError,
     compat_str,
 )
 from ..utils import (
@@ -11,7 +10,7 @@ from ..utils import (
     try_get,
     urlencode_postdata,
 )
-from ..exceptions import ExtractorError
+from ..exceptions import ExtractorError, HTTPError
 
 
 class TVPlayerIE(InfoExtractor):
@@ -67,7 +66,7 @@ class TVPlayerIE(InfoExtractor):
                     'validate': validate,
                 }))['tvplayer']['response']
         except ExtractorError as e:
-            if isinstance(e.cause, compat_HTTPError):
+            if isinstance(e.cause, HTTPError):
                 response = self._parse_json(
                     e.cause.read().decode(), resource_id)['tvplayer']['response']
                 raise ExtractorError(

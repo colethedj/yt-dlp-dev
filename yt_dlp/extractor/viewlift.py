@@ -4,13 +4,12 @@ import json
 import re
 
 from .common import InfoExtractor
-from ..compat import compat_HTTPError
 from ..utils import (
     int_or_none,
     parse_age_limit,
     traverse_obj,
 )
-from ..exceptions import ExtractorError
+from ..exceptions import ExtractorError, HTTPError
 
 
 class ViewLiftBaseIE(InfoExtractor):
@@ -52,7 +51,7 @@ class ViewLiftBaseIE(InfoExtractor):
             return self._download_json(
                 self._API_BASE + path, video_id, headers={'Authorization': self._TOKENS.get(site)}, query=query)
         except ExtractorError as e:
-            if isinstance(e.cause, compat_HTTPError) and e.cause.code == 403:
+            if isinstance(e.cause, HTTPError) and e.cause.code == 403:
                 webpage = e.cause.read().decode()
                 try:
                     error_message = traverse_obj(json.loads(webpage), 'errorMessage', 'message')
