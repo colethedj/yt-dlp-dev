@@ -151,9 +151,7 @@ class HTTPResponse(ABC, io.IOBase):
         self.reason = reason
         if not reason:
             try:
-                self.reason = HTTPStatus(status).name
-                if self.reason:
-                    self.reason = self.reason.replace('_', ' ').title()
+                self.reason = HTTPStatus(status).name.replace('_', ' ').title()
             except ValueError:
                 pass
         self.version = version  # HTTP Version, e.g. HTTP 1.1 = 11
