@@ -3559,7 +3559,7 @@ class YoutubeDL(object):
         if isinstance(req, compat_urllib_request.Request):
             req = req_to_ydlreq(req)
         if req.headers.get('Youtubedl-no-compression'):
-            req.compression = True
+            req.compression = False
             del req.headers['Youtubedl-no-compression']
         proxy = req.headers.get('Ytdl-request-proxy')
         if proxy:
