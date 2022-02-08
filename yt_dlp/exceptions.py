@@ -226,7 +226,7 @@ class XAttrUnavailableError(YoutubeDLError):
 
 # TODO: deal with msg in places where we don't always want to specify it
 class RequestError(YoutubeDLError):
-    def __init__(self, url=None, msg=None):
+    def __init__(self, msg=None, url=None):
         super().__init__(msg)
         self.url = url
 
@@ -245,7 +245,7 @@ class HTTPError(RequestError, tempfile._TemporaryFileWrapper):
             msg = '[Client Error] ' + msg
         elif 500 <= self.code < 600:
             msg = '[Server Error] ' + msg
-        super().__init__(url, msg)
+        super().__init__(msg, url)
         tempfile._TemporaryFileWrapper.__init__(self, response, '<yt-dlp response>', delete=False)
 
 
@@ -272,7 +272,7 @@ class ConnectionTimeoutError(TransportError, Timeout):
 class ResolveHostError(TransportError):
     def __init__(self, url=None, cause=None, host=None):
         msg = f'Failed to resolve host' + f' {host or urllib.parse.urlparse(url).hostname if url else ""}'
-        super().__init__(url, msg=msg, cause=cause)
+        super().__init__(msg, url, cause=cause)
 
 
 class ConnectionReset(TransportError):

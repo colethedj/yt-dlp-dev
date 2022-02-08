@@ -539,7 +539,7 @@ class UrllibHandler(YDLBackendHandler):
                     raise ConnectionReset(url, cause=e)
                 if e.errno == errno.ETIMEDOUT:
                     raise ReadTimeoutError(url, cause=e)
-                raise SSLError(url=url, cause=e) from e
+                raise SSLError(url=url, msg=str(e.reason), cause=e) from e
             except:
                 raise TransportError(url=url, cause=e) from e
 
