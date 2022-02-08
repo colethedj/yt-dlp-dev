@@ -19,7 +19,7 @@ from ..utils import (
     sanitized_Request,
     write_xattr,
 )
-from ..exceptions import ThrottledDownload, ContentTooShortError, XAttrMetadataError, XAttrUnavailableError
+from ..exceptions import ThrottledDownload, ContentTooShortError, XAttrMetadataError, XAttrUnavailableError, ConnectionReset
 
 
 class HttpFD(FileDownloader):
@@ -188,7 +188,7 @@ class HttpFD(FileDownloader):
                     # Unexpected HTTP error
                     raise
                 raise RetryDownload(err)
-            except socket.timeout as err:
+            except (ConnectionReset, TimeoutError) as err:
                 raise RetryDownload(err)
             except socket.error as err:
                 if err.errno in (errno.ECONNRESET, errno.ETIMEDOUT):
@@ -242,7 +242,7 @@ class HttpFD(FileDownloader):
                     data_block = ctx.data.read(block_size if not is_test else min(block_size, data_len - byte_counter))
                 # socket.timeout is a subclass of socket.error but may not have
                 # errno set
-                except socket.timeout as e:
+                except (TimeoutError, ConnectionReset) as e:
                     retry(e)
                 except socket.error as e:
                     # SSLError on python 2 (inherits socket.error) may have

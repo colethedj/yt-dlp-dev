@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+import errno
 import functools
 import gzip
 import http.client
@@ -460,10 +461,14 @@ class UrllibResponseAdapter(HTTPResponse):
             raise IncompleteRead(err.partial, self.geturl(), cause=err, expected=err.expected) from err
         except ConnectionResetError as err:
             raise ConnectionReset(self.geturl(), cause=err) from err
-        except socket.timeout as err:
+        except TimeoutError as err:
             raise ReadTimeoutError(self.geturl(), cause=err) from err
-        except (OSError, http.client.HTTPException) as err:
-            raise TransportError(self.geturl(), cause=err) from err
+        except (OSError, http.client.HTTPException) as e:
+            if e.errno == errno.ECONNRESET:
+                raise ConnectionReset(self.geturl(), cause=e) from e
+            if e.errno == errno.ETIMEDOUT:
+                raise ReadTimeoutError(self.geturl(), cause=e) from e
+            raise TransportError(self.geturl(), cause=e) from e
 
     def close(self):
         super().close()
@@ -530,6 +535,10 @@ class UrllibHandler(YDLBackendHandler):
             except socket.gaierror as e:
                 raise ResolveHostError(url=url, cause=e) from e
             except ssl.SSLError as e:
+                if e.errno == errno.ECONNRESET:
+                    raise ConnectionReset(url, cause=e)
+                if e.errno == errno.ETIMEDOUT:
+                    raise ReadTimeoutError(url, cause=e)
                 raise SSLError(url=url, cause=e) from e
             except:
                 raise TransportError(url=url, cause=e) from e
