@@ -45,8 +45,18 @@ from .compat import (
     windows_enable_vt_mode
 )
 from .cookies import load_cookies
-from .network.backends import UrllibHandler, make_HTTPS_handler, YoutubeDLHandler, YoutubeDLCookieProcessor, \
-    YoutubeDLRedirectHandler, PerRequestProxyHandler
+from .network.backends import (
+    UrllibHandler,
+    UnsupportedBackendHandler
+)
+# TODO
+from .network.backends._urllib import (
+    make_HTTPS_handler,
+    YoutubeDLHandler,
+    YoutubeDLCookieProcessor,
+    YoutubeDLRedirectHandler,
+    PerRequestProxyHandler
+)
 from .utils import (
     age_restricted,
     args_to_str,
@@ -145,7 +155,6 @@ from .postprocessor import (
 from .network.common import (
     HEADRequest,
     Session,
-    UnsupportedBackendHandler,
     YDLRequest,
     req_to_ydlreq
 )
@@ -155,8 +164,6 @@ from .version import __version__, RELEASE_GIT_HEAD
 
 if compat_os_name == 'nt':
     import ctypes
-
-import typing
 
 
 class YoutubeDL(object):

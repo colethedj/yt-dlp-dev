@@ -25,7 +25,7 @@ from .utils import (
     Popen,
     YDLLogger
 )
-from .network.backends import YoutubeDLCookieJar
+from .network.common import YoutubeDLCookieJar
 
 try:
     import sqlite3

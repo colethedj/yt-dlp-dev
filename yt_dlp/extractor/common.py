@@ -84,7 +84,7 @@ from ..utils import (
 )
 from ..exceptions import bug_reports_message, ExtractorError, UnsupportedError, RegexNotFoundError, GeoRestrictedError, \
     network_exceptions
-from ..network.backends import update_Request
+from ..network.backends._urllib import update_Request
 
 
 class InfoExtractor(object):

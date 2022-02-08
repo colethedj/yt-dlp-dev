@@ -1,113 +1,47 @@
 from __future__ import unicode_literals
 
-import collections
-import contextlib
 import functools
 import gzip
+import http.client
 import io
 import socket
 import ssl
-import sys
-import time
-import urllib.request
 import urllib.error
-import random
+import urllib.request
 import zlib
 
-from .common import (
-    HTTPResponse,
-    YDLBackendHandler, YDLRequest,
-    HEADRequest
+from ...compat import (
+    compat_urllib_request_DataHandler,
+    compat_urllib_request,
+    compat_http_client,
+    compat_brotli,
+    compat_urlparse,
+    compat_urllib_parse_unquote_plus,
+    compat_HTTPError
 )
-import http.client
-
-from .socksproxy import ProxyType, sockssocket
-from .utils import make_ssl_context
-from ..compat import compat_urllib_request_DataHandler, compat_urllib_request, compat_http_client, compat_brotli, \
-    compat_urlparse, compat_urllib_parse_unquote_plus, compat_cookiejar, compat_str, compat_HTTPError
+from ...exceptions import (
+    IncompleteRead,
+    ConnectionReset,
+    ReadTimeoutError,
+    TransportError,
+    ConnectionTimeoutError,
+    ResolveHostError,
+    SSLError,
+    UnsupportedError,
+    bug_reports_message
+)
+from ..common import HTTPResponse, YDLBackendHandler, YDLRequest, HEADRequest
+from ..socksproxy import ProxyType, sockssocket
 from ..utils import (
-    std_headers, escape_url, update_url_query
+    make_ssl_context,
+    random_user_agent
 )
-from ..exceptions import bug_reports_message, UnsupportedError, HTTPError, TransportError, ReadTimeoutError, \
-    ConnectionTimeoutError, ResolveHostError, ConnectionReset, IncompleteRead, SSLError
+from ...utils import (
+    escape_url,
+    update_url_query,
+    std_headers
+)
 
-from ..compat import compat_brotli
-
-
-class HttplibResponseAdapter(HTTPResponse):
-    def __init__(self, res: http.client.HTTPResponse):
-        self._res = res
-        super().__init__(
-            headers=res.headers, status=res.status,
-            version=res.version if hasattr(res, 'version') else None)
-
-    def geturl(self):
-        return self._res.geturl()
-
-    def read(self, amt=None):
-        try:
-            return self._res.read(amt)
-        # TODO: handle exceptions
-        except http.client.IncompleteRead as err:
-            raise IncompleteRead(err.partial, self.geturl(), cause=err, expected=err.expected) from err
-        except ConnectionResetError as err:
-            raise ConnectionReset(self.geturl(), cause=err) from err
-        except socket.timeout as err:
-            raise ReadTimeoutError(self.geturl(), cause=err) from err
-        except (OSError, http.client.HTTPException) as err:
-            raise TransportError(self.geturl(), cause=err) from err
-
-    def close(self):
-        super().close()
-        return self._res.close()
-
-    def tell(self) -> int:
-        return self._res.tell()
-
-
-def random_user_agent():
-    _USER_AGENT_TPL = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/%s Safari/537.36'
-    _CHROME_VERSIONS = (
-        '90.0.4430.212',
-        '90.0.4430.24',
-        '90.0.4430.70',
-        '90.0.4430.72',
-        '90.0.4430.85',
-        '90.0.4430.93',
-        '91.0.4472.101',
-        '91.0.4472.106',
-        '91.0.4472.114',
-        '91.0.4472.124',
-        '91.0.4472.164',
-        '91.0.4472.19',
-        '91.0.4472.77',
-        '92.0.4515.107',
-        '92.0.4515.115',
-        '92.0.4515.131',
-        '92.0.4515.159',
-        '92.0.4515.43',
-        '93.0.4556.0',
-        '93.0.4577.15',
-        '93.0.4577.63',
-        '93.0.4577.82',
-        '94.0.4606.41',
-        '94.0.4606.54',
-        '94.0.4606.61',
-        '94.0.4606.71',
-        '94.0.4606.81',
-        '94.0.4606.85',
-        '95.0.4638.17',
-        '95.0.4638.50',
-        '95.0.4638.54',
-        '95.0.4638.69',
-        '95.0.4638.74',
-        '96.0.4664.18',
-        '96.0.4664.45',
-        '96.0.4664.55',
-        '96.0.4664.93',
-        '97.0.4692.20',
-    )
-    return _USER_AGENT_TPL % random.choice(_CHROME_VERSIONS)
 
 URLLIB_SUPPORTED_ENCODINGS = [
     'gzip', 'deflate'
@@ -121,72 +55,8 @@ urllib_std_headers = {
     'Accept-Encoding': ', '.join(URLLIB_SUPPORTED_ENCODINGS),
     'Accept-Language': 'en-us,en;q=0.5',
     'Sec-Fetch-Mode': 'navigate',
+    **std_headers
 }
-
-
-class UrllibHandler(YDLBackendHandler):
-    _SUPPORTED_PROTOCOLS = ['http', 'https']
-
-    def _initialize(self):
-        cookie_processor = YoutubeDLCookieProcessor(self.cookiejar)
-        proxy_handler = PerRequestProxyHandler()
-        debuglevel = 1 if self.params.get('debug_printtraffic') else 0
-        https_handler = make_HTTPS_handler(self.params, debuglevel=debuglevel)
-        ydlh = YoutubeDLHandler(self.params, debuglevel=debuglevel)
-        redirect_handler = YoutubeDLRedirectHandler()
-        data_handler = compat_urllib_request_DataHandler()
-
-        # TODO: technically the following is not required now, but will keep in for now
-        # When passing our own FileHandler instance, build_opener won't add the
-        # default FileHandler and allows us to disable the file protocol, which
-        # can be used for malicious purposes (see
-        # https://github.com/ytdl-org/youtube-dl/issues/8227)
-        file_handler = urllib.request.FileHandler()
-        def file_open(*args, **kwargs):
-            raise urllib.error.URLError('file:// scheme is explicitly disabled in yt-dlp for security reasons')
-        file_handler.file_open = file_open
-        opener = urllib.request.build_opener(
-            proxy_handler, https_handler, cookie_processor, ydlh, redirect_handler, data_handler, file_handler)
-        # Delete the default user-agent header, which would otherwise apply in
-        # cases where our custom HTTP handler doesn't come into play
-        # (See https://github.com/ytdl-org/youtube-dl/issues/1309 for details)
-        opener.addheaders = []
-        self._opener = opener
-
-    def _real_handle(self, request: YDLRequest, **kwargs) -> HTTPResponse:
-        urllib_req = urllib.request.Request(
-            url=request.url, data=request.data, headers=dict(request.headers), origin_req_host=request.origin_req_host,
-            unverifiable=request.unverifiable, method=request.method
-        )
-
-        if not request.compression:
-            urllib_req.add_header('Youtubedl-no-compression', True)
-        if request.proxy:
-            urllib_req.add_header('Ytdl-request-proxy',request.proxy)
-        try:
-            res = self._opener.open(urllib_req, timeout=request.timeout or self.socket_timeout)
-
-        except urllib.error.HTTPError as e:
-            # TODO: create a HTTPResponse from HTTPError
-            raise NotImplementedError
-
-        except urllib.error.URLError as e:
-            url = e.filename
-            # TODO: what errors are raised outside URLError?
-            try:
-                raise e.reason from e
-            except TimeoutError as e:
-                raise ConnectionTimeoutError(url=url, cause=e) from e
-            except socket.gaierror as e:
-                raise ResolveHostError(url=url, cause=e) from e
-            except ssl.SSLError as e:
-                raise SSLError(url=url, cause=e) from e
-            except:
-                raise TransportError(url=url, cause=e) from e
-
-        except http.client.HTTPException as e:
-            raise TransportError(cause=e) from e
-        return HttplibResponseAdapter(res)
 
 
 def make_HTTPS_handler(params, **kwargs):
@@ -322,7 +192,7 @@ class YoutubeDLHandler(compat_urllib_request.HTTPHandler):
         if url != url_escaped:
             req = update_Request(req, url=url_escaped)
 
-        for h, v in std_headers.items():
+        for h, v in urllib_std_headers.items():
             # Capitalize is needed because of Python bug 2275: http://bugs.python.org/issue2275
             # The dict keys are capitalized because of this bug by urllib
             if h.capitalize() not in req.headers:
@@ -455,124 +325,6 @@ class YoutubeDLHTTPSHandler(compat_urllib_request.HTTPSHandler):
             req, **kwargs)
 
 
-class YoutubeDLCookieJar(compat_cookiejar.MozillaCookieJar):
-    """
-    See [1] for cookie file format.
-
-    1. https://curl.haxx.se/docs/http-cookies.html
-    """
-    _HTTPONLY_PREFIX = '#HttpOnly_'
-    _ENTRY_LEN = 7
-    _HEADER = '''# Netscape HTTP Cookie File
-# This file is generated by yt-dlp.  Do not edit.
-
-'''
-    _CookieFileEntry = collections.namedtuple(
-        'CookieFileEntry',
-        ('domain_name', 'include_subdomains', 'path', 'https_only', 'expires_at', 'name', 'value'))
-
-    def save(self, filename=None, ignore_discard=False, ignore_expires=False):
-        """
-        Save cookies to a file.
-
-        Most of the code is taken from CPython 3.8 and slightly adapted
-        to support cookie files with UTF-8 in both python 2 and 3.
-        """
-        if filename is None:
-            if self.filename is not None:
-                filename = self.filename
-            else:
-                raise ValueError(compat_cookiejar.MISSING_FILENAME_TEXT)
-
-        # Store session cookies with `expires` set to 0 instead of an empty
-        # string
-        for cookie in self:
-            if cookie.expires is None:
-                cookie.expires = 0
-
-        with io.open(filename, 'w', encoding='utf-8') as f:
-            f.write(self._HEADER)
-            now = time.time()
-            for cookie in self:
-                if not ignore_discard and cookie.discard:
-                    continue
-                if not ignore_expires and cookie.is_expired(now):
-                    continue
-                if cookie.secure:
-                    secure = 'TRUE'
-                else:
-                    secure = 'FALSE'
-                if cookie.domain.startswith('.'):
-                    initial_dot = 'TRUE'
-                else:
-                    initial_dot = 'FALSE'
-                if cookie.expires is not None:
-                    expires = compat_str(cookie.expires)
-                else:
-                    expires = ''
-                if cookie.value is None:
-                    # cookies.txt regards 'Set-Cookie: foo' as a cookie
-                    # with no name, whereas http.cookiejar regards it as a
-                    # cookie with no value.
-                    name = ''
-                    value = cookie.name
-                else:
-                    name = cookie.name
-                    value = cookie.value
-                f.write(
-                    '\t'.join([cookie.domain, initial_dot, cookie.path,
-                               secure, expires, name, value]) + '\n')
-
-    def load(self, filename=None, ignore_discard=False, ignore_expires=False):
-        """Load cookies from a file."""
-        if filename is None:
-            if self.filename is not None:
-                filename = self.filename
-            else:
-                raise ValueError(compat_cookiejar.MISSING_FILENAME_TEXT)
-
-        def prepare_line(line):
-            if line.startswith(self._HTTPONLY_PREFIX):
-                line = line[len(self._HTTPONLY_PREFIX):]
-            # comments and empty lines are fine
-            if line.startswith('#') or not line.strip():
-                return line
-            cookie_list = line.split('\t')
-            if len(cookie_list) != self._ENTRY_LEN:
-                raise compat_cookiejar.LoadError('invalid length %d' % len(cookie_list))
-            cookie = self._CookieFileEntry(*cookie_list)
-            if cookie.expires_at and not cookie.expires_at.isdigit():
-                raise compat_cookiejar.LoadError('invalid expires at %s' % cookie.expires_at)
-            return line
-
-        cf = io.StringIO()
-        with io.open(filename, encoding='utf-8') as f:
-            for line in f:
-                try:
-                    cf.write(prepare_line(line))
-                except compat_cookiejar.LoadError as e:
-                    write_string(
-                        'WARNING: skipping cookie file entry due to %s: %r\n'
-                        % (e, line), sys.stderr)
-                    continue
-        cf.seek(0)
-        self._really_load(cf, filename, ignore_discard, ignore_expires)
-        # Session cookies are denoted by either `expires` field set to
-        # an empty string or 0. MozillaCookieJar only recognizes the former
-        # (see [1]). So we need force the latter to be recognized as session
-        # cookies on our own.
-        # Session cookies may be important for cookies-based authentication,
-        # e.g. usually, when user does not check 'Remember me' check box while
-        # logging in on a site, some important cookies are stored as session
-        # cookies so that not recognizing them will result in failed login.
-        # 1. https://bugs.python.org/issue17164
-        for cookie in self:
-            # Treat `expires=0` cookies as session cookies
-            if cookie.expires == 0:
-                cookie.expires = None
-                cookie.discard = True
-
-
 class YoutubeDLCookieProcessor(compat_urllib_request.HTTPCookieProcessor):
     def __init__(self, cookiejar=None):
         compat_urllib_request.HTTPCookieProcessor.__init__(self, cookiejar)
@@ -681,3 +433,104 @@ class PerRequestProxyHandler(compat_urllib_request.ProxyHandler):
             return None
         return compat_urllib_request.ProxyHandler.proxy_open(
             self, req, proxy, type)
+
+"""
+yt-dlp adapters
+"""
+
+
+class HttplibResponseAdapter(HTTPResponse):
+    def __init__(self, res: http.client.HTTPResponse):
+        self._res = res
+        super().__init__(
+            headers=res.headers, status=res.status,
+            version=res.version if hasattr(res, 'version') else None)
+
+    def geturl(self):
+        return self._res.geturl()
+
+    def read(self, amt=None):
+        try:
+            return self._res.read(amt)
+        # TODO: handle exceptions
+        except http.client.IncompleteRead as err:
+            raise IncompleteRead(err.partial, self.geturl(), cause=err, expected=err.expected) from err
+        except ConnectionResetError as err:
+            raise ConnectionReset(self.geturl(), cause=err) from err
+        except socket.timeout as err:
+            raise ReadTimeoutError(self.geturl(), cause=err) from err
+        except (OSError, http.client.HTTPException) as err:
+            raise TransportError(self.geturl(), cause=err) from err
+
+    def close(self):
+        super().close()
+        return self._res.close()
+
+    def tell(self) -> int:
+        return self._res.tell()
+
+
+class UrllibHandler(YDLBackendHandler):
+    _SUPPORTED_PROTOCOLS = ['http', 'https']
+
+    def _initialize(self):
+        cookie_processor = YoutubeDLCookieProcessor(self.cookiejar)
+        proxy_handler = PerRequestProxyHandler()
+        debuglevel = 1 if self.params.get('debug_printtraffic') else 0
+        https_handler = make_HTTPS_handler(self.params, debuglevel=debuglevel)
+        ydlh = YoutubeDLHandler(self.params, debuglevel=debuglevel)
+        redirect_handler = YoutubeDLRedirectHandler()
+        data_handler = compat_urllib_request_DataHandler()
+
+        # TODO: technically the following is not required now, but will keep in for now
+        # When passing our own FileHandler instance, build_opener won't add the
+        # default FileHandler and allows us to disable the file protocol, which
+        # can be used for malicious purposes (see
+        # https://github.com/ytdl-org/youtube-dl/issues/8227)
+        file_handler = urllib.request.FileHandler()
+        def file_open(*args, **kwargs):
+            raise urllib.error.URLError('file:// scheme is explicitly disabled in yt-dlp for security reasons')
+        file_handler.file_open = file_open
+        opener = urllib.request.build_opener(
+            proxy_handler, https_handler, cookie_processor, ydlh, redirect_handler, data_handler, file_handler)
+        # Delete the default user-agent header, which would otherwise apply in
+        # cases where our custom HTTP handler doesn't come into play
+        # (See https://github.com/ytdl-org/youtube-dl/issues/1309 for details)
+        opener.addheaders = []
+        self._opener = opener
+
+    def _real_handle(self, request: YDLRequest, **kwargs) -> HTTPResponse:
+        urllib_req = urllib.request.Request(
+            url=request.url, data=request.data, headers=dict(request.headers), origin_req_host=request.origin_req_host,
+            unverifiable=request.unverifiable, method=request.method
+        )
+
+        if not request.compression:
+            urllib_req.add_header('Youtubedl-no-compression', True)
+        if request.proxy:
+            urllib_req.add_header('Ytdl-request-proxy',request.proxy)
+        try:
+            res = self._opener.open(urllib_req, timeout=request.timeout or self.socket_timeout)
+
+        except urllib.error.HTTPError as e:
+            # TODO: create a HTTPResponse from HTTPError
+            raise NotImplementedError
+
+        except urllib.error.URLError as e:
+            url = e.filename
+            # TODO: what errors are raised outside URLError?
+            try:
+                raise e.reason from e
+            except TimeoutError as e:
+                raise ConnectionTimeoutError(url=url, cause=e) from e
+            except socket.gaierror as e:
+                raise ResolveHostError(url=url, cause=e) from e
+            except ssl.SSLError as e:
+                raise SSLError(url=url, cause=e) from e
+            except:
+                raise TransportError(url=url, cause=e) from e
+
+        except http.client.HTTPException as e:
+            raise TransportError(cause=e) from e
+        return HttplibResponseAdapter(res)
+
