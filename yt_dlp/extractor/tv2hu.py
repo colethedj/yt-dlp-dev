@@ -4,8 +4,8 @@ from __future__ import unicode_literals
 from .common import InfoExtractor
 from ..utils import (
     traverse_obj,
-    UnsupportedError,
 )
+from ..exceptions import UnsupportedError
 
 
 class TV2HuIE(InfoExtractor):

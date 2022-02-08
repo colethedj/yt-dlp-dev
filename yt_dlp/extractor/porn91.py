@@ -5,8 +5,8 @@ from .common import InfoExtractor
 from ..utils import (
     parse_duration,
     int_or_none,
-    ExtractorError,
 )
+from ..exceptions import ExtractorError
 
 
 class Porn91IE(InfoExtractor):

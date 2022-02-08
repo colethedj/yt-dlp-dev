@@ -2,7 +2,6 @@ from __future__ import unicode_literals
 
 from .theplatform import ThePlatformFeedIE
 from ..utils import (
-    ExtractorError,
     int_or_none,
     find_xpath_attr,
     xpath_element,
@@ -10,6 +9,7 @@ from ..utils import (
     update_url_query,
     url_or_none,
 )
+from ..exceptions import ExtractorError
 
 
 class CBSBaseIE(ThePlatformFeedIE):

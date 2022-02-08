@@ -12,7 +12,6 @@ from ..compat import (
 )
 from ..utils import (
     dict_get,
-    ExtractorError,
     format_field,
     float_or_none,
     int_or_none,
@@ -24,6 +23,7 @@ from ..utils import (
     url_or_none,
     xpath_text,
 )
+from ..exceptions import ExtractorError
 
 from .periscope import (
     PeriscopeBaseIE,

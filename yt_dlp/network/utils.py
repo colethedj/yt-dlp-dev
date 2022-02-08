@@ -4,8 +4,6 @@ import socket
 import ssl
 import sys
 
-from yt_dlp.compat import compat_urllib_error, compat_http_client
-
 
 def _ssl_load_windows_store_certs(ssl_context, storename):
     # Code adapted from _load_windows_store_certs in https://github.com/python/cpython/blob/main/Lib/ssl.py
@@ -45,9 +43,3 @@ def make_ssl_context(params):
                     _ssl_load_windows_store_certs(context, storename)
             context.set_default_verify_paths()
     return context
-
-
-network_exceptions = [compat_urllib_error.URLError, compat_http_client.HTTPException, socket.error]
-if hasattr(ssl, 'CertificateError'):
-    network_exceptions.append(ssl.CertificateError)
-network_exceptions = tuple(network_exceptions)

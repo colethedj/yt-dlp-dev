@@ -5,10 +5,10 @@ from __future__ import unicode_literals
 from .theplatform import ThePlatformFeedIE
 from ..utils import (
     dict_get,
-    ExtractorError,
     float_or_none,
     int_or_none,
 )
+from ..exceptions import ExtractorError
 
 
 class CorusIE(ThePlatformFeedIE):

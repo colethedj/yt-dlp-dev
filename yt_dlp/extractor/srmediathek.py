@@ -3,9 +3,9 @@ from __future__ import unicode_literals
 
 from .ard import ARDMediathekBaseIE
 from ..utils import (
-    ExtractorError,
     get_element_by_attribute,
 )
+from ..exceptions import ExtractorError
 
 
 class SRMediathekIE(ARDMediathekBaseIE):

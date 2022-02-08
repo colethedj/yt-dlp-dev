@@ -7,11 +7,11 @@ from .common import InfoExtractor
 from ..compat import compat_HTTPError
 from ..utils import (
     dict_get,
-    ExtractorError,
     int_or_none,
     js_to_json,
     parse_iso8601,
 )
+from ..exceptions import ExtractorError
 
 
 class ZypeIE(InfoExtractor):

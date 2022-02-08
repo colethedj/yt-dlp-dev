@@ -12,7 +12,6 @@ from ..compat import (
     compat_urllib_parse_unquote,
 )
 from ..utils import (
-    ExtractorError,
     float_or_none,
     int_or_none,
     merge_dicts,
@@ -22,6 +21,7 @@ from ..utils import (
     urljoin,
     try_get,
 )
+from ..exceptions import ExtractorError
 
 
 class CDAIE(InfoExtractor):

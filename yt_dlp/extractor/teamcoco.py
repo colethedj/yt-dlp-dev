@@ -6,13 +6,13 @@ import json
 from .turner import TurnerBaseIE
 from ..utils import (
     determine_ext,
-    ExtractorError,
     int_or_none,
     mimetype2ext,
     parse_duration,
     parse_iso8601,
     qualities,
 )
+from ..exceptions import ExtractorError
 
 
 class TeamcocoIE(TurnerBaseIE):

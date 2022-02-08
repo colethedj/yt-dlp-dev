@@ -3,10 +3,10 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
-    ExtractorError,
     traverse_obj,
     unified_strdate,
 )
+from ..exceptions import ExtractorError
 
 
 class ProjectVeritasIE(InfoExtractor):

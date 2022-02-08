@@ -13,7 +13,6 @@ from ..compat import (
 )
 from ..utils import (
     dict_get,
-    ExtractorError,
     float_or_none,
     int_or_none,
     parse_duration,
@@ -24,6 +23,7 @@ from ..utils import (
     update_url_query,
     urlencode_postdata,
 )
+from ..exceptions import ExtractorError
 
 
 class PluralsightBaseIE(InfoExtractor):

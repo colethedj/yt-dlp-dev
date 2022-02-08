@@ -12,7 +12,6 @@ from ..compat import (
 from ..utils import (
     determine_ext,
     extract_attributes,
-    ExtractorError,
     float_or_none,
     int_or_none,
     js_to_json,
@@ -22,6 +21,7 @@ from ..utils import (
     url_or_none,
     urlencode_postdata,
 )
+from ..exceptions import ExtractorError
 
 
 class UdemyIE(InfoExtractor):

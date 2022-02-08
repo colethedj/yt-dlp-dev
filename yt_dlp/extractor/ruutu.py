@@ -5,7 +5,6 @@ from .common import InfoExtractor
 from ..compat import compat_urllib_parse_urlparse
 from ..utils import (
     determine_ext,
-    ExtractorError,
     find_xpath_attr,
     int_or_none,
     unified_strdate,
@@ -13,6 +12,7 @@ from ..utils import (
     xpath_attr,
     xpath_text,
 )
+from ..exceptions import ExtractorError
 
 
 class RuutuIE(InfoExtractor):

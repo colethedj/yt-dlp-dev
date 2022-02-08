@@ -6,7 +6,6 @@ import re
 from .common import InfoExtractor
 from ..compat import compat_str
 from ..utils import (
-    ExtractorError,
     get_element_by_id,
     int_or_none,
     parse_iso8601,
@@ -16,6 +15,7 @@ from ..utils import (
     update_url_query,
     urljoin,
 )
+from ..exceptions import ExtractorError
 
 
 class TVNowBaseIE(InfoExtractor):

@@ -6,12 +6,12 @@ import json
 
 from .common import InfoExtractor
 from ..utils import (
-    ExtractorError,
     format_field,
     int_or_none,
     str_or_none,
     try_get,
 )
+from ..exceptions import ExtractorError
 
 
 class TrovoBaseIE(InfoExtractor):

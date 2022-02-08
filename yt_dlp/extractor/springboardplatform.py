@@ -5,7 +5,6 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
-    ExtractorError,
     int_or_none,
     xpath_attr,
     xpath_text,
@@ -13,6 +12,7 @@ from ..utils import (
     unescapeHTML,
     unified_timestamp,
 )
+from ..exceptions import ExtractorError
 
 
 class SpringboardPlatformIE(InfoExtractor):

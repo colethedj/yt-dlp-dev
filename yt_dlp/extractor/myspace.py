@@ -5,10 +5,10 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
-    ExtractorError,
     int_or_none,
     parse_iso8601,
 )
+from ..exceptions import ExtractorError
 
 
 class MySpaceIE(InfoExtractor):

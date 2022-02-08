@@ -6,13 +6,13 @@ import re
 from .common import InfoExtractor
 from ..utils import (
     dict_get,
-    ExtractorError,
     int_or_none,
     join_nonempty,
     parse_iso8601,
     try_get,
     unescapeHTML,
 )
+from ..exceptions import ExtractorError
 
 
 class PikselIE(InfoExtractor):

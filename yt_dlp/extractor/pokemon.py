@@ -4,12 +4,12 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
-    ExtractorError,
     extract_attributes,
     int_or_none,
     js_to_json,
     merge_dicts,
 )
+from ..exceptions import ExtractorError
 
 
 class PokemonIE(InfoExtractor):

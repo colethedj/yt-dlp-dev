@@ -4,12 +4,12 @@ from __future__ import unicode_literals
 from .common import InfoExtractor
 
 from ..utils import (
-    ExtractorError,
     urlencode_postdata,
     int_or_none,
     str_or_none,
     determine_ext,
 )
+from ..exceptions import ExtractorError
 
 from ..compat import compat_HTTPError
 

@@ -6,9 +6,9 @@ from .common import PostProcessor
 from ..compat import compat_shlex_quote
 from ..utils import (
     encodeArgument,
-    PostProcessingError,
     variadic,
 )
+from yt_dlp.exceptions import PostProcessingError
 
 
 class ExecPP(PostProcessor):

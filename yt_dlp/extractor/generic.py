@@ -17,7 +17,6 @@ from ..compat import (
 )
 from ..utils import (
     determine_ext,
-    ExtractorError,
     float_or_none,
     int_or_none,
     is_html,
@@ -33,12 +32,12 @@ from ..utils import (
     unescapeHTML,
     unified_timestamp,
     unsmuggle_url,
-    UnsupportedError,
     url_or_none,
     xpath_attr,
     xpath_text,
     xpath_with_ns,
 )
+from ..exceptions import ExtractorError, UnsupportedError
 from ..network.common import HEADRequest
 from .commonprotocols import RtmpIE
 from .brightcove import (

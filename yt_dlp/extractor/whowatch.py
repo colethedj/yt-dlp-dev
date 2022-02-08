@@ -6,8 +6,8 @@ from ..utils import (
     int_or_none,
     qualities,
     try_get,
-    ExtractorError,
 )
+from ..exceptions import ExtractorError
 from ..compat import compat_str
 
 

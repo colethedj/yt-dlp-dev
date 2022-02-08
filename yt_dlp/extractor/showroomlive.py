@@ -4,10 +4,10 @@ from __future__ import unicode_literals
 from .common import InfoExtractor
 from ..compat import compat_str
 from ..utils import (
-    ExtractorError,
     int_or_none,
     urljoin,
 )
+from ..exceptions import ExtractorError
 
 
 class ShowRoomLiveIE(InfoExtractor):

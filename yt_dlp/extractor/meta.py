@@ -6,8 +6,8 @@ from .pladform import PladformIE
 from ..utils import (
     unescapeHTML,
     int_or_none,
-    ExtractorError,
 )
+from ..exceptions import ExtractorError
 
 
 class METAIE(InfoExtractor):

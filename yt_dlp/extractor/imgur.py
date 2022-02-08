@@ -7,8 +7,8 @@ from ..utils import (
     int_or_none,
     js_to_json,
     mimetype2ext,
-    ExtractorError,
 )
+from ..exceptions import ExtractorError
 
 
 class ImgurIE(InfoExtractor):

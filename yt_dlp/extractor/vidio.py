@@ -5,7 +5,6 @@ from __future__ import unicode_literals
 from .common import InfoExtractor
 from ..utils import (
     clean_html,
-    ExtractorError,
     format_field,
     get_element_by_class,
     int_or_none,
@@ -17,6 +16,7 @@ from ..utils import (
     unsmuggle_url,
     urlencode_postdata,
 )
+from ..exceptions import ExtractorError
 
 
 class VidioBaseIE(InfoExtractor):

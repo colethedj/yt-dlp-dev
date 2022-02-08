@@ -8,7 +8,6 @@ from ..compat import (
 )
 from ..utils import (
     clean_html,
-    ExtractorError,
     int_or_none,
     str_or_none,
     try_get,
@@ -16,6 +15,7 @@ from ..utils import (
     urlencode_postdata,
     urljoin,
 )
+from ..exceptions import ExtractorError
 
 
 class PlatziBaseIE(InfoExtractor):

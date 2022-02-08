@@ -10,8 +10,8 @@ from ..utils import (
     xpath_element,
     int_or_none,
     parse_iso8601,
-    ExtractorError,
 )
+from ..exceptions import ExtractorError
 
 
 class RICEIE(InfoExtractor):

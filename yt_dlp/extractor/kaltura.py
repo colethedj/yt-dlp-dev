@@ -11,12 +11,12 @@ from ..compat import (
 )
 from ..utils import (
     clean_html,
-    ExtractorError,
     format_field,
     int_or_none,
     unsmuggle_url,
     smuggle_url,
 )
+from ..exceptions import ExtractorError
 
 
 class KalturaIE(InfoExtractor):

@@ -9,13 +9,13 @@ from .common import InfoExtractor
 from ..utils import (
     determine_ext,
     dict_get,
-    ExtractorError,
     int_or_none,
     js_to_json,
     orderedSet,
     str_or_none,
     try_get,
 )
+from ..exceptions import ExtractorError
 
 
 class TVPIE(InfoExtractor):

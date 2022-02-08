@@ -9,8 +9,8 @@ from ..utils import (
     int_or_none,
     try_get,
     url_or_none,
-    ExtractorError,
 )
+from ..exceptions import ExtractorError
 
 
 class PolsatGoIE(InfoExtractor):

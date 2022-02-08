@@ -11,11 +11,11 @@ from ..compat import (
 )
 from ..utils import (
     determine_ext,
-    ExtractorError,
     int_or_none,
     get_element_by_attribute,
     mimetype2ext,
 )
+from ..exceptions import ExtractorError
 
 
 class MetacafeIE(InfoExtractor):

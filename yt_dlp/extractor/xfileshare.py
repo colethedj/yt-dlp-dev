@@ -8,11 +8,11 @@ from ..compat import compat_chr
 from ..utils import (
     decode_packed_codes,
     determine_ext,
-    ExtractorError,
     int_or_none,
     js_to_json,
     urlencode_postdata,
 )
+from ..exceptions import ExtractorError
 
 
 # based on openload_decode from 2bfeee69b976fe049761dd3012e30b637ee05a58

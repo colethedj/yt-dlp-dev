@@ -9,7 +9,6 @@ from .common import InfoExtractor
 from ..compat import compat_str
 from ..utils import (
     dict_get,
-    ExtractorError,
     js_to_json,
     int_or_none,
     parse_iso8601,
@@ -18,6 +17,7 @@ from ..utils import (
     unescapeHTML,
     update_url_query,
 )
+from ..exceptions import ExtractorError
 
 
 class ABCIE(InfoExtractor):

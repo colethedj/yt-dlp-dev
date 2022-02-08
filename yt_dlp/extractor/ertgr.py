@@ -9,7 +9,6 @@ from ..compat import compat_str
 from ..utils import (
     clean_html,
     determine_ext,
-    ExtractorError,
     dict_get,
     int_or_none,
     merge_dicts,
@@ -22,6 +21,7 @@ from ..utils import (
     url_or_none,
     variadic,
 )
+from ..exceptions import ExtractorError
 
 
 class ERTFlixBaseIE(InfoExtractor):

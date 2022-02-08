@@ -12,8 +12,8 @@ from ..utils import (
     smuggle_url,
     try_get,
     unsmuggle_url,
-    ExtractorError,
 )
+from ..exceptions import ExtractorError
 
 
 class LimelightBaseIE(InfoExtractor):

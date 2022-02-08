@@ -8,10 +8,10 @@ from ..compat import (
 )
 from ..utils import (
     bytes_to_intlist,
-    ExtractorError,
     intlist_to_bytes,
     unified_strdate,
 )
+from ..exceptions import ExtractorError
 
 
 class ShemarooMeIE(InfoExtractor):

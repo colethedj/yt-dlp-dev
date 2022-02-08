@@ -7,7 +7,6 @@ from .common import InfoExtractor
 from ..compat import compat_HTTPError
 from ..utils import (
     determine_ext,
-    ExtractorError,
     int_or_none,
     float_or_none,
     js_to_json,
@@ -16,6 +15,7 @@ from ..utils import (
     strip_or_none,
     try_get,
 )
+from ..exceptions import ExtractorError
 
 
 class TV2IE(InfoExtractor):

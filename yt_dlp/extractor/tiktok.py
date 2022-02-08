@@ -13,7 +13,6 @@ from ..compat import (
     compat_urllib_parse_urlparse
 )
 from ..utils import (
-    ExtractorError,
     int_or_none,
     join_nonempty,
     LazyList,
@@ -24,6 +23,7 @@ from ..utils import (
     url_or_none,
     qualities,
 )
+from ..exceptions import ExtractorError
 
 
 class TikTokBaseIE(InfoExtractor):

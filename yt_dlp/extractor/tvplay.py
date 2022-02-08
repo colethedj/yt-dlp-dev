@@ -10,7 +10,6 @@ from ..compat import (
 )
 from ..utils import (
     determine_ext,
-    ExtractorError,
     int_or_none,
     parse_iso8601,
     qualities,
@@ -20,6 +19,7 @@ from ..utils import (
     url_or_none,
     urljoin,
 )
+from ..exceptions import ExtractorError
 
 
 class TVPlayIE(InfoExtractor):

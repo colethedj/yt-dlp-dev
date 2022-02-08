@@ -10,7 +10,6 @@ from ..utils import (
     determine_ext,
     dict_get,
     extract_attributes,
-    ExtractorError,
     float_or_none,
     int_or_none,
     parse_duration,
@@ -20,6 +19,7 @@ from ..utils import (
     url_or_none,
     urljoin,
 )
+from ..exceptions import ExtractorError
 
 
 class XHamsterIE(InfoExtractor):

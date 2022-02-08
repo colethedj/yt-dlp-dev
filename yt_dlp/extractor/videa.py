@@ -7,7 +7,6 @@ import string
 
 from .common import InfoExtractor
 from ..utils import (
-    ExtractorError,
     int_or_none,
     mimetype2ext,
     parse_codecs,
@@ -17,6 +16,7 @@ from ..utils import (
     xpath_element,
     xpath_text,
 )
+from ..exceptions import ExtractorError
 from ..compat import (
     compat_b64decode,
     compat_ord,

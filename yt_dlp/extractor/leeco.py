@@ -16,7 +16,6 @@ from ..compat import (
 from ..utils import (
     determine_ext,
     encode_data_uri,
-    ExtractorError,
     int_or_none,
     orderedSet,
     parse_iso8601,
@@ -24,6 +23,7 @@ from ..utils import (
     url_basename,
     urshift,
 )
+from ..exceptions import ExtractorError
 
 
 class LeIE(InfoExtractor):

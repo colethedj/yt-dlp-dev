@@ -5,13 +5,13 @@ from __future__ import unicode_literals
 from .common import InfoExtractor
 from ..compat import compat_HTTPError
 from ..utils import (
-    ExtractorError,
     int_or_none,
     strip_or_none,
     str_or_none,
     traverse_obj,
     unified_timestamp,
 )
+from ..exceptions import ExtractorError
 
 
 class KakaoIE(InfoExtractor):

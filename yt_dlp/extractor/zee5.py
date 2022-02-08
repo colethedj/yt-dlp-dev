@@ -6,7 +6,6 @@ import json
 from .common import InfoExtractor
 from ..compat import compat_str
 from ..utils import (
-    ExtractorError,
     int_or_none,
     parse_age_limit,
     str_or_none,
@@ -15,6 +14,7 @@ from ..utils import (
     unified_timestamp,
     url_or_none,
 )
+from ..exceptions import ExtractorError
 
 
 class Zee5IE(InfoExtractor):

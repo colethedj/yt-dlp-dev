@@ -11,7 +11,6 @@ from ..compat import (
     compat_HTTPError,
 )
 from ..utils import (
-    ExtractorError,
     format_field,
     float_or_none,
     get_element_by_attribute,
@@ -24,6 +23,7 @@ from ..utils import (
     url_or_none,
     urlencode_postdata,
 )
+from ..exceptions import ExtractorError
 
 
 class InstagramBaseIE(InfoExtractor):

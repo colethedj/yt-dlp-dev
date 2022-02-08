@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
-    ExtractorError,
     dict_get,
     float_or_none,
     int_or_none,
@@ -13,6 +12,7 @@ from ..utils import (
     url_or_none,
     urljoin,
 )
+from ..exceptions import ExtractorError
 
 
 class GettrIE(InfoExtractor):

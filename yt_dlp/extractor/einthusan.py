@@ -11,10 +11,10 @@ from ..compat import (
 )
 from ..utils import (
     extract_attributes,
-    ExtractorError,
     get_elements_by_class,
     urlencode_postdata,
 )
+from ..exceptions import ExtractorError
 
 
 class EinthusanIE(InfoExtractor):

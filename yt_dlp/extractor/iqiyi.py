@@ -16,7 +16,6 @@ from .openload import PhantomJSwrapper
 from ..utils import (
     clean_html,
     decode_packed_codes,
-    ExtractorError,
     float_or_none,
     format_field,
     get_element_by_id,
@@ -34,6 +33,7 @@ from ..utils import (
     traverse_obj,
     urljoin,
 )
+from ..exceptions import ExtractorError
 
 
 def md5_text(text):

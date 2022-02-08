@@ -14,7 +14,6 @@ from ..compat import (
     compat_urlparse,
 )
 from ..utils import (
-    ExtractorError,
     OnDemandPagedList,
     clean_html,
     dict_get,
@@ -33,6 +32,7 @@ from ..utils import (
     urlencode_postdata,
     urljoin,
 )
+from ..exceptions import ExtractorError
 
 
 class BBCCoUkIE(InfoExtractor):

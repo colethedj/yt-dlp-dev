@@ -5,12 +5,12 @@ import json
 
 from .common import InfoExtractor
 from ..utils import (
-    ExtractorError,
     int_or_none,
     traverse_obj,
     smuggle_url,
     unsmuggle_url,
 )
+from ..exceptions import ExtractorError
 
 
 class LiTVIE(InfoExtractor):

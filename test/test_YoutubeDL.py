@@ -18,7 +18,8 @@ from yt_dlp.compat import compat_os_name, compat_setenv, compat_str, compat_urll
 from yt_dlp.extractor import YoutubeIE
 from yt_dlp.extractor.common import InfoExtractor
 from yt_dlp.postprocessor.common import PostProcessor
-from yt_dlp.utils import ExtractorError, int_or_none, match_filter_func, LazyList
+from yt_dlp.utils import int_or_none, match_filter_func, LazyList
+from yt_dlp.exceptions import ExtractorError
 
 TEST_URL = 'http://localhost/sample.mp4'
 

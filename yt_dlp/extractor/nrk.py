@@ -9,7 +9,6 @@ from .common import InfoExtractor
 from ..compat import compat_str
 from ..utils import (
     determine_ext,
-    ExtractorError,
     int_or_none,
     parse_duration,
     str_or_none,
@@ -17,6 +16,7 @@ from ..utils import (
     urljoin,
     url_or_none,
 )
+from ..exceptions import ExtractorError
 
 
 class NRKBaseIE(InfoExtractor):

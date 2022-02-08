@@ -15,7 +15,6 @@ from ..compat import (
 from ..utils import (
     clean_html,
     determine_ext,
-    ExtractorError,
     get_element_by_class,
     js_to_json,
     int_or_none,
@@ -36,6 +35,7 @@ from ..utils import (
     unescapeHTML,
     urlhandle_detect_ext,
 )
+from ..exceptions import ExtractorError
 from ..network.common import HEADRequest
 
 

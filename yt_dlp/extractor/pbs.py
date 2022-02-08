@@ -6,7 +6,6 @@ import re
 from .common import InfoExtractor
 from ..compat import compat_str
 from ..utils import (
-    ExtractorError,
     determine_ext,
     int_or_none,
     float_or_none,
@@ -18,6 +17,7 @@ from ..utils import (
     url_or_none,
     US_RATINGS,
 )
+from ..exceptions import ExtractorError
 
 
 class PBSIE(InfoExtractor):

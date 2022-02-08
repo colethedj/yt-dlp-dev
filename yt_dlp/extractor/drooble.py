@@ -5,10 +5,10 @@ import json
 
 from .common import InfoExtractor
 from ..utils import (
-    ExtractorError,
     int_or_none,
     try_get,
 )
+from ..exceptions import ExtractorError
 
 
 class DroobleIE(InfoExtractor):

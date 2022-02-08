@@ -12,7 +12,6 @@ from .once import OnceIE
 from .adobepass import AdobePassIE
 from ..utils import (
     determine_ext,
-    ExtractorError,
     float_or_none,
     int_or_none,
     parse_qs,
@@ -23,6 +22,7 @@ from ..utils import (
     mimetype2ext,
     find_xpath_attr,
 )
+from ..exceptions import ExtractorError
 
 default_ns = 'http://www.w3.org/2005/SMIL21/Language'
 _x = lambda p: xpath_with_ns(p, {'smil': default_ns})

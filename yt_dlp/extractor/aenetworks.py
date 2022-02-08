@@ -4,12 +4,11 @@ from __future__ import unicode_literals
 
 from .theplatform import ThePlatformIE
 from ..utils import (
-    ExtractorError,
-    GeoRestrictedError,
     int_or_none,
     update_url_query,
     urlencode_postdata,
 )
+from ..exceptions import ExtractorError, GeoRestrictedError
 
 
 class AENetworksBaseIE(ThePlatformIE):

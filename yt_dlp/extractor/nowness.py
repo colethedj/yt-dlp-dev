@@ -8,9 +8,9 @@ from .brightcove import (
 from .common import InfoExtractor
 from ..compat import compat_str
 from ..utils import (
-    ExtractorError,
     sanitized_Request,
 )
+from ..exceptions import ExtractorError
 
 
 class NownessBaseIE(InfoExtractor):

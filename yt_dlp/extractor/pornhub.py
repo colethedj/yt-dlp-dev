@@ -17,7 +17,6 @@ from .openload import PhantomJSwrapper
 from ..utils import (
     clean_html,
     determine_ext,
-    ExtractorError,
     format_field,
     int_or_none,
     merge_dicts,
@@ -29,6 +28,7 @@ from ..utils import (
     urlencode_postdata,
     url_or_none,
 )
+from ..exceptions import ExtractorError
 
 
 class PornHubBaseIE(InfoExtractor):

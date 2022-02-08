@@ -11,8 +11,8 @@ from ..utils import (
     int_or_none,
     parse_iso8601,
     try_get,
-    ExtractorError,
 )
+from ..exceptions import ExtractorError
 
 
 class RumbleEmbedIE(InfoExtractor):

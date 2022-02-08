@@ -11,7 +11,6 @@ from ..compat import (
 )
 from ..utils import (
     determine_ext,
-    ExtractorError,
     int_or_none,
     mimetype2ext,
     parse_qs,
@@ -19,6 +18,7 @@ from ..utils import (
     try_get,
     urljoin,
 )
+from ..exceptions import ExtractorError
 
 
 class LBRYBaseIE(InfoExtractor):

@@ -8,8 +8,8 @@ from ..utils import (
     determine_ext,
     parse_duration,
     urlencode_postdata,
-    ExtractorError,
 )
+from ..exceptions import ExtractorError
 
 
 class WimTVIE(InfoExtractor):

@@ -5,13 +5,13 @@ from .common import InfoExtractor
 from ..compat import compat_HTTPError
 from ..utils import (
     determine_ext,
-    ExtractorError,
     int_or_none,
     parse_age_limit,
     traverse_obj,
     unified_timestamp,
     url_or_none
 )
+from ..exceptions import ExtractorError
 
 
 class TrueIDIE(InfoExtractor):

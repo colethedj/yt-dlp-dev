@@ -17,7 +17,6 @@ from ..utils import (
     ass_subtitles_timecode,
     bytes_to_intlist,
     bytes_to_long,
-    ExtractorError,
     float_or_none,
     int_or_none,
     intlist_to_bytes,
@@ -28,6 +27,7 @@ from ..utils import (
     unified_strdate,
     urlencode_postdata,
 )
+from ..exceptions import ExtractorError
 
 
 class ADNIE(InfoExtractor):

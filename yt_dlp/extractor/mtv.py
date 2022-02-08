@@ -8,13 +8,11 @@ from ..compat import (
     compat_str,
 )
 from ..utils import (
-    ExtractorError,
     find_xpath_attr,
     fix_xml_ampersands,
     float_or_none,
     int_or_none,
     join_nonempty,
-    RegexNotFoundError,
     sanitized_Request,
     strip_or_none,
     timeconvert,
@@ -24,6 +22,7 @@ from ..utils import (
     url_basename,
     xpath_text,
 )
+from ..exceptions import ExtractorError, RegexNotFoundError
 from ..network.common import HEADRequest
 
 

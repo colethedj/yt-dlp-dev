@@ -9,11 +9,11 @@ from .common import InfoExtractor
 from ..compat import compat_HTTPError
 from ..utils import (
     dict_get,
-    ExtractorError,
     strip_or_none,
     traverse_obj,
     try_get
 )
+from ..exceptions import ExtractorError
 
 
 class RCTIPlusBaseIE(InfoExtractor):

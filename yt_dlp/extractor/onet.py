@@ -6,7 +6,6 @@ import re
 from .common import InfoExtractor
 from ..utils import (
     determine_ext,
-    ExtractorError,
     float_or_none,
     get_element_by_class,
     int_or_none,
@@ -17,6 +16,7 @@ from ..utils import (
     strip_or_none,
     url_basename,
 )
+from ..exceptions import ExtractorError
 
 
 class OnetBaseIE(InfoExtractor):

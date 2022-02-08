@@ -14,10 +14,10 @@ from ..utils import (
     parse_duration,
     xpath_attr,
     update_url_query,
-    ExtractorError,
     strip_or_none,
     url_or_none,
 )
+from ..exceptions import ExtractorError
 
 
 class TurnerBaseIE(AdobePassIE):

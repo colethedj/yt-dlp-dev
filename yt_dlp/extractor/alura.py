@@ -13,9 +13,9 @@ from ..utils import (
     urlencode_postdata,
     urljoin,
     int_or_none,
-    clean_html,
-    ExtractorError
+    clean_html
 )
+from ..exceptions import ExtractorError
 
 
 class AluraIE(InfoExtractor):

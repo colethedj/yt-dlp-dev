@@ -7,7 +7,6 @@ from ..compat import (
 )
 from ..utils import (
     determine_ext,
-    ExtractorError,
     int_or_none,
     js_to_json,
     KNOWN_EXTENSIONS,
@@ -16,6 +15,7 @@ from ..utils import (
     url_or_none,
     urlencode_postdata,
 )
+from ..exceptions import ExtractorError
 
 
 class SharedBaseIE(InfoExtractor):

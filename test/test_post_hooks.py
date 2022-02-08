@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from test.helper import get_params, try_rm, is_download_test
 import yt_dlp.YoutubeDL
-from yt_dlp.utils import DownloadError
+from yt_dlp.exceptions import DownloadError
 
 
 class YoutubeDL(yt_dlp.YoutubeDL):

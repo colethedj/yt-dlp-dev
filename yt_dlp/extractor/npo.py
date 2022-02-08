@@ -9,7 +9,6 @@ from ..compat import (
 )
 from ..utils import (
     determine_ext,
-    ExtractorError,
     fix_xml_ampersands,
     int_or_none,
     merge_dicts,
@@ -23,6 +22,7 @@ from ..utils import (
     url_or_none,
     urlencode_postdata,
 )
+from ..exceptions import ExtractorError
 
 
 class NPOBaseIE(InfoExtractor):

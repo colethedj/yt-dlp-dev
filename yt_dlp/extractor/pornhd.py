@@ -4,12 +4,12 @@ from __future__ import unicode_literals
 from .common import InfoExtractor
 from ..utils import (
     determine_ext,
-    ExtractorError,
     int_or_none,
     js_to_json,
     merge_dicts,
     urljoin,
 )
+from ..exceptions import ExtractorError
 
 
 class PornHdIE(InfoExtractor):

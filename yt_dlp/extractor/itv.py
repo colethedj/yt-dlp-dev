@@ -12,7 +12,6 @@ from ..utils import (
     clean_html,
     determine_ext,
     extract_attributes,
-    ExtractorError,
     get_element_by_class,
     JSON_LD_RE,
     merge_dicts,
@@ -23,6 +22,7 @@ from ..utils import (
     url_basename,
     urljoin,
 )
+from ..exceptions import ExtractorError
 
 
 class ITVIE(InfoExtractor):

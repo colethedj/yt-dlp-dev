@@ -4,10 +4,10 @@ from __future__ import unicode_literals
 from .common import InfoExtractor
 from .amp import AMPIE
 from ..utils import (
-    ExtractorError,
     int_or_none,
     parse_iso8601,
 )
+from ..exceptions import ExtractorError
 
 
 class BleacherReportIE(InfoExtractor):

@@ -20,7 +20,6 @@ from ..compat import (
     compat_urlparse,
 )
 from ..utils import (
-    ExtractorError,
     bytes_to_intlist,
     extract_attributes,
     float_or_none,
@@ -37,6 +36,7 @@ from ..utils import (
     try_get,
     xpath_text,
 )
+from ..exceptions import ExtractorError
 from ..aes import (
     aes_cbc_decrypt,
 )

@@ -11,11 +11,9 @@ from ..compat import (
     compat_HTTPError
 )
 from ..utils import (
-    bug_reports_message,
     clean_html,
     dict_get,
     extract_attributes,
-    ExtractorError,
     get_element_by_id,
     int_or_none,
     join_nonempty,
@@ -34,6 +32,7 @@ from ..utils import (
     urlhandle_detect_ext,
     url_or_none
 )
+from ..exceptions import bug_reports_message, ExtractorError
 from ..network.common import HEADRequest
 
 

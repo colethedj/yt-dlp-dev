@@ -3,7 +3,6 @@ from .common import InfoExtractor
 from .vimeo import VHXEmbedIE
 from ..utils import (
     clean_html,
-    ExtractorError,
     get_element_by_class,
     get_element_by_id,
     get_elements_by_class,
@@ -12,6 +11,7 @@ from ..utils import (
     unified_strdate,
     urlencode_postdata,
 )
+from ..exceptions import ExtractorError
 
 
 class DropoutIE(InfoExtractor):

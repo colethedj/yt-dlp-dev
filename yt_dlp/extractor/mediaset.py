@@ -6,8 +6,6 @@ import re
 
 from .theplatform import ThePlatformBaseIE
 from ..utils import (
-    ExtractorError,
-    GeoRestrictedError,
     int_or_none,
     OnDemandPagedList,
     parse_qs,
@@ -15,6 +13,7 @@ from ..utils import (
     urljoin,
     update_url_query,
 )
+from ..exceptions import ExtractorError, GeoRestrictedError
 
 
 class MediasetIE(ThePlatformBaseIE):

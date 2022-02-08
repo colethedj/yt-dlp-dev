@@ -6,12 +6,12 @@ from .common import InfoExtractor
 from ..compat import compat_HTTPError
 from ..utils import (
     determine_ext,
-    ExtractorError,
     float_or_none,
     int_or_none,
     join_nonempty,
     parse_iso8601,
 )
+from ..exceptions import ExtractorError
 
 
 class ThreeQSDNIE(InfoExtractor):

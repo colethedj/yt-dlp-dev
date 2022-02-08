@@ -16,7 +16,6 @@ from ..compat import (
 )
 from ..utils import (
     error_to_compat_str,
-    ExtractorError,
     float_or_none,
     int_or_none,
     KNOWN_EXTENSIONS,
@@ -31,6 +30,7 @@ from ..utils import (
     urlhandle_detect_ext,
     sanitized_Request,
 )
+from ..exceptions import ExtractorError
 from ..network.common import HEADRequest
 
 

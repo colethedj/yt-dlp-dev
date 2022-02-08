@@ -5,12 +5,12 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
-    ExtractorError,
     int_or_none,
     js_to_json,
     sanitized_Request,
     urlencode_postdata,
 )
+from ..exceptions import ExtractorError
 
 
 class TubiTvIE(InfoExtractor):

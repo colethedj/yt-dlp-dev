@@ -7,13 +7,13 @@ from ..aes import aes_decrypt_text
 from ..compat import compat_urllib_parse_unquote
 from ..utils import (
     determine_ext,
-    ExtractorError,
     format_field,
     int_or_none,
     str_to_int,
     strip_or_none,
     url_or_none,
 )
+from ..exceptions import ExtractorError
 
 
 class KeezMoviesIE(InfoExtractor):

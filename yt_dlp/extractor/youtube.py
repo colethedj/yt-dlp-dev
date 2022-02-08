@@ -31,12 +31,10 @@ from ..compat import (
 )
 from ..jsinterp import JSInterpreter
 from ..utils import (
-    bug_reports_message,
     clean_html,
     datetime_from_str,
     dict_get,
     error_to_compat_str,
-    ExtractorError,
     float_or_none,
     format_field,
     int_or_none,
@@ -69,7 +67,7 @@ from ..utils import (
     urljoin,
     variadic,
 )
-from ..network.utils import network_exceptions
+from ..exceptions import bug_reports_message, ExtractorError, network_exceptions
 
 
 def get_first(obj, keys, **kwargs):

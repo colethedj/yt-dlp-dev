@@ -4,10 +4,10 @@ import json
 
 from .common import InfoExtractor
 from ..utils import (
-    ExtractorError,
     int_or_none,
     orderedSet,
 )
+from ..exceptions import ExtractorError
 
 
 class DeezerBaseInfoExtractor(InfoExtractor):

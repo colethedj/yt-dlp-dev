@@ -18,8 +18,8 @@ from ..utils import (
     traverse_obj,
     try_get,
     urlencode_postdata,
-    ExtractorError,
 )
+from ..exceptions import ExtractorError
 
 
 class FunimationBaseIE(InfoExtractor):

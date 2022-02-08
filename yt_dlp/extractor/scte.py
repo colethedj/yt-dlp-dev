@@ -5,9 +5,9 @@ import re
 from .common import InfoExtractor
 from ..utils import (
     decode_packed_codes,
-    ExtractorError,
     urlencode_postdata,
 )
+from ..exceptions import ExtractorError
 
 
 class SCTEBaseIE(InfoExtractor):

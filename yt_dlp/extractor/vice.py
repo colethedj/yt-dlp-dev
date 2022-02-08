@@ -17,13 +17,13 @@ from ..compat import (
 )
 from ..utils import (
     clean_html,
-    ExtractorError,
     int_or_none,
     OnDemandPagedList,
     parse_age_limit,
     str_or_none,
     try_get,
 )
+from ..exceptions import ExtractorError
 
 
 class ViceBaseIE(InfoExtractor):

@@ -11,9 +11,9 @@ from ..compat import (
     compat_urlparse,
 )
 from ..utils import (
-    ExtractorError,
     update_url_query,
 )
+from ..exceptions import ExtractorError
 
 
 class SafariBaseIE(InfoExtractor):

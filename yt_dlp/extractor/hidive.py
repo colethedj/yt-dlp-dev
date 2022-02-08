@@ -3,12 +3,12 @@ import re
 
 from .common import InfoExtractor
 from ..utils import (
-    ExtractorError,
     int_or_none,
     try_get,
     url_or_none,
     urlencode_postdata,
 )
+from ..exceptions import ExtractorError
 
 
 class HiDiveIE(InfoExtractor):

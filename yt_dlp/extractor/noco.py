@@ -11,7 +11,6 @@ from ..compat import (
 )
 from ..utils import (
     clean_html,
-    ExtractorError,
     int_or_none,
     float_or_none,
     parse_iso8601,
@@ -19,6 +18,7 @@ from ..utils import (
     sanitized_Request,
     urlencode_postdata,
 )
+from ..exceptions import ExtractorError
 
 
 class NocoIE(InfoExtractor):

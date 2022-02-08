@@ -8,10 +8,10 @@ import time
 from .common import InfoExtractor
 from ..utils import (
     clean_html,
-    ExtractorError,
     strip_jsonp,
     unescapeHTML,
 )
+from ..exceptions import ExtractorError
 
 
 class QQMusicIE(InfoExtractor):

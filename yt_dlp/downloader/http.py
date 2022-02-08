@@ -7,21 +7,19 @@ import time
 import random
 import re
 
+import yt_dlp.exceptions
 from .common import FileDownloader
 from ..compat import (
     compat_str,
     compat_urllib_error,
 )
 from ..utils import (
-    ContentTooShortError,
     encodeFilename,
     int_or_none,
     sanitized_Request,
-    ThrottledDownload,
     write_xattr,
-    XAttrMetadataError,
-    XAttrUnavailableError,
 )
+from ..exceptions import ThrottledDownload, ContentTooShortError, XAttrMetadataError, XAttrUnavailableError
 
 
 class HttpFD(FileDownloader):
@@ -149,7 +147,7 @@ class HttpFD(FileDownloader):
                     ctx.open_mode = 'wb'
                 ctx.data_len = int_or_none(ctx.data.info().get('Content-length', None))
                 return
-            except (compat_urllib_error.HTTPError, ) as err:
+            except (yt_dlp.exceptions.HTTPError,) as err:
                 if err.code == 416:
                     # Unable to resume (requested range not satisfiable)
                     try:
@@ -157,7 +155,7 @@ class HttpFD(FileDownloader):
                         ctx.data = self.ydl.urlopen(
                             sanitized_Request(url, request_data, headers))
                         content_length = ctx.data.info()['Content-Length']
-                    except (compat_urllib_error.HTTPError, ) as err:
+                    except (yt_dlp.exceptions.HTTPError,) as err:
                         if err.code < 500 or err.code >= 600:
                             raise
                     else:

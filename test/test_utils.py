@@ -35,7 +35,6 @@ from yt_dlp.utils import (
     escape_rfc3986,
     escape_url,
     extract_attributes,
-    ExtractorError,
     find_xpath_attr,
     fix_xml_ampersands,
     format_bytes,
@@ -119,6 +118,7 @@ from yt_dlp.utils import (
     iri_to_uri,
     LazyList,
 )
+from yt_dlp.exceptions import ExtractorError
 from yt_dlp.compat import (
     compat_chr,
     compat_etree_fromstring,

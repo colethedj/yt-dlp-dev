@@ -7,7 +7,6 @@ from .common import InfoExtractor
 from ..utils import (
     date_from_str,
     determine_ext,
-    ExtractorError,
     int_or_none,
     qualities,
     traverse_obj,
@@ -18,6 +17,7 @@ from ..utils import (
     urlencode_postdata,
     xpath_text,
 )
+from ..exceptions import ExtractorError
 
 
 class AfreecaTVIE(InfoExtractor):

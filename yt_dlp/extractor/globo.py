@@ -12,12 +12,12 @@ from ..compat import (
     compat_str,
 )
 from ..utils import (
-    ExtractorError,
     float_or_none,
     orderedSet,
     str_or_none,
     try_get,
 )
+from ..exceptions import ExtractorError
 from ..network.common import HEADRequest
 
 

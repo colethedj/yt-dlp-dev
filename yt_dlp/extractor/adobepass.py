@@ -15,10 +15,9 @@ from ..utils import (
     unescapeHTML,
     urlencode_postdata,
     unified_timestamp,
-    ExtractorError,
     NO_DEFAULT,
 )
-
+from ..exceptions import ExtractorError
 
 MSO_INFO = {
     'DTV': {

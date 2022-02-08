@@ -7,12 +7,12 @@ from ..compat import compat_str
 from ..utils import (
     determine_ext,
     extract_attributes,
-    ExtractorError,
     join_nonempty,
     url_or_none,
     urlencode_postdata,
     urljoin,
 )
+from ..exceptions import ExtractorError
 
 
 class AnimeOnDemandIE(InfoExtractor):

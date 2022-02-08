@@ -8,9 +8,9 @@ from ..compat import compat_urlparse
 from ..utils import (
     xpath_text,
     int_or_none,
-    ExtractorError,
     sanitized_Request,
 )
+from ..exceptions import ExtractorError
 
 
 class MioMioIE(InfoExtractor):

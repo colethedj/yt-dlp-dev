@@ -7,10 +7,10 @@ from ..compat import (
 )
 from ..utils import (
     clean_html,
-    ExtractorError,
     traverse_obj,
     int_or_none,
 )
+from ..exceptions import ExtractorError
 
 
 class StarTVIE(InfoExtractor):

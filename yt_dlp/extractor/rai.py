@@ -10,10 +10,8 @@ from ..compat import (
 )
 from ..utils import (
     determine_ext,
-    ExtractorError,
     find_xpath_attr,
     fix_xml_ampersands,
-    GeoRestrictedError,
     int_or_none,
     join_nonempty,
     parse_duration,
@@ -27,6 +25,7 @@ from ..utils import (
     urljoin,
     xpath_text,
 )
+from ..exceptions import ExtractorError, GeoRestrictedError
 from ..network.common import HEADRequest
 
 

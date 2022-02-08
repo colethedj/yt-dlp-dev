@@ -12,12 +12,12 @@ from ..utils import (
     int_or_none,
     parse_age_limit,
     parse_duration,
-    RegexNotFoundError,
     smuggle_url,
     try_get,
     unified_timestamp,
     update_url_query,
 )
+from ..exceptions import RegexNotFoundError
 
 
 class NBCIE(ThePlatformIE):

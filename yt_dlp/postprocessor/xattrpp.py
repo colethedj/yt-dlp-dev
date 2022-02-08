@@ -5,10 +5,8 @@ from ..compat import compat_os_name
 from ..utils import (
     hyphenate_date,
     write_xattr,
-    PostProcessingError,
-    XAttrMetadataError,
-    XAttrUnavailableError,
 )
+from ..exceptions import PostProcessingError, XAttrMetadataError, XAttrUnavailableError
 
 
 class XAttrMetadataPP(PostProcessor):

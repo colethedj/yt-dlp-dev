@@ -24,7 +24,6 @@ from ..utils import (
     ISO639Utils,
     orderedSet,
     Popen,
-    PostProcessingError,
     prepend_extension,
     replace_extension,
     shell_quote,
@@ -32,7 +31,7 @@ from ..utils import (
     variadic,
     write_json_file,
 )
-
+from ..exceptions import PostProcessingError
 
 EXT_TO_OUT_FORMATS = {
     'aac': 'adts',

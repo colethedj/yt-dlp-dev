@@ -9,10 +9,10 @@ from ..compat import (
     compat_urlparse,
 )
 from ..utils import (
-    ExtractorError,
     parse_qs,
     unsmuggle_url,
 )
+from ..exceptions import ExtractorError
 
 _COMMITTEES = {
     'ag': ('76440', 'http://ag-f.akamaihd.net'),

@@ -14,7 +14,6 @@ from ..compat import (
 )
 from ..utils import (
     extract_attributes,
-    ExtractorError,
     InAdvancePagedList,
     int_or_none,
     js_to_json,
@@ -24,6 +23,7 @@ from ..utils import (
     unescapeHTML,
     url_or_none,
 )
+from ..exceptions import ExtractorError
 
 
 class PolskieRadioBaseExtractor(InfoExtractor):

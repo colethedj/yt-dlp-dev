@@ -24,8 +24,6 @@ from .cookies import SUPPORTED_BROWSERS, SUPPORTED_KEYRINGS
 from .utils import (
     DateRange,
     decodeOption,
-    DownloadCancelled,
-    DownloadError,
     error_to_compat_str,
     expand_path,
     GeoUtils,
@@ -36,11 +34,11 @@ from .utils import (
     preferredencoding,
     read_batch_urls,
     render_table,
-    SameFileError,
     setproctitle,
     std_headers,
     write_string,
 )
+from .exceptions import DownloadError, SameFileError, DownloadCancelled
 from .update import run_update
 from .downloader import (
     FileDownloader,

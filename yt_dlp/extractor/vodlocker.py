@@ -3,11 +3,11 @@ from __future__ import unicode_literals
 
 from .common import InfoExtractor
 from ..utils import (
-    ExtractorError,
     NO_DEFAULT,
     sanitized_Request,
     urlencode_postdata,
 )
+from ..exceptions import ExtractorError
 
 
 class VodlockerIE(InfoExtractor):

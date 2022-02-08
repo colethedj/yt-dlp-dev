@@ -8,7 +8,6 @@ from .common import InfoExtractor
 from ..downloader.websocket import has_websockets
 from ..utils import (
     clean_html,
-    ExtractorError,
     float_or_none,
     get_element_by_class,
     get_element_by_id,
@@ -21,6 +20,7 @@ from ..utils import (
     urlencode_postdata,
     urljoin,
 )
+from ..exceptions import ExtractorError
 
 
 class TwitCastingIE(InfoExtractor):

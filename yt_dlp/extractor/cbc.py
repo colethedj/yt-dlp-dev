@@ -18,8 +18,8 @@ from ..utils import (
     smuggle_url,
     strip_or_none,
     try_get,
-    ExtractorError,
 )
+from ..exceptions import ExtractorError
 
 
 class CBCIE(InfoExtractor):

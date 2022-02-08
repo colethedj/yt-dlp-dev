@@ -11,7 +11,6 @@ from ..compat import (
 )
 from ..utils import (
     determine_ext,
-    ExtractorError,
     float_or_none,
     qualities,
     remove_end,
@@ -19,6 +18,7 @@ from ..utils import (
     std_headers,
     try_get,
 )
+from ..exceptions import ExtractorError
 
 
 class RTVEALaCartaIE(InfoExtractor):

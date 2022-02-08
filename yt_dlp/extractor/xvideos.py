@@ -7,10 +7,10 @@ from ..compat import compat_urllib_parse_unquote
 from ..utils import (
     clean_html,
     determine_ext,
-    ExtractorError,
     int_or_none,
     parse_duration,
 )
+from ..exceptions import ExtractorError
 
 
 class XVideosIE(InfoExtractor):

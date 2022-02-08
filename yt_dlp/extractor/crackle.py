@@ -15,9 +15,9 @@ from ..utils import (
     orderedSet,
     parse_age_limit,
     parse_duration,
-    url_or_none,
-    ExtractorError
+    url_or_none
 )
+from ..exceptions import ExtractorError
 
 
 class CrackleIE(InfoExtractor):

@@ -6,12 +6,12 @@ import re
 from .common import InfoExtractor
 from ..utils import (
     determine_ext,
-    ExtractorError,
     int_or_none,
     parse_iso8601,
     traverse_obj,
     variadic,
 )
+from ..exceptions import ExtractorError
 
 
 class OpencastBaseIE(InfoExtractor):

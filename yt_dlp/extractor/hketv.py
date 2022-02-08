@@ -5,7 +5,6 @@ from .common import InfoExtractor
 from ..compat import compat_str
 from ..utils import (
     clean_html,
-    ExtractorError,
     int_or_none,
     merge_dicts,
     parse_count,
@@ -15,6 +14,7 @@ from ..utils import (
     urlencode_postdata,
     urljoin,
 )
+from ..exceptions import ExtractorError
 
 
 class HKETVIE(InfoExtractor):

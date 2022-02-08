@@ -8,7 +8,6 @@ from .common import InfoExtractor
 from .generic import GenericIE
 from ..utils import (
     determine_ext,
-    ExtractorError,
     int_or_none,
     parse_duration,
     qualities,
@@ -20,6 +19,7 @@ from ..utils import (
     url_or_none,
     xpath_text,
 )
+from ..exceptions import ExtractorError
 from ..compat import compat_etree_fromstring
 
 

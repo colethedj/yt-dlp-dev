@@ -5,7 +5,6 @@ import re
 from .common import InfoExtractor
 from ..utils import (
     determine_ext,
-    ExtractorError,
     extract_attributes,
     find_xpath_attr,
     get_element_by_attribute,
@@ -18,6 +17,7 @@ from ..utils import (
     str_to_int,
     unescapeHTML,
 )
+from ..exceptions import ExtractorError
 from .senategov import SenateISVPIE
 from .ustream import UstreamIE
 

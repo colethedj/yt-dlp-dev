@@ -10,7 +10,6 @@ from ..compat import (
 )
 from ..utils import (
     determine_ext,
-    ExtractorError,
     js_to_json,
     strip_jsonp,
     try_get,
@@ -19,6 +18,7 @@ from ..utils import (
     urlhandle_detect_ext,
     url_or_none,
 )
+from ..exceptions import ExtractorError
 
 
 class WDRIE(InfoExtractor):

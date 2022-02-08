@@ -6,8 +6,8 @@ from ..compat import compat_str
 from ..utils import (
     parse_iso8601,
     int_or_none,
-    ExtractorError,
 )
+from ..exceptions import ExtractorError
 
 
 class TheInterceptIE(InfoExtractor):

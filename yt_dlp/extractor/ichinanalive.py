@@ -2,7 +2,8 @@
 from __future__ import unicode_literals
 
 from .common import InfoExtractor
-from ..utils import ExtractorError, str_or_none, traverse_obj, unified_strdate
+from ..utils import str_or_none, traverse_obj, unified_strdate
+from ..exceptions import ExtractorError
 from ..compat import compat_str
 
 

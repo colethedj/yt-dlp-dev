@@ -10,13 +10,13 @@ from ..compat import (
 )
 from ..utils import (
     encode_data_uri,
-    ExtractorError,
     int_or_none,
     float_or_none,
     join_nonempty,
     mimetype2ext,
     str_or_none,
 )
+from ..exceptions import ExtractorError
 
 
 class UstreamIE(InfoExtractor):

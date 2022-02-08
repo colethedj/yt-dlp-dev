@@ -10,8 +10,8 @@ from ..utils import (
     qualities,
     strip_or_none,
     int_or_none,
-    ExtractorError,
 )
+from ..exceptions import ExtractorError
 
 
 class FilmOnIE(InfoExtractor):

@@ -8,10 +8,10 @@ from ..compat import (
     compat_urlparse,
 )
 from ..utils import (
-    ExtractorError,
     int_or_none,
     urlencode_postdata,
 )
+from ..exceptions import ExtractorError
 
 
 class LyndaBaseIE(InfoExtractor):

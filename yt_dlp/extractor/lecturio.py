@@ -7,7 +7,6 @@ from .common import InfoExtractor
 from ..utils import (
     clean_html,
     determine_ext,
-    ExtractorError,
     float_or_none,
     int_or_none,
     str_or_none,
@@ -15,6 +14,7 @@ from ..utils import (
     urlencode_postdata,
     urljoin,
 )
+from ..exceptions import ExtractorError
 
 
 class LecturioBaseIE(InfoExtractor):

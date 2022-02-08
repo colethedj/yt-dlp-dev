@@ -14,7 +14,6 @@ from ..compat import (
     compat_urllib_parse_urlparse
 )
 from ..utils import (
-    ExtractorError,
     int_or_none,
     float_or_none,
     mimetype2ext,
@@ -31,6 +30,7 @@ from ..utils import (
     url_or_none,
     OnDemandPagedList
 )
+from ..exceptions import ExtractorError
 
 
 class BiliBiliIE(InfoExtractor):

@@ -9,10 +9,10 @@ from ..compat import (
     compat_urlparse,
 )
 from ..utils import (
-    ExtractorError,
     clean_html,
     get_element_by_id,
 )
+from ..exceptions import ExtractorError
 
 
 class VeeHDIE(InfoExtractor):

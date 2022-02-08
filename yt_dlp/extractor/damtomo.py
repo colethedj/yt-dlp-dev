@@ -4,7 +4,8 @@ from __future__ import unicode_literals
 import re
 
 from .common import InfoExtractor
-from ..utils import ExtractorError, clean_html, int_or_none, try_get, unified_strdate
+from ..utils import clean_html, int_or_none, try_get, unified_strdate
+from ..exceptions import ExtractorError
 from ..compat import compat_str
 
 

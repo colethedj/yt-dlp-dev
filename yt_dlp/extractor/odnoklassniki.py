@@ -11,7 +11,6 @@ from ..compat import (
     compat_urllib_parse_urlparse,
 )
 from ..utils import (
-    ExtractorError,
     float_or_none,
     unified_strdate,
     int_or_none,
@@ -19,6 +18,7 @@ from ..utils import (
     unescapeHTML,
     urlencode_postdata,
 )
+from ..exceptions import ExtractorError
 
 
 class OdnoklassnikiIE(InfoExtractor):

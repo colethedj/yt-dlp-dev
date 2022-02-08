@@ -6,7 +6,6 @@ import re
 from .common import InfoExtractor
 from ..utils import (
     determine_ext,
-    ExtractorError,
     int_or_none,
     join_nonempty,
     js_to_json,
@@ -15,6 +14,7 @@ from ..utils import (
     unescapeHTML,
     parse_iso8601,
 )
+from ..exceptions import ExtractorError
 
 
 class DVTVIE(InfoExtractor):

@@ -6,11 +6,11 @@ import re
 from .common import InfoExtractor
 from ..compat import compat_HTTPError
 from ..utils import (
-    ExtractorError,
     int_or_none,
     parse_age_limit,
     traverse_obj,
 )
+from ..exceptions import ExtractorError
 
 
 class ViewLiftBaseIE(InfoExtractor):

@@ -6,7 +6,6 @@ from .common import InfoExtractor
 from .vimeo import VimeoIE
 from ..compat import compat_str
 from ..utils import (
-    ExtractorError,
     int_or_none,
     merge_dicts,
     try_get,
@@ -14,6 +13,7 @@ from ..utils import (
     unified_timestamp,
     urljoin,
 )
+from ..exceptions import ExtractorError
 
 
 class RayWenderlichIE(InfoExtractor):

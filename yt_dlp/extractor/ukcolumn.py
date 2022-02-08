@@ -3,8 +3,8 @@ from __future__ import unicode_literals
 from ..utils import (
     unescapeHTML,
     urljoin,
-    ExtractorError,
 )
+from ..exceptions import ExtractorError
 from .common import InfoExtractor
 from .vimeo import VimeoIE
 from .youtube import YoutubeIE

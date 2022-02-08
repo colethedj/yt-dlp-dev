@@ -15,7 +15,6 @@ from ..utils import (
     clean_html,
     determine_ext,
     error_to_compat_str,
-    ExtractorError,
     float_or_none,
     get_element_by_id,
     int_or_none,
@@ -32,7 +31,7 @@ from ..utils import (
     urljoin,
     variadic,
 )
-from ..network.utils import network_exceptions
+from ..exceptions import ExtractorError, network_exceptions
 
 
 class FacebookIE(InfoExtractor):

@@ -6,7 +6,6 @@ from .common import InfoExtractor
 from .gigya import GigyaBaseIE
 from ..compat import compat_HTTPError
 from ..utils import (
-    ExtractorError,
     clean_html,
     extract_attributes,
     float_or_none,
@@ -18,6 +17,7 @@ from ..utils import (
     url_or_none,
     urlencode_postdata
 )
+from ..exceptions import ExtractorError
 
 
 class CanvasIE(InfoExtractor):

@@ -13,8 +13,8 @@ from ..utils import (
     remove_end,
     try_get,
     urlencode_postdata,
-    ExtractorError,
 )
+from ..exceptions import ExtractorError
 
 
 class GoIE(AdobePassIE):

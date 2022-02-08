@@ -8,7 +8,6 @@ from .common import InfoExtractor
 from ..utils import (
     clean_html,
     extract_attributes,
-    ExtractorError,
     float_or_none,
     get_element_by_class,
     int_or_none,
@@ -19,6 +18,7 @@ from ..utils import (
     urlencode_postdata,
     urljoin,
 )
+from ..exceptions import ExtractorError
 
 
 class LinkedInBaseIE(InfoExtractor):

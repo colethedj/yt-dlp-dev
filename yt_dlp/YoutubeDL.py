@@ -50,27 +50,20 @@ from .network.backends import UrllibHandler, make_HTTPS_handler, YoutubeDLHandle
 from .utils import (
     age_restricted,
     args_to_str,
-    ContentTooShortError,
     date_from_str,
     DateRange,
     DEFAULT_OUTTMPL,
     determine_ext,
     determine_protocol,
-    DownloadCancelled,
-    DownloadError,
     encode_compat_str,
     encodeFilename,
-    EntryNotInPlaylist,
     error_to_compat_str,
-    ExistingVideoReached,
     expand_path,
-    ExtractorError,
     float_or_none,
     format_bytes,
     format_field,
     format_decimal_suffix,
     formatSeconds,
-    GeoRestrictedError,
     get_domain,
     InAdvancePagedList,
     int_or_none,
@@ -81,7 +74,6 @@ from .utils import (
     LINK_TEMPLATES,
     locked_file,
     make_dir,
-    MaxDownloadsReached,
     number_of_digits,
     orderedSet,
     OUTTMPL_TYPES,
@@ -90,15 +82,11 @@ from .utils import (
     platform_name,
     Popen,
     POSTPROCESS_WHEN,
-    PostProcessingError,
     preferredencoding,
     prepend_extension,
-    ReExtractInfo,
-    RejectedVideoReached,
     remove_terminal_sequences,
     render_table,
     replace_extension,
-    SameFileError,
     sanitize_filename,
     sanitize_path,
     sanitize_url,
@@ -114,7 +102,6 @@ from .utils import (
     to_high_limit_path,
     traverse_obj,
     try_get,
-    UnavailableVideoError,
     url_basename,
     variadic,
     version_tuple,
@@ -122,7 +109,9 @@ from .utils import (
     write_string,
     YDLLogger,
 )
-from .network.utils import network_exceptions
+from .exceptions import ExtractorError, GeoRestrictedError, EntryNotInPlaylist, PostProcessingError, \
+    ExistingVideoReached, RejectedVideoReached, MaxDownloadsReached, ReExtractInfo, UnavailableVideoError, \
+    ContentTooShortError, network_exceptions, DownloadError, SameFileError, DownloadCancelled
 from .cache import Cache
 from .minicurses import format_text
 from .extractor import (

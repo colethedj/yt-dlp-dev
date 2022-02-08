@@ -2,7 +2,6 @@ import random
 
 from .common import InfoExtractor
 from ..utils import (
-    ExtractorError,
     int_or_none,
     float_or_none,
     try_get,
@@ -10,6 +9,7 @@ from ..utils import (
     url_or_none,
     traverse_obj
 )
+from ..exceptions import ExtractorError
 
 
 class RedditIE(InfoExtractor):

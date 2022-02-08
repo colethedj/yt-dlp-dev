@@ -8,8 +8,8 @@ from ..utils import (
     int_or_none,
     float_or_none,
     qualities,
-    ExtractorError,
 )
+from ..exceptions import ExtractorError
 
 
 class GfycatIE(InfoExtractor):
