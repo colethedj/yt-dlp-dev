@@ -484,9 +484,9 @@ class UrllibHandler(YDLBackendHandler):
     def _initialize(self):
         cookie_processor = YoutubeDLCookieProcessor(self.cookiejar)
         proxy_handler = PerRequestProxyHandler()
-        debuglevel = 1 if self.params.get('debug_printtraffic') else 0
-        https_handler = make_HTTPS_handler(self.params, debuglevel=debuglevel)
-        ydlh = YoutubeDLHandler(self.params, debuglevel=debuglevel)
+        debuglevel = int(self.print_traffic)
+        https_handler = make_HTTPS_handler(self.ydl.params, debuglevel=debuglevel)
+        ydlh = YoutubeDLHandler(self.ydl.params, debuglevel=debuglevel)
         redirect_handler = YoutubeDLRedirectHandler()
         data_handler = compat_urllib_request_DataHandler()
 
@@ -516,9 +516,9 @@ class UrllibHandler(YDLBackendHandler):
         if not request.compression:
             urllib_req.add_header('Youtubedl-no-compression', '1')
         if request.proxy:
-            urllib_req.add_header('Ytdl-request-proxy',request.proxy)
+            urllib_req.add_header('Ytdl-request-proxy', request.proxy)
         try:
-            res = self._opener.open(urllib_req, timeout=request.timeout or self.socket_timeout)
+            res = self._opener.open(urllib_req, timeout=request.timeout)
 
         except urllib.error.HTTPError as e:
             # TODO: we may have an HTTPResponse and an addinfourl

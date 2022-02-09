@@ -1,6 +1,8 @@
 from __future__ import unicode_literals
 
 import collections
+import http.cookiejar
+import inspect
 import io
 import sys
 import time
@@ -20,6 +22,7 @@ from ..utils import (
     write_string
 )
 
+from ..exceptions import bug_reports_message
 
 class YDLRequest:
     """
@@ -188,93 +191,118 @@ class HTTPResponse(ABC, io.IOBase):
         raise NotImplementedError
 
 
-class BaseBackendHandler:
+class BaseBackendHandler(ABC):
 
-    _next_handler = None
+    SUPPORTED_PROTOCOLS: list
+
+    @classmethod
+    def _is_supported_protocol(cls, request: YDLRequest):
+        return urllib.parse.urlparse(request.url).scheme.lower() in cls._SUPPORTED_PROTOCOLS
 
     def handle(self, request: YDLRequest, **req_kwargs):
-        if self.can_handle(request, **req_kwargs):
-            res = self._real_handle(request, **req_kwargs)
-            if res:
-                return res
-        if self._next_handler:
-            return self._next_handler.handle(request, **req_kwargs)
+        """Method to handle given request. Redefine in subclasses"""
 
     @classmethod
     def can_handle(cls, request: YDLRequest, **req_kwargs) -> bool:
         """Validate if handler is suitable for given request. Can override in subclasses."""
 
-    def _real_handle(self, request: YDLRequest, **kwargs) -> HTTPResponse:
-        """Real request handling process. Redefine in subclasses"""
-
 
 class YDLBackendHandler(BaseBackendHandler):
+    """Network Backend Handler class
 
-    _SUPPORTED_PROTOCOLS: list
+    Responsible for handling requests.
 
-    def __init__(self, youtubedl_params: dict, ydl_logger, cookies):
-        self.params = youtubedl_params
-        self.logger = ydl_logger
-        self.cookiejar = cookies
+    Available options:
 
-        # TODO: The following can probably be delegated to YoutubeDL._create_session
-        timeout_val = self.params.get('socket_timeout')
-        self.debuglevel = 1 if self.params.get('debug_printtraffic') else 0
-        self.socket_timeout = 20 if timeout_val is None else float(timeout_val)
+    cookiejar:          A YoutubeDLCookieJar to store cookies in
+    verbose:            Print traffic for debugging to stdout
+    socket_timeout:     Timeout for socket connections/reads, in seconds
+    proxy:              Default proxy to use for requests
+    """
+    params = None
 
+    def __init__(self, ydl, params):
+        self.ydl = ydl
+        self.params = params or self.params or {}
+        self.cookiejar = params.get('cookiejar', http.cookiejar.CookieJar())
+        self.proxy = self.get_default_proxy()
+        self.print_traffic = bool(self.params.get('verbose'))
+        self.socket_timeout = float(self.params.get('socket_timeout') or 20)  # do not accept 0
         self._initialize()
 
-    def _initialize(self):
-        """Initialization process. Redefine in subclasses."""
-        pass
-
-    def set_next(self, handler):
-        self._next_handler = handler
+    def get_default_proxy(self):
+        proxies = urllib.request.getproxies()
+        return self.params.get('proxy') or proxies.get('http') or proxies.get('https')
 
     def handle(self, request: YDLRequest, **req_kwargs):
-        if self.can_handle(request, **req_kwargs):
-            res = self._real_handle(request, **req_kwargs)
-            if res:
-                return res
-        if self._next_handler:
-            return self._next_handler.handle(request, **req_kwargs)
+        if not request.proxy and self.proxy:
+            request.proxy = self.proxy
+        if not request.timeout:
+            request.timeout = self.socket_timeout
+        return self._real_handle(request, **req_kwargs)
 
-    @classmethod
-    def _is_supported_protocol(cls, request: YDLRequest):
-        return urllib.parse.urlparse(request.url).scheme.lower() in cls._SUPPORTED_PROTOCOLS
+    def to_screen(self, *args, **kwargs):
+        self.ydl.to_stdout(*args, **kwargs)
+
+    def to_stderr(self, message):
+        self.ydl.to_stderr(message)
+
+    def report_warning(self, *args, **kwargs):
+        self.ydl.report_warning(*args, **kwargs)
+
+    def report_error(self, *args, **kwargs):
+        self.ydl.report_error(*args, **kwargs)
+
+    def write_debug(self, *args, **kwargs):
+        self.ydl.write_debug(*args, **kwargs)
 
     @classmethod
     def can_handle(cls, request: YDLRequest, **req_kwargs) -> bool:
         """Validate if handler is suitable for given request. Can override in subclasses."""
         return cls._is_supported_protocol(request)
 
+    def _initialize(self):
+        """Initialization process. Redefine in subclasses."""
+        pass
 
-class Session:
+    def _real_handle(self, request: YDLRequest, **kwargs) -> HTTPResponse:
+        """Real request handling process. Redefine in subclasses"""
 
-    def __init__(self, youtubedl_params: dict, logger):
-        self._handler = None
-        self._logger = logger
-        self.params = youtubedl_params
-        self.proxy = self.get_main_proxy()
 
-    def add_handler(self, handler: YDLBackendHandler):
+class BackendManager:
 
-        if self._handler is None:
-            self._handler = handler
+    def __init__(self, ydl):
+        self.handlers = []
+        self.ydl = ydl
+
+    def add_handler(self, handler: BaseBackendHandler):
+        if handler not in self.handlers:
+            self.handlers.append(handler)
+
+    def remove_handler(self, handler):
+        """
+        Remove backend handler(s)
+        @param handler: Handler object or handler type.
+        Specifying handler type will remove all handlers of that type.
+
+        idea from yt-dlp#1687
+        """
+        if inspect.isclass(handler):
+            finder = lambda x: isinstance(x, handler)
         else:
-            handler.set_next(self._handler)
-            self._handler = handler
-
-    def get_main_proxy(self):
-        proxies = urllib.request.getproxies()
-        return (self.params.get('proxy')
-                or proxies.get('http')
-                or proxies.get('https'))
+            finder = lambda x: x is handler
+        self.handlers = [x for x in self.handlers if not finder(handler)]
 
     def send_request(self, request: YDLRequest):
-        if not request.proxy and self.proxy:
-            request.proxy = self.proxy
-        return self._handler.handle(request)
+        for handler in reversed(self.handlers):
+            if not handler.can_handle(request):
+                continue
+            res = handler.handle(request)
+            if not res:
+                self.ydl.report_warning(f'{handler.__class__} handler returned nothing for response' + bug_reports_message())
+                continue
+            assert isinstance(res, HTTPResponse)
+            return res
 
 
 class YDLHTTPHeaderStore(Message):

@@ -154,7 +154,7 @@ from .postprocessor import (
 
 from .network.common import (
     HEADRequest,
-    Session,
+    BackendManager,
     YDLRequest,
     req_to_ydlreq
 )
@@ -649,9 +649,7 @@ class YoutubeDL(object):
             else self.params['format'] if callable(self.params['format'])
             else self.build_format_selector(self.params['format']))
 
-        self._urllib3_opener = self._opener = None
-        self._setup_opener()
-        self.session = self._create_session()
+        self.session = self._setup_backends()
         if auto_init:
             if auto_init != 'no_verbose_header':
                 self.print_debug_header()
@@ -3665,11 +3663,10 @@ class YoutubeDL(object):
             delim=', ') or 'none'
         write_debug('Optional libraries: %s' % lib_str)
 
-        proxy_map = {}
-        for handler in self._opener.handlers:
-            if hasattr(handler, 'proxies'):
-                proxy_map.update(handler.proxies)
-        write_debug(f'Proxy map: {proxy_map}')
+        for handler in self.session.handlers:
+            if hasattr(handler, 'proxy'):
+                write_debug(f'Proxy: {handler.proxy}')
+                break
 
         # Not implemented
         if False and self.params.get('call_home'):
@@ -3697,15 +3694,24 @@ class YoutubeDL(object):
                 proxies['https'] = proxies['http']
         return proxies
 
-    def _create_session(self):
-        logger = YDLLogger(self)  # TODO: separate logging stuff from YouTubeDL.py
+    def _setup_backends(self):
         handlers = [UnsupportedBackendHandler, UrllibHandler]
-        session = Session(self.params, logger=logger)
+        params = {
+            'cookiejar': self.cookiejar,
+            'verbose': self.params.get('debug_printtraffic'),
+            'socket_timeout': self.params.get('socket_timeout'),
+            'proxy': self.params.get('proxy')
+        }
+        manager = BackendManager(self)
         for handler in handlers:
             if not handler:
                 continue
-            session.add_handler(handler(self.params, logger, self.cookiejar))
-        return session
+            manager.add_handler(handler(self, params))
+
+            # compat
+            if isinstance(handler, UrllibHandler):
+                self._opener = handler._opener
+        return manager
 
     @property
     def cookiejar(self):
@@ -3714,52 +3720,6 @@ class YoutubeDL(object):
             opts_cookiefile = self.params.get('cookiefile')
             self._cookiejar = load_cookies(opts_cookiefile, opts_cookiesfrombrowser, self)
         return self._cookiejar
-
-    # def _setup_urllib3_opener(self):
-    #     if compat_urllib3 is None or 'no-urllib3' in self.params.get('compat_opts', []):
-    #         return
-    #     compat_urllib3.disable_warnings()
-    #     if self.params.get('debug_printtraffic'):
-    #         compat_urllib3.add_stderr_logger()
-    #
-    #     try:
-    #         self._urllib3_opener = YoutubeDLUrlLib3Adapter(
-    #             self.params, cookiejar=self.cookiejar, proxy_map=self._get_proxy_map())
-    #     except Exception as e:
-    #         self.report_warning(str(e) + '; falling back to urllib')
-
-    def _setup_opener(self):
-        timeout_val = self.params.get('socket_timeout')
-        self._socket_timeout = 20 if timeout_val is None else float(timeout_val)
-
-        cookie_processor = YoutubeDLCookieProcessor(self.cookiejar)
-        proxies = self._get_proxy_map()
-        proxy_handler = PerRequestProxyHandler(proxies)
-
-        debuglevel = 1 if self.params.get('debug_printtraffic') else 0
-        https_handler = make_HTTPS_handler(self.params, debuglevel=debuglevel)
-        ydlh = YoutubeDLHandler(self.params, debuglevel=debuglevel)
-        redirect_handler = YoutubeDLRedirectHandler()
-        data_handler = compat_urllib_request_DataHandler()
-
-        # When passing our own FileHandler instance, build_opener won't add the
-        # default FileHandler and allows us to disable the file protocol, which
-        # can be used for malicious purposes (see
-        # https://github.com/ytdl-org/youtube-dl/issues/8227)
-        file_handler = compat_urllib_request.FileHandler()
-
-        def file_open(*args, **kwargs):
-            raise compat_urllib_error.URLError('file:// scheme is explicitly disabled in yt-dlp for security reasons')
-        file_handler.file_open = file_open
-
-        opener = compat_urllib_request.build_opener(
-            proxy_handler, https_handler, cookie_processor, ydlh, redirect_handler, data_handler, file_handler)
-
-        # Delete the default user-agent header, which would otherwise apply in
-        # cases where our custom HTTP handler doesn't come into play
-        # (See https://github.com/ytdl-org/youtube-dl/issues/1309 for details)
-        opener.addheaders = []
-        self._opener = opener
 
     def encode(self, s):
         if isinstance(s, bytes):
