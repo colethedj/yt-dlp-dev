@@ -916,10 +916,8 @@ class YoutubeDL(object):
             self.to_stderr(f'{self._format_err("WARNING:", self.Styles.WARNING)} {message}', only_once)
 
     def deprecation_warning(self, message):
-        if self.params.get('logger') is not None:
-            self.params['logger'].warning('DeprecationWarning: {message}')
-        else:
-            self.to_stderr(f'{self._format_err("DeprecationWarning:", self.Styles.ERROR)} {message}', True)
+        import warnings
+        warnings.warn(DeprecationWarning(message), stacklevel=2)
 
     def report_error(self, message, *args, **kwargs):
         '''

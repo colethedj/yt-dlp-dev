@@ -10,25 +10,9 @@ import traceback
 from zipimport import zipimporter
 
 from .compat import compat_realpath
-from .utils import encode_compat_str, Popen, write_string
+from .utils import encode_compat_str, Popen
 
 from .version import __version__
-
-
-'''  # Not signed
-def rsa_verify(message, signature, key):
-    from hashlib import sha256
-    assert isinstance(message, bytes)
-    byte_size = (len(bin(key[0])) - 2 + 8 - 1) // 8
-    signature = ('%x' % pow(int(signature, 16), key[1], key[0])).encode()
-    signature = (byte_size * 2 - len(signature)) * b'0' + signature
-    asn1 = b'3031300d060960864801650304020105000420'
-    asn1 += sha256(message).hexdigest().encode()
-    if byte_size < len(asn1) // 2 + 11:
-        return False
-    expected = b'0001' + (byte_size - len(asn1) // 2 - 3) * b'ff' + b'00' + asn1
-    return expected == signature
-'''
 
 
 def detect_variant():
@@ -232,32 +216,16 @@ def run_update(ydl):
     assert False, f'Unhandled variant: {variant}'
 
 
-'''  # UNUSED
-def get_notes(versions, fromVersion):
-    notes = []
-    for v, vdata in sorted(versions.items()):
-        if v > fromVersion:
-            notes.extend(vdata.get('notes', []))
-    return notes
-
-
-def print_notes(to_screen, versions, fromVersion=__version__):
-    notes = get_notes(versions, fromVersion)
-    if notes:
-        to_screen('PLEASE NOTE:')
-        for note in notes:
-            to_screen(note)
-'''
-
-
 # Deprecated
 def update_self(to_screen, verbose, opener):
+    import warnings
 
     printfn = to_screen
 
-    write_string(
-        'DeprecationWarning: "yt_dlp.update.update_self" is deprecated and may be removed in a future version. '
-        'Use "yt_dlp.update.run_update(ydl)" instead\n')
+    warnings.warn(DeprecationWarning(
+        '"yt_dlp.update.update_self" is deprecated and may be removed in a future version. '
+        'Use "yt_dlp.update.run_update(ydl)" instead\n'
+    ))
 
     class FakeYDL():
         _opener = opener
