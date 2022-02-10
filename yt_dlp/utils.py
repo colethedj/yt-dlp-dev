@@ -27,6 +27,7 @@ import os
 import platform
 import random
 import re
+import io
 import socket
 import subprocess
 import sys
@@ -538,12 +539,10 @@ def clean_html(html):
 
 def sanitize_open(filename, open_mode):
     """Try to open the given filename, and slightly tweak it if this fails.
-
     Attempts to open the given filename. If this fails, it tries to change
     the filename slightly, step by step, until it's either able to open it
     or it fails and raises a final exception, like the standard open()
     function.
-
     It returns the tuple (stream, definitive_file_name).
     """
     try:
@@ -1218,17 +1217,36 @@ else:
             raise IOError(UNSUPPORTED_MSG)
 
 
-@contextlib.contextmanager
-def locked_file(filename, mode, encoding=None):
-    f = open(filename, mode, encoding=encoding)
-    try:
-        _lock_file(f, mode != 'r')
+class locked_file(object):
+    def __init__(self, filename, mode, block=True, encoding=None):
+        assert mode in ['r', 'rb', 'a', 'ab', 'w', 'wb']
+        self.f = io.open(filename, mode, encoding=encoding)
+        self.mode = mode
+        self.block = block
+
+    def __enter__(self):
+        exclusive = 'r' not in self.mode
         try:
-            yield f
+            _lock_file(self.f, exclusive, self.block)
+        except IOError:
+            self.f.close()
+            raise
+        return self
+
+    def __exit__(self, etype, value, traceback):
+        try:
+            _unlock_file(self.f)
         finally:
-            _unlock_file(f)
-    finally:
-        f.close()
+            self.f.close()
+
+    def __iter__(self):
+        return iter(self.f)
+
+    def write(self, *args):
+        return self.f.write(*args)
+
+    def read(self, *args):
+        return self.f.read(*args)
 
     def flush(self):
         self.f.flush()
