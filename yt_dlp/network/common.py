@@ -24,6 +24,7 @@ from ..utils import (
 
 from ..exceptions import bug_reports_message
 
+
 class YDLRequest:
     """
     Our own request class, similar to urllib.request.Request
@@ -37,8 +38,6 @@ class YDLRequest:
         @param proxy: proxy to use for the request, e.g. socks5://127.0.0.1:1080. Default is None.
         @param compression: whether to include content-encoding header on request (i.e. disable/enable compression).
         For everything else, see urllib.request.Request docs: https://docs.python.org/3/library/urllib.request.html?highlight=request#urllib.request.Request
-
-        Headers are stored internally in a YDLHTTPHeaderStore. Be careful not to have multiple headers (TODO: do we want to add something to prevent this?)
         """
         url, basic_auth_header = extract_basic_auth(escape_url(sanitize_url(url)))
         # Using Request object for url parsing.

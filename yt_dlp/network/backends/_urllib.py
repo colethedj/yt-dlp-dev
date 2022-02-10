@@ -394,6 +394,10 @@ def update_Request(req, url=None, data=None, headers={}, query={}):
     class PUTRequest(compat_urllib_request.Request):
         def get_method(self):
             return 'PUT'
+
+    class HEADRequest(compat_urllib_request.Request):
+        def get_method(self):
+            return 'HEAD'
     req_headers = req.headers.copy()
     req_headers.update(headers)
     req_data = data or req.data
