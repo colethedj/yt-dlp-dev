@@ -47,16 +47,9 @@ from .compat import (
 from .cookies import load_cookies
 from .network.backends import (
     UrllibHandler,
-    UnsupportedBackendHandler
+    network_handlers
 )
-# TODO
-from .network.backends._urllib import (
-    make_HTTPS_handler,
-    YoutubeDLHandler,
-    YoutubeDLCookieProcessor,
-    YoutubeDLRedirectHandler,
-    PerRequestProxyHandler
-)
+
 from .utils import (
     age_restricted,
     args_to_str,
@@ -3703,7 +3696,6 @@ class YoutubeDL(object):
         return proxies
 
     def _setup_backends(self):
-        handlers = [UnsupportedBackendHandler, UrllibHandler]
         params = {
             'cookiejar': self.cookiejar,
             'verbose': self.params.get('debug_printtraffic'),
@@ -3711,7 +3703,7 @@ class YoutubeDL(object):
             'proxy': self.params.get('proxy')
         }
         manager = BackendManager(self)
-        for handler in handlers:
+        for handler in network_handlers:
             if not handler:
                 continue
             manager.add_handler(handler(self, params))

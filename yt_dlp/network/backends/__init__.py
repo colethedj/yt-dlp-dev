@@ -8,4 +8,6 @@ class UnsupportedBackendHandler(YDLBackendHandler):
         raise RequestError('This request is not supported')
 
 
-__all__ = ['UrllibHandler', 'UnsupportedBackendHandler']
+network_handlers = (UnsupportedBackendHandler, UrllibHandler)
+
+__all__ = ['UrllibHandler', 'UnsupportedBackendHandler', 'network_handlers']
