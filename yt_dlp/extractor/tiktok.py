@@ -25,6 +25,8 @@ from ..utils import (
 )
 from ..exceptions import ExtractorError
 
+from ..network.common import HEADRequest
+
 
 class TikTokBaseIE(InfoExtractor):
     _APP_VERSIONS = [('20.9.3', '293'), ('20.4.3', '243'), ('20.2.1', '221'), ('20.1.2', '212'), ('20.0.4', '204')]
@@ -817,3 +819,39 @@ class DouyinIE(TikTokIE):
             render_data_json, video_id, transform_source=compat_urllib_parse_unquote)
         return self._parse_aweme_video_web(
             traverse_obj(render_data, (..., 'aweme', 'detail'), get_all=False), url)
+
+
+class TikTokVMIE(InfoExtractor):
+    _VALID_URL = r'https?://(?:vm|vt)\.tiktok\.com/(?P<id>\w+)'
+    IE_NAME = 'vm.tiktok'
+
+    _TESTS = [{
+        'url': 'https://vm.tiktok.com/ZSe4FqkKd',
+        'info_dict': {
+            'id': '7023491746608712966',
+            'ext': 'mp4',
+            'title': 'md5:5607564db90271abbbf8294cca77eddd',
+            'description': 'md5:5607564db90271abbbf8294cca77eddd',
+            'duration': 11,
+            'upload_date': '20211026',
+            'uploader_id': '7007385080558846981',
+            'creator': 'Memes',
+            'artist': 'Memes',
+            'track': 'original sound',
+            'uploader': 'susmandem',
+            'timestamp': 1635284105,
+            'thumbnail': r're:https://.+\.webp.*',
+            'like_count': int,
+            'view_count': int,
+            'comment_count': int,
+            'repost_count': int,
+            'uploader_url': 'https://www.tiktok.com/@MS4wLjABAAAAXcNoOEOxVyBzuII_E--T0MeCrLP0ay1Sm6x_n3dluiWEoWZD0VlQOytwad4W0i0n',
+        }
+    }, {
+        'url': 'https://vt.tiktok.com/ZSe4FqkKd',
+        'only_matching': True,
+    }]
+
+    def _real_extract(self, url):
+        return self.url_result(self._request_webpage(
+            HEADRequest(url), self._match_id(url), headers={'User-Agent': 'facebookexternalhit/1.1'}).geturl(), TikTokIE)

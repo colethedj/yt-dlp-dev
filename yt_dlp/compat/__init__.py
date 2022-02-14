@@ -238,6 +238,7 @@ __all__ = [
     'compat_urllib_response',
     'compat_urlparse',
     'compat_urlretrieve',
+    'compat_websockets',
     'compat_xml_parse_error',
     'windows_enable_vt_mode',
 ]
