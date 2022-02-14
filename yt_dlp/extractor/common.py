@@ -13,7 +13,6 @@ import sys
 import time
 import math
 
-import yt_dlp.exceptions
 from ..compat import (
     compat_cookiejar_Cookie,
     compat_cookies_SimpleCookie,
@@ -82,8 +81,16 @@ from ..utils import (
     xpath_text,
     xpath_with_ns,
 )
-from ..exceptions import bug_reports_message, ExtractorError, UnsupportedError, RegexNotFoundError, GeoRestrictedError, \
-    network_exceptions
+from ..exceptions import (
+    bug_reports_message,
+    ExtractorError,
+    UnsupportedError,
+    RegexNotFoundError,
+    GeoRestrictedError,
+    network_exceptions,
+    IncompleteRead,
+    HTTPError
+)
 from ..network.backends._urllib import update_Request
 
 
@@ -635,7 +642,7 @@ class InfoExtractor(object):
             if hasattr(e, 'countries'):
                 kwargs['countries'] = e.countries
             raise type(e)(e.msg, **kwargs)
-        except compat_http_client.IncompleteRead as e:
+        except IncompleteRead as e:
             raise ExtractorError('A network error has occurred.', cause=e, expected=True, video_id=self.get_temp_id(url))
         except (KeyError, StopIteration) as e:
             raise ExtractorError('An extractor error has occurred.', cause=e, video_id=self.get_temp_id(url))
@@ -678,7 +685,7 @@ class InfoExtractor(object):
 
     @staticmethod
     def __can_accept_status_code(err, expected_status):
-        assert isinstance(err, yt_dlp.exceptions.HTTPError)
+        assert isinstance(err, HTTPError)
         if expected_status is None:
             return False
         elif callable(expected_status):
@@ -692,6 +699,7 @@ class InfoExtractor(object):
 
         See _download_webpage docstring for arguments specification.
         """
+        # TODO
         if not self._downloader._first_webpage_request:
             sleep_interval = self.get_param('sleep_interval_requests') or 0
             if sleep_interval > 0:
@@ -728,8 +736,9 @@ class InfoExtractor(object):
         try:
             return self._downloader.urlopen(url_or_request)
         except network_exceptions as err:
-            if isinstance(err, yt_dlp.exceptions.HTTPError):
+            if isinstance(err, HTTPError):
                 if self.__can_accept_status_code(err, expected_status):
+                    # TODO
                     # Retain reference to error to prevent file object from
                     # being closed before it can be read. Works around the
                     # effects of <https://bugs.python.org/issue15002>
@@ -896,7 +905,7 @@ class InfoExtractor(object):
                     encoding=encoding, data=data, headers=headers, query=query,
                     expected_status=expected_status)
                 success = True
-            except compat_http_client.IncompleteRead as e:
+            except IncompleteRead as e:
                 try_count += 1
                 if try_count >= tries:
                     raise e
@@ -3539,6 +3548,7 @@ class InfoExtractor(object):
         return compat_cookies_SimpleCookie(req.get_header('Cookie'))
 
     def _apply_first_set_cookie_header(self, url_handle, cookie):
+        # TODO
         """
         Apply first Set-Cookie header instead of the last. Experimental.
 
