@@ -33,33 +33,21 @@ from ...exceptions import (
     bug_reports_message,
     HTTPError
 )
-from ..common import HTTPResponse, YDLBackendHandler, YDLRequest, HEADRequest
+from ..common import HTTPResponse, YDLBackendHandler, YDLRequest, HEADRequest, get_std_headers
 from ..socksproxy import ProxyType, sockssocket
 from ..utils import (
-    make_ssl_context,
-    random_user_agent
+    make_ssl_context
 )
 from ...utils import (
     escape_url,
     update_url_query,
-    std_headers
 )
-
 
 URLLIB_SUPPORTED_ENCODINGS = [
     'gzip', 'deflate'
 ]
 if compat_brotli:
     URLLIB_SUPPORTED_ENCODINGS.append('br')
-
-urllib_std_headers = {
-    'User-Agent': random_user_agent(),
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    'Accept-Encoding': ', '.join(URLLIB_SUPPORTED_ENCODINGS),
-    'Accept-Language': 'en-us,en;q=0.5',
-    'Sec-Fetch-Mode': 'navigate',
-    **std_headers
-}
 
 
 def make_HTTPS_handler(params, **kwargs):
@@ -195,7 +183,7 @@ class YoutubeDLHandler(compat_urllib_request.HTTPHandler):
         if url != url_escaped:
             req = update_Request(req, url=url_escaped)
 
-        for h, v in urllib_std_headers.items():
+        for h, v in get_std_headers(supported_encodings=URLLIB_SUPPORTED_ENCODINGS).items():
             # Capitalize is needed because of Python bug 2275: http://bugs.python.org/issue2275
             # The dict keys are capitalized because of this bug by urllib
             if h.capitalize() not in req.headers:

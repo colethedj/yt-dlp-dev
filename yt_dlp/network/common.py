@@ -19,10 +19,12 @@ from ..utils import (
     extract_basic_auth,
     escape_url,
     sanitize_url,
-    write_string
+    write_string,
+    std_headers
 )
 
 from ..exceptions import bug_reports_message
+from .utils import random_user_agent
 
 
 class YDLRequest:
@@ -319,24 +321,31 @@ class YDLHTTPHeaderStore(Message):
             self.replace_header(k, v)
 
     def copy(self):
-        return YDLHTTPHeaderStore(self)
+        return self.__class__(self)
 
     """
     Message requires value to be a str, but some extractors provide headers as integers.
     """
     def add_header(self, _name: str, _value: str, **kwargs):
-        return super().add_header(_name, str(_value) if isinstance(_value, int) else _value, **kwargs)
+        return self._add_header(_name, _value, **kwargs)
 
-    def replace_header(self, _name: str, _value: str, **kwargs):
-        return super().add_header(_name, str(_value) if isinstance(_value, int) else _value, **kwargs)
+    def _add_header(self, name, value, **kwargs):
+        return super().add_header(name, str(value) if isinstance(value, int) else value, **kwargs)
+
+    def replace_header(self, _name: str, _value: str):
+        """
+        Similar to add_header, but will replace all existing headers of such name if exists.
+        Unlike email.Message, will add the header if it does not already exist.
+        """
+        try:
+            return super().replace_header(_name, str(_value) if isinstance(_value, int) else _value)
+        except KeyError:
+            return self._add_header(_name, _value)
 
 
 class YDLUniqueHTTPHeaderStore(YDLHTTPHeaderStore):
     def add_header(self, *args, **kwargs):
-        try:
-            return self.replace_header(*args, **kwargs)
-        except KeyError:
-            return super().add_header(*args, **kwargs)
+        return self.replace_header(*args, **kwargs)
 
 """
 Youtube-dl request object
@@ -462,3 +471,20 @@ class YoutubeDLCookieJar(compat_cookiejar.MozillaCookieJar):
             if cookie.expires == 0:
                 cookie.expires = None
                 cookie.discard = True
+
+
+# Use get_std_headers() to get a copy of these
+_std_headers = YDLUniqueHTTPHeaderStore({
+    'User-Agent': random_user_agent(),
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'en-us,en;q=0.5',
+    'Sec-Fetch-Mode': 'navigate',
+})
+
+
+def get_std_headers(supported_encodings=None):
+    headers = _std_headers.copy()
+    if supported_encodings:
+        headers.replace_header('accept-encoding', ', '.join(supported_encodings))
+    headers.replace_headers(std_headers)
+    return headers
