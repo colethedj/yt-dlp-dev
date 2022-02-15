@@ -3703,14 +3703,14 @@ class YoutubeDL(object):
             'proxy': self.params.get('proxy')
         }
         manager = BackendManager(self)
-        for handler in network_handlers:
-            if not handler:
+        for handler_class in network_handlers:
+            if not handler_class:
                 continue
-            manager.add_handler(handler(self, params))
-
+            handler = handler_class(self, params)
+            manager.add_handler(handler)
             # compat
             if isinstance(handler, UrllibHandler):
-                self._opener = handler._opener
+                self._opener = handler.get_opener(handler.get_default_proxy())
         return manager
 
     @property

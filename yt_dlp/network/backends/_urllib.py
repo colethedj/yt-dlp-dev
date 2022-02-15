@@ -474,8 +474,12 @@ class UrllibHandler(YDLBackendHandler):
     _SUPPORTED_PROTOCOLS = ['http', 'https']
 
     def _initialize(self):
+        self._openers = {}
+
+    def _create_opener(self, proxy=None):
         cookie_processor = YoutubeDLCookieProcessor(self.cookiejar)
-        proxy_handler = PerRequestProxyHandler()
+        proxies = {'http': proxy, 'https': proxy} if proxy else None
+        proxy_handler = PerRequestProxyHandler(proxies)
         debuglevel = int(self.print_traffic)
         https_handler = make_HTTPS_handler(self.ydl.params, debuglevel=debuglevel)
         ydlh = YoutubeDLHandler(self.ydl.params, debuglevel=debuglevel)
@@ -488,8 +492,10 @@ class UrllibHandler(YDLBackendHandler):
         # can be used for malicious purposes (see
         # https://github.com/ytdl-org/youtube-dl/issues/8227)
         file_handler = urllib.request.FileHandler()
+
         def file_open(*args, **kwargs):
             raise urllib.error.URLError('file:// scheme is explicitly disabled in yt-dlp for security reasons')
+
         file_handler.file_open = file_open
         opener = urllib.request.build_opener(
             proxy_handler, https_handler, cookie_processor, ydlh, redirect_handler, data_handler, file_handler)
@@ -497,7 +503,15 @@ class UrllibHandler(YDLBackendHandler):
         # cases where our custom HTTP handler doesn't come into play
         # (See https://github.com/ytdl-org/youtube-dl/issues/1309 for details)
         opener.addheaders = []
-        self._opener = opener
+        return opener
+
+    def get_opener(self, proxy=None):
+        """
+        For each proxy (or no proxy) we store an opener.
+        While we could make use of the per-request proxy functionality in PerRequestProxyManager,
+        it is not stable enough for general use. E.g. redirects are not proxied.
+        """
+        return self._openers.setdefault(proxy or '__noproxy__', self._create_opener(proxy))
 
     def _real_handle(self, request: YDLRequest, **kwargs) -> HTTPResponse:
         urllib_req = urllib.request.Request(
@@ -507,11 +521,9 @@ class UrllibHandler(YDLBackendHandler):
 
         if not request.compression:
             urllib_req.add_header('Youtubedl-no-compression', '1')
-        if request.proxy:
-            urllib_req.add_header('Ytdl-request-proxy', request.proxy)
-        try:
-            res = self._opener.open(urllib_req, timeout=request.timeout)
 
+        try:
+            res = self.get_opener(request.proxy).open(urllib_req, timeout=request.timeout)
         except urllib.error.HTTPError as e:
             # TODO: we may have an HTTPResponse and an addinfourl
             if isinstance(e.fp, (http.client.HTTPResponse, urllib.response.addinfourl)):
