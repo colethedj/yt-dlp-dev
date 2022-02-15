@@ -38,7 +38,6 @@ from .compat import (
     compat_shlex_quote,
     compat_str,
     compat_tokenize_tokenize,
-    compat_urllib3,
     compat_urllib_error,
     compat_urllib_request,
     compat_urllib_request_DataHandler,
@@ -47,7 +46,8 @@ from .compat import (
 from .cookies import load_cookies
 from .network.backends import (
     UrllibHandler,
-    network_handlers
+    network_handlers,
+    has_urllib3
 )
 
 from .utils import (
@@ -3653,15 +3653,14 @@ class YoutubeDL(object):
         from .downloader.websocket import has_websockets
         from .postprocessor.embedthumbnail import has_mutagen
         from .cookies import SQLITE_AVAILABLE, SECRETSTORAGE_AVAILABLE
-        from .compat import compat_urllib3_socks
         lib_str = join_nonempty(
             compat_pycrypto_AES and compat_pycrypto_AES.__name__.split('.')[0],
             SECRETSTORAGE_AVAILABLE and 'secretstorage',
             has_mutagen and 'mutagen',
             SQLITE_AVAILABLE and 'sqlite',
             has_websockets and 'websockets',
-            compat_urllib3 is not None and ('urllib3' if not compat_urllib3_socks else 'urllib3[socks]'),
-            compat_brotli is not None and 'brotli',
+            has_urllib3 and 'urllib3',
+            compat_brotli is not None and compat_brotli.__name__,
             delim=', ') or 'none'
         write_debug('Optional libraries: %s' % lib_str)
 

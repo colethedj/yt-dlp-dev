@@ -13,7 +13,7 @@ from email.message import Message
 import urllib.request
 import urllib.response
 
-from ..compat import compat_cookiejar, compat_str
+from ..compat import compat_cookiejar, compat_str, compat_urlparse
 
 from ..utils import (
     extract_basic_auth,
@@ -261,6 +261,18 @@ class YDLBackendHandler(BaseBackendHandler):
         proxies = urllib.request.getproxies()
         return self.params.get('proxy') or proxies.get('http') or proxies.get('https')
 
+    @staticmethod
+    def unified_proxy_url(proxy_url):
+        """
+        TODO: better function name / move this to utils
+        Socks5 is treated as socks5h, and socks is treated as socks4
+        """
+        proxy_url_parsed = compat_urlparse.urlsplit(proxy_url)
+        scheme_compat_map = {'socks5': 'socks5h', 'socks': 'socks4'}
+        if proxy_url_parsed.scheme.lower() in scheme_compat_map:
+            proxy_url_parsed = proxy_url_parsed._replace(scheme=scheme_compat_map[proxy_url_parsed.scheme.lower()])
+        return proxy_url_parsed.geturl()
+
     def handle(self, request: YDLRequest, **req_kwargs):
         if not request.proxy and self.proxy:
             request.proxy = self.proxy
@@ -283,10 +295,9 @@ class YDLBackendHandler(BaseBackendHandler):
     def write_debug(self, *args, **kwargs):
         self.ydl.write_debug(*args, **kwargs)
 
-    @classmethod
-    def can_handle(cls, request: YDLRequest, **req_kwargs) -> bool:
+    def can_handle(self, request: YDLRequest, **req_kwargs) -> bool:
         """Validate if handler is suitable for given request. Can override in subclasses."""
-        return cls._is_supported_protocol(request)
+        return self._is_supported_protocol(request)
 
     def _initialize(self):
         """Initialization process. Redefine in subclasses."""

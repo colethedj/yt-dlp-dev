@@ -105,11 +105,6 @@ except ImportError:
     compat_urllib3 = None
 
 try:
-    import urllib3.contrib.socks as compat_urllib3_socks
-except ImportError:
-    compat_urllib3_socks = None
-
-try:
     import brotlicffi as compat_brotli
 except ImportError:
     try:
