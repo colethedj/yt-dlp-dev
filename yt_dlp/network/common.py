@@ -273,12 +273,18 @@ class YDLBackendHandler(BaseBackendHandler):
             proxy_url_parsed = proxy_url_parsed._replace(scheme=scheme_compat_map[proxy_url_parsed.scheme.lower()])
         return proxy_url_parsed.geturl()
 
-    def handle(self, request: YDLRequest, **req_kwargs):
+    def _prepare_request(self, request: YDLRequest):
         if not request.proxy and self.proxy:
             request.proxy = self.proxy
         if not request.timeout:
             request.timeout = self.socket_timeout
-        return self._real_handle(request, **req_kwargs)
+        return request
+
+    def can_handle(self, request: YDLRequest, **req_kwargs):
+        return self._can_handle(self._prepare_request(request), **req_kwargs)
+
+    def handle(self, request: YDLRequest, **req_kwargs):
+        return self._real_handle(self._prepare_request(request), **req_kwargs)
 
     def to_screen(self, *args, **kwargs):
         self.ydl.to_stdout(*args, **kwargs)
@@ -295,7 +301,7 @@ class YDLBackendHandler(BaseBackendHandler):
     def write_debug(self, *args, **kwargs):
         self.ydl.write_debug(*args, **kwargs)
 
-    def can_handle(self, request: YDLRequest, **req_kwargs) -> bool:
+    def _can_handle(self, request: YDLRequest, **req_kwargs) -> bool:
         """Validate if handler is suitable for given request. Can override in subclasses."""
         return self._is_supported_protocol(request)
 

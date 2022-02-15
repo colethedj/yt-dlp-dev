@@ -133,7 +133,7 @@ class Urllib3Handler(YDLBackendHandler):
     def get_pool(self, proxy=None):
         return self.pools.setdefault(proxy or '__noproxy__', self._create_pm(proxy))
 
-    def can_handle(self, request: YDLRequest, **req_kwargs) -> bool:
+    def _can_handle(self, request: YDLRequest, **req_kwargs) -> bool:
         if isinstance(request.proxy, str) and request.proxy.startswith('socks'):
             self.report_warning('SOCKS proxy is not yet supported by urllib3 handler.', only_once=True)
             return False
