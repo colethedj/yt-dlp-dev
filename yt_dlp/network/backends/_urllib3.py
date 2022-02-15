@@ -133,14 +133,14 @@ class Urllib3Handler(YDLBackendHandler):
     def get_pool(self, proxy=None):
         return self.pools.setdefault(proxy or '__noproxy__', self._create_pm(proxy))
 
-    def _can_handle(self, request: YDLRequest, **req_kwargs) -> bool:
+    def can_handle(self, request: YDLRequest, **req_kwargs) -> bool:
         if isinstance(request.proxy, str) and request.proxy.startswith('socks'):
             self.report_warning('SOCKS proxy is not yet supported by urllib3 handler.', only_once=True)
             return False
         if self._is_force_disabled:
             self.write_debug('Not using urllib3 backend as no-urllib3 compat opt is set.', only_once=True)
             return False
-        return super()._can_handle(request, **req_kwargs)
+        return super().can_handle(request, **req_kwargs)
 
     def _real_handle(self, request: YDLRequest, **kwargs) -> HTTPResponse:
         self.cookiejar.add_cookie_header(request)
@@ -157,14 +157,14 @@ class Urllib3Handler(YDLBackendHandler):
             del all_headers['accept-encoding']
         try:
             try:
-                urllib3_res = self.get_pool(request.proxy).urlopen(
+                urllib3_res = self.get_pool(request.proxy or self.proxy).urlopen(
                     method=request.method,
                     url=request.url,
                     request_url=request.url,  # TODO: needed for redirect compat
                     headers=dict(all_headers),
                     body=request.data,
                     preload_content=False,
-                    timeout=request.timeout,
+                    timeout=request.timeout or self.timeout,
                     retries=retries,
                     redirect=True
                 )

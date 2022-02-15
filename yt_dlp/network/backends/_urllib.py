@@ -523,7 +523,7 @@ class UrllibHandler(YDLBackendHandler):
             urllib_req.add_header('Youtubedl-no-compression', '1')
 
         try:
-            res = self.get_opener(request.proxy).open(urllib_req, timeout=request.timeout)
+            res = self.get_opener(request.proxy or self.proxy).open(urllib_req, timeout=request.timeout or self.timeout)
         except urllib.error.HTTPError as e:
             # TODO: we may have an HTTPResponse and an addinfourl
             if isinstance(e.fp, (http.client.HTTPResponse, urllib.response.addinfourl)):

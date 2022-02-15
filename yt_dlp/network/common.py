@@ -254,7 +254,7 @@ class YDLBackendHandler(BaseBackendHandler):
         self.cookiejar = params.get('cookiejar', http.cookiejar.CookieJar())
         self.proxy = self.get_default_proxy()
         self.print_traffic = bool(self.params.get('verbose'))
-        self.socket_timeout = float(self.params.get('socket_timeout') or 20)  # do not accept 0
+        self.timeout = float(self.params.get('socket_timeout') or 20)  # do not accept 0
         self._initialize()
 
     def get_default_proxy(self):
@@ -273,18 +273,8 @@ class YDLBackendHandler(BaseBackendHandler):
             proxy_url_parsed = proxy_url_parsed._replace(scheme=scheme_compat_map[proxy_url_parsed.scheme.lower()])
         return proxy_url_parsed.geturl()
 
-    def _prepare_request(self, request: YDLRequest):
-        if not request.proxy and self.proxy:
-            request.proxy = self.proxy
-        if not request.timeout:
-            request.timeout = self.socket_timeout
-        return request
-
-    def can_handle(self, request: YDLRequest, **req_kwargs):
-        return self._can_handle(self._prepare_request(request), **req_kwargs)
-
     def handle(self, request: YDLRequest, **req_kwargs):
-        return self._real_handle(self._prepare_request(request), **req_kwargs)
+        return self._real_handle(request, **req_kwargs)
 
     def to_screen(self, *args, **kwargs):
         self.ydl.to_stdout(*args, **kwargs)
@@ -301,7 +291,7 @@ class YDLBackendHandler(BaseBackendHandler):
     def write_debug(self, *args, **kwargs):
         self.ydl.write_debug(*args, **kwargs)
 
-    def _can_handle(self, request: YDLRequest, **req_kwargs) -> bool:
+    def can_handle(self, request: YDLRequest, **req_kwargs) -> bool:
         """Validate if handler is suitable for given request. Can override in subclasses."""
         return self._is_supported_protocol(request)
 
