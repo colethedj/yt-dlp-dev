@@ -3563,7 +3563,7 @@ class YoutubeDL(object):
             del req.headers['Youtubedl-no-compression']
         proxy = req.headers.get('Ytdl-request-proxy')
         if proxy:
-            req.proxy = proxy or req.proxy
+            req.proxy = proxy
             del req.headers['Ytdl-request-proxy']
         return self.session.send_request(req)
 

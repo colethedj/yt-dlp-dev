@@ -6,6 +6,9 @@ from __future__ import unicode_literals
 import os
 import sys
 import unittest
+
+from yt_dlp.network.common import YDLRequest
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import random
@@ -60,8 +63,7 @@ class TestMultipleSocks(unittest.TestCase):
         if params is None:
             return
         ydl = FakeYDL()
-        req = compat_urllib_request.Request('http://yt-dl.org/ip')
-        req.add_header('Ytdl-request-proxy', params['secondary_proxy'])
+        req = YDLRequest('http://yt-dl.org/ip', proxy=params['secondary_proxy'])
         self.assertEqual(
             ydl.urlopen(req).read().decode('utf-8'),
             params['secondary_server_ip'])
@@ -71,8 +73,7 @@ class TestMultipleSocks(unittest.TestCase):
         if params is None:
             return
         ydl = FakeYDL()
-        req = compat_urllib_request.Request('https://yt-dl.org/ip')
-        req.add_header('Ytdl-request-proxy', params['secondary_proxy'])
+        req = YDLRequest('http://yt-dl.org/ip', proxy=params['secondary_proxy'])
         self.assertEqual(
             ydl.urlopen(req).read().decode('utf-8'),
             params['secondary_server_ip'])
