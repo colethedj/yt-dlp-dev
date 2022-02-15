@@ -3,7 +3,6 @@ import errno
 from ...compat import (
     compat_http_client,
     compat_brotli,
-    compat_urllib3,
     compat_urllib_parse_urlparse,
     compat_urllib_parse
 )
@@ -105,8 +104,8 @@ class Urllib3Handler(YDLBackendHandler):
         self.pools = {}
         if not self._is_force_disabled:
             if self.print_traffic:
-                compat_urllib3.add_stderr_logger()
-        compat_urllib3.disable_warnings()
+                urllib3.add_stderr_logger()
+        urllib3.disable_warnings()
 
     @property
     def _is_force_disabled(self):
@@ -144,7 +143,7 @@ class Urllib3Handler(YDLBackendHandler):
 
         # TODO: implement custom redirect mixin for unified redirect handling
         # Remove headers not meant to be forwarded to different host
-        retries = compat_urllib3.Retry(
+        retries = urllib3.Retry(
             remove_headers_on_redirect=request.unredirected_headers.keys(),
             raise_on_redirect=False, other=0, read=0, connect=0)
         all_headers = get_std_headers(URLLIB3_SUPPORTED_ENCODINGS)
@@ -171,7 +170,7 @@ class Urllib3Handler(YDLBackendHandler):
 
         # TODO: these all need A LOT of work
         # TODO: this is recent
-        # except compat_urllib3.exceptions.NameResolutionError as e:
+        # except urllib3.exceptions.NameResolutionError as e:
         #     # TODO: better regex
         #     mobj = re.match(r"Failed to resolve '(?P<host>[^']+)' \((?P<reason>[^)]*)", str(e))
         #     raise ResolveHostError(host=mobj.group('host'), cause=e) from e
@@ -213,7 +212,7 @@ class Urllib3Handler(YDLBackendHandler):
 
 # Since we already have a socks proxy implementation,
 # we can use that with urllib3 instead of requiring an extra dependency.
-class SocksHTTPConnection(compat_urllib3.connection.HTTPConnection):
+class SocksHTTPConnection(urllib3.connection.HTTPConnection):
     def __init__(self, _socks_options, *args, **kwargs):  # must use _socks_options to pass PoolKey checks
         self._proxy_args = _socks_options
         super().__init__(*args, **kwargs)
@@ -228,11 +227,11 @@ class SocksHTTPConnection(compat_urllib3.connection.HTTPConnection):
 
         # TODO
         except TimeoutError as e:
-            raise compat_urllib3.exceptions.ConnectTimeoutError from e
+            raise urllib3.exceptions.ConnectTimeoutError from e
         except SocksProxyError as e:
-            raise compat_urllib3.exceptions.ProxyError from e
+            raise urllib3.exceptions.ProxyError from e
         except OSError as e:
-            raise compat_urllib3.exceptions.NewConnectionError from e
+            raise urllib3.exceptions.NewConnectionError from e
 
         return sock
 
