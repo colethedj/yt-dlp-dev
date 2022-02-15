@@ -4,6 +4,9 @@ import ssl
 import sys
 import random
 
+from yt_dlp.compat import compat_urllib_parse_unquote_plus, compat_urlparse
+from yt_dlp.network.socksproxy import ProxyType
+
 
 def random_user_agent():
     _USER_AGENT_TPL = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/%s Safari/537.36'
@@ -98,3 +101,26 @@ def handle_youtubedl_headers(headers):
         del filtered_headers['Youtubedl-no-compression']
 
     return filtered_headers
+
+
+def socks_create_proxy_args(socks_proxy):
+    url_components = compat_urlparse.urlparse(socks_proxy)
+    if url_components.scheme.lower() == 'socks5':
+        socks_type = ProxyType.SOCKS5
+    elif url_components.scheme.lower() in ('socks', 'socks4'):
+        socks_type = ProxyType.SOCKS4
+    elif url_components.scheme.lower() == 'socks4a':
+        socks_type = ProxyType.SOCKS4A
+
+    def unquote_if_non_empty(s):
+        if not s:
+            return s
+        return compat_urllib_parse_unquote_plus(s)
+    return {
+        'proxytype': socks_type,
+        'addr': url_components.hostname,
+        'port': url_components.port or 1080,
+        'rdns': True,
+        'username': unquote_if_non_empty(url_components.username),
+        'password': unquote_if_non_empty(url_components.password),
+    }

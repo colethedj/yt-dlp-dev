@@ -36,7 +36,7 @@ from ...exceptions import (
 from ..common import HTTPResponse, YDLBackendHandler, Request, get_std_headers
 from ..socksproxy import ProxyType, sockssocket
 from ..utils import (
-    make_ssl_context, handle_youtubedl_headers
+    make_ssl_context, handle_youtubedl_headers, socks_create_proxy_args
 )
 from ...utils import (
     escape_url,
@@ -242,31 +242,12 @@ def make_socks_conn_class(base_class, socks_proxy):
     assert issubclass(base_class, (
         compat_http_client.HTTPConnection, compat_http_client.HTTPSConnection))
 
-    url_components = compat_urlparse.urlparse(socks_proxy)
-    if url_components.scheme.lower() == 'socks5':
-        socks_type = ProxyType.SOCKS5
-    elif url_components.scheme.lower() in ('socks', 'socks4'):
-        socks_type = ProxyType.SOCKS4
-    elif url_components.scheme.lower() == 'socks4a':
-        socks_type = ProxyType.SOCKS4A
-
-    def unquote_if_non_empty(s):
-        if not s:
-            return s
-        return compat_urllib_parse_unquote_plus(s)
-
-    proxy_args = (
-        socks_type,
-        url_components.hostname, url_components.port or 1080,
-        True,  # Remote DNS
-        unquote_if_non_empty(url_components.username),
-        unquote_if_non_empty(url_components.password),
-    )
+    proxy_args = socks_create_proxy_args(socks_proxy)
 
     class SocksConnection(base_class):
         def connect(self):
             self.sock = sockssocket()
-            self.sock.setproxy(*proxy_args)
+            self.sock.setproxy(**proxy_args)
             if type(self.timeout) in (int, float):
                 self.sock.settimeout(self.timeout)
             self.sock.connect((self.host, self.port))

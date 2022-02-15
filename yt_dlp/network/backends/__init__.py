@@ -2,7 +2,12 @@ from ..common import YDLBackendHandler
 from ...exceptions import RequestError
 
 from ._urllib import UrllibHandler
-from ._urllib3 import Urllib3Handler, has_urllib3
+try:
+    from ._urllib3 import Urllib3Handler
+    has_urllib3 = True
+except ImportError:
+    has_urllib3 = False
+    Urllib3Handler = None
 
 
 class UnsupportedBackendHandler(YDLBackendHandler):
@@ -10,6 +15,6 @@ class UnsupportedBackendHandler(YDLBackendHandler):
         raise RequestError('This request is not supported')
 
 
-network_handlers = (UnsupportedBackendHandler, UrllibHandler, Urllib3Handler if has_urllib3 else None)
+network_handlers = [UnsupportedBackendHandler, UrllibHandler, Urllib3Handler]
 
 __all__ = ['UrllibHandler', 'UnsupportedBackendHandler', 'network_handlers', 'Urllib3Handler', 'has_urllib3']

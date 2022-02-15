@@ -1,10 +1,9 @@
 import errno
-import re
 
 from ...compat import (
     compat_http_client,
     compat_brotli,
-    compat_urllib3, compat_urllib_parse_urlparse, compat_urllib_parse
+    compat_urllib3, compat_urllib_parse_urlparse, compat_urllib_parse, compat_urlparse, compat_urllib_parse_unquote_plus
 )
 from ...exceptions import (
     IncompleteRead,
@@ -16,18 +15,19 @@ from ...exceptions import (
     SSLError,
     bug_reports_message,
     HTTPError,
-    ProxyError, RequestError
+    ProxyError,
+    RequestError
 )
 from ..common import HTTPResponse, YDLBackendHandler, Request, get_std_headers
-from ..socksproxy import ProxyType, sockssocket
+from ..socksproxy import (
+    sockssocket,
+    ProxyError as SocksProxyError
+)
 from ..utils import (
-    make_ssl_context
+    make_ssl_context, socks_create_proxy_args
 )
 
-if not compat_urllib3:
-    has_urllib3 = False
-else:
-    has_urllib3 = True
+import urllib3
 
 URLLIB3_SUPPORTED_ENCODINGS = [
     'gzip', 'deflate'
@@ -62,13 +62,13 @@ class Urllib3ResponseAdapter(HTTPResponse):
     def read(self, amt: int = None):
         try:
             return self._res.read(amt)
-        except compat_urllib3.exceptions.IncompleteRead as e:
+        except urllib3.exceptions.IncompleteRead as e:
             raise IncompleteRead(e.partial, self.geturl(), cause=e, expected=e.expected) from e
-        except compat_urllib3.exceptions.SSLError as e:
+        except urllib3.exceptions.SSLError as e:
             raise SSLError(self.geturl(), cause=e) from e
-        except compat_urllib3.exceptions.ReadTimeoutError as e:
+        except urllib3.exceptions.ReadTimeoutError as e:
             raise ReadTimeoutError(self.geturl(), cause=e) from e
-        except compat_urllib3.exceptions.ProtocolError as e:
+        except urllib3.exceptions.ProtocolError as e:
             original_cause = e.__cause__
             if isinstance(original_cause, compat_http_client.IncompleteRead) or 'incomplete read' in str(e).lower():
                 if original_cause:
@@ -112,18 +112,6 @@ class Urllib3Handler(YDLBackendHandler):
             return True
         return False
 
-    # @staticmethod
-    # def unified_proxy_url(proxy_url):
-    #     """
-    #     TODO: better function name / move this to utils
-    #     Socks5 is treated as socks5h, and socks is treated as socks4
-    #     """
-    #     proxy_url_parsed = compat_urlparse.urlsplit(proxy_url)
-    #     scheme_compat_map = {'socks5': 'socks5h', 'socks': 'socks4'}
-    #     if proxy_url_parsed.scheme.lower() in scheme_compat_map:
-    #         proxy_url_parsed = proxy_url_parsed._replace(scheme=scheme_compat_map[proxy_url_parsed.scheme.lower()])
-    #     return proxy_url_parsed.geturl()
-
     def _create_pm(self, proxy=None):
         pm_args = {'ssl_context': make_ssl_context(self.ydl.params)}
         source_address = self.ydl.params.get('source_address')
@@ -131,24 +119,19 @@ class Urllib3Handler(YDLBackendHandler):
             pm_args['source_address'] = (source_address, 0)
 
         if proxy:
-            #proxy = self.unified_proxy_url(proxy)
             if proxy.startswith('socks'):
-                # TODO: implement custom SOCKSProxyManager
-                raise NotImplementedError
+                pm = SocksProxyManager(socks_proxy=proxy, **pm_args)
             else:
-                pm = compat_urllib3.ProxyManager(
+                pm = urllib3.ProxyManager(
                     proxy_url=proxy, proxy_ssl_context=pm_args.get('ssl_context'), **pm_args)
         else:
-            pm = compat_urllib3.PoolManager(**pm_args)
+            pm = urllib3.PoolManager(**pm_args)
         return pm
 
     def get_pool(self, proxy=None):
         return self.pools.setdefault(proxy or '__noproxy__', self._create_pm(proxy))
 
     def can_handle(self, request: Request, **req_kwargs) -> bool:
-        if isinstance(request.proxy, str) and request.proxy.startswith('socks'):
-            self.report_warning('SOCKS proxy is not yet supported by urllib3 handler.', only_once=True)
-            return False
         if self._is_force_disabled:
             self.write_debug('Not using urllib3 backend as no-urllib3 compat opt is set.', only_once=True)
             return False
@@ -181,7 +164,7 @@ class Urllib3Handler(YDLBackendHandler):
                     redirect=True
                 )
 
-            except compat_urllib3.exceptions.MaxRetryError as r:
+            except urllib3.exceptions.MaxRetryError as r:
                 raise r.reason
 
         # TODO: these all need A LOT of work
@@ -191,25 +174,25 @@ class Urllib3Handler(YDLBackendHandler):
         #     mobj = re.match(r"Failed to resolve '(?P<host>[^']+)' \((?P<reason>[^)]*)", str(e))
         #     raise ResolveHostError(host=mobj.group('host'), cause=e) from e
 
-        except compat_urllib3.exceptions.ReadTimeoutError as e:
+        except urllib3.exceptions.ReadTimeoutError as e:
             raise ReadTimeoutError(e.url, msg=str(e), cause=e) from e
-        except compat_urllib3.exceptions.ConnectTimeoutError as e:
+        except urllib3.exceptions.ConnectTimeoutError as e:
             raise ConnectionTimeoutError(msg=str(e), cause=e) from e
-        except compat_urllib3.exceptions.SSLError as e:
+        except urllib3.exceptions.SSLError as e:
             raise SSLError(cause=e, msg=str(e)) from e
 
-        except compat_urllib3.exceptions.IncompleteRead as e:
+        except urllib3.exceptions.IncompleteRead as e:
             raise IncompleteRead(partial=e.partial, expected=e.expected, cause=e) from e
 
-        except compat_urllib3.exceptions.ProxyError as e:
+        except urllib3.exceptions.ProxyError as e:
             raise ProxyError(msg=str(e), cause=e) from e  # will likely need to handle this differently
-        except compat_urllib3.exceptions.ProtocolError as e:
+        except urllib3.exceptions.ProtocolError as e:
             raise TransportError(msg=str(e), cause=e) from e
 
-        except compat_urllib3.exceptions.RequestError as e:
+        except urllib3.exceptions.RequestError as e:
             raise RequestError(msg=str(e), url=e.url) from e
 
-        except compat_urllib3.exceptions.HTTPError as e:
+        except urllib3.exceptions.HTTPError as e:
             raise RequestError(msg=str(e)) from e
 
         res = Urllib3ResponseAdapter(urllib3_res)
@@ -224,3 +207,52 @@ class Urllib3Handler(YDLBackendHandler):
             self.cookiejar.extract_cookies(res, request)
 
         return res
+
+
+# Since we already have a socks proxy implementation,
+# we can use that with urllib3 instead of requiring an extra dependency.
+class SocksHTTPConnection(compat_urllib3.connection.HTTPConnection):
+    def __init__(self, _socks_options, *args, **kwargs):
+        self._proxy_args = _socks_options
+        super().__init__(*args, **kwargs)
+
+    def _new_conn(self):
+        sock = sockssocket()
+        sock.setproxy(**self._proxy_args)
+        if type(self.timeout) in (int, float):
+            sock.settimeout(self.timeout)
+        try:
+            sock.connect((self.host, self.port))
+
+        # TODO
+        except TimeoutError as e:
+            raise compat_urllib3.exceptions.ConnectTimeoutError from e
+        except SocksProxyError as e:
+            raise compat_urllib3.exceptions.ProxyError from e
+        except OSError as e:
+            raise compat_urllib3.exceptions.NewConnectionError from e
+
+        return sock
+
+
+class SocksHTTPSConnection(SocksHTTPConnection, urllib3.connection.HTTPSConnection):
+    pass
+
+
+class SocksHTTPConnectionPool(urllib3.HTTPConnectionPool):
+    ConnectionCls = SocksHTTPConnection
+
+
+class SocksHTTPSConnectionPool(urllib3.HTTPSConnectionPool):
+    ConnectionCls = SocksHTTPSConnection
+
+
+class SocksProxyManager(urllib3.PoolManager):
+
+    def __init__(self, socks_proxy, **connection_pool_kw):
+        connection_pool_kw['_socks_options'] = socks_create_proxy_args(socks_proxy)
+        super().__init__(**connection_pool_kw)
+        self.pool_classes_by_scheme = {
+            'http': SocksHTTPConnectionPool,
+            'https': SocksHTTPSConnectionPool
+        }
