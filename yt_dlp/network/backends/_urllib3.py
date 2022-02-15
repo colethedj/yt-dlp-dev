@@ -109,8 +109,8 @@ class Urllib3Handler(YDLBackendHandler):
     @property
     def _is_force_disabled(self):
         if 'no-urllib3' in self.ydl.params.get('compat_opts', []):
-            return False
-        return True
+            return True
+        return False
 
     def _create_pm(self, proxy=None):
         pm_args = {'ssl_context': make_ssl_context(self.ydl.params)}
@@ -137,7 +137,7 @@ class Urllib3Handler(YDLBackendHandler):
         if isinstance(request.proxy, str) and request.proxy.startswith('socks'):
             self.report_warning('SOCKS proxy is not yet supported by urllib3 handler.', only_once=True)
             return False
-        if not self._is_force_disabled:
+        if self._is_force_disabled:
             self.write_debug('Not using urllib3 backend as no-urllib3 compat opt is set.', only_once=True)
             return False
         return super()._can_handle(request, **req_kwargs)
