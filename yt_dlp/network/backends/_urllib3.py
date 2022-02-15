@@ -3,7 +3,9 @@ import errno
 from ...compat import (
     compat_http_client,
     compat_brotli,
-    compat_urllib3, compat_urllib_parse_urlparse, compat_urllib_parse, compat_urlparse, compat_urllib_parse_unquote_plus
+    compat_urllib3,
+    compat_urllib_parse_urlparse,
+    compat_urllib_parse
 )
 from ...exceptions import (
     IncompleteRead,
@@ -212,7 +214,7 @@ class Urllib3Handler(YDLBackendHandler):
 # Since we already have a socks proxy implementation,
 # we can use that with urllib3 instead of requiring an extra dependency.
 class SocksHTTPConnection(compat_urllib3.connection.HTTPConnection):
-    def __init__(self, _socks_options, *args, **kwargs):
+    def __init__(self, _socks_options, *args, **kwargs):  # must use _socks_options to pass PoolKey checks
         self._proxy_args = _socks_options
         super().__init__(*args, **kwargs)
 
