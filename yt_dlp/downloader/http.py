@@ -13,7 +13,7 @@ from ..compat import (
     compat_str,
     compat_urllib_error,
 )
-from ..network.common import YDLRequest
+from ..network.common import Request
 from ..utils import (
     encodeFilename,
     int_or_none,
@@ -102,7 +102,7 @@ class HttpFD(FileDownloader):
                 range_end = ctx.data_len - 1
             has_range = range_start is not None
             ctx.has_range = has_range
-            request = YDLRequest(url, request_data, headers)
+            request = Request(url, request_data, headers)
             if has_range:
                 set_range(request, range_start, range_end)
             # Establish connection
@@ -153,7 +153,7 @@ class HttpFD(FileDownloader):
                     try:
                         # Open the connection again without the range header
                         ctx.data = self.ydl.urlopen(
-                            YDLRequest(url, request_data, headers))
+                            Request(url, request_data, headers))
                         content_length = ctx.data.info()['Content-Length']
                     except (yt_dlp.exceptions.HTTPError,) as err:
                         if err.code < 500 or err.code >= 600:

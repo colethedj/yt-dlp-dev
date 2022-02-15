@@ -19,7 +19,7 @@ from ..compat import (
     compat_urllib_request,
     compat_urlparse,
 )
-from ..network.common import YDLRequest
+from ..network.common import Request
 from ..utils import (
     bytes_to_intlist,
     extract_attributes,
@@ -252,8 +252,8 @@ class CrunchyrollIE(CrunchyrollBaseIE, VRVIE):
     }
 
     def _download_webpage(self, url_or_request, *args, **kwargs):
-        request = (url_or_request if isinstance(url_or_request, YDLRequest)
-                   else YDLRequest(url_or_request))
+        request = (url_or_request if isinstance(url_or_request, Request)
+                   else Request(url_or_request))
         # Accept-Language must be set explicitly to accept any language to avoid issues
         # similar to https://github.com/ytdl-org/youtube-dl/issues/6797.
         # Along with IP address Crunchyroll uses Accept-Language to guess whether georestriction

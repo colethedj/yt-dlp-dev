@@ -34,7 +34,7 @@ from ..utils import (
     urlhandle_detect_ext,
 )
 from ..exceptions import ExtractorError, HTTPError
-from ..network.common import HEADRequest, YDLRequest
+from ..network.common import HEADRequest, Request
 
 
 class VimeoBaseInfoExtractor(InfoExtractor):
@@ -1261,7 +1261,7 @@ class VimeoWatchLaterIE(VimeoChannelIE):
 
     def _page_url(self, base_url, pagenum):
         url = '%s/page:%d/' % (base_url, pagenum)
-        request = YDLRequest(url)
+        request = Request(url)
         # Set the header to get a partial html page with the ids,
         # the normal page doesn't contain them.
         request.add_header('X-Requested-With', 'XMLHttpRequest')

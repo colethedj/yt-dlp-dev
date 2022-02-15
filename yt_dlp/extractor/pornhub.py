@@ -13,7 +13,7 @@ from ..compat import (
     compat_urllib_request,
 )
 from .openload import PhantomJSwrapper
-from ..network.common import YDLRequest
+from ..network.common import Request
 from ..utils import (
     clean_html,
     determine_ext,
@@ -52,7 +52,7 @@ class PornHubBaseIE(InfoExtractor):
                 r'document\.location\.reload\(true\)')):
             url_or_request = args[0]
             url = (url_or_request.get_full_url()
-                   if isinstance(url_or_request, YDLRequest)
+                   if isinstance(url_or_request, Request)
                    else url_or_request)
             phantom = PhantomJSwrapper(self, required_version='2.0')
             phantom.get(url, html=webpage)

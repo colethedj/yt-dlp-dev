@@ -7,7 +7,7 @@ import os
 import sys
 import unittest
 
-from yt_dlp.network.common import YDLRequest
+from yt_dlp.network.common import Request
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -63,7 +63,7 @@ class TestMultipleSocks(unittest.TestCase):
         if params is None:
             return
         ydl = FakeYDL()
-        req = YDLRequest('http://yt-dl.org/ip', proxy=params['secondary_proxy'])
+        req = Request('http://yt-dl.org/ip', proxy=params['secondary_proxy'])
         self.assertEqual(
             ydl.urlopen(req).read().decode('utf-8'),
             params['secondary_server_ip'])
@@ -73,7 +73,7 @@ class TestMultipleSocks(unittest.TestCase):
         if params is None:
             return
         ydl = FakeYDL()
-        req = YDLRequest('http://yt-dl.org/ip', proxy=params['secondary_proxy'])
+        req = Request('http://yt-dl.org/ip', proxy=params['secondary_proxy'])
         self.assertEqual(
             ydl.urlopen(req).read().decode('utf-8'),
             params['secondary_server_ip'])

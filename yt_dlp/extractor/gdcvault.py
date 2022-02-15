@@ -9,7 +9,7 @@ from ..utils import (
     smuggle_url,
     urlencode_postdata,
 )
-from ..network.common import HEADRequest, YDLRequest
+from ..network.common import HEADRequest, Request
 
 
 class GDCVaultIE(InfoExtractor):
@@ -139,7 +139,7 @@ class GDCVaultIE(InfoExtractor):
             'password': password,
         }
 
-        request = YDLRequest(login_url, urlencode_postdata(login_form))
+        request = Request(login_url, urlencode_postdata(login_form))
         request.add_header('Content-Type', 'application/x-www-form-urlencoded')
         self._download_webpage(request, display_id, 'Logging in')
         start_page = self._download_webpage(webpage_url, display_id, 'Getting authenticated video page')

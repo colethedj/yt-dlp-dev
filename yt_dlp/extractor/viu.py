@@ -10,7 +10,7 @@ from ..compat import (
     compat_urlparse,
     compat_urllib_request,
 )
-from ..network.common import YDLRequest
+from ..network.common import Request
 from ..utils import (
     int_or_none,
     try_get,
@@ -251,7 +251,7 @@ class ViuOTTIE(InfoExtractor):
                 return
 
             data = self._download_json(
-                YDLRequest(
+                Request(
                     'https://www.viu.com/ott/%s/index.php' % country_code, method='POST'),
                 video_id, 'Logging in', errnote=False, fatal=False,
                 query={'r': 'user/login'},

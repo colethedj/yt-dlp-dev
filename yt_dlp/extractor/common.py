@@ -92,7 +92,7 @@ from ..exceptions import (
     HTTPError
 )
 from ..network.backends._urllib import update_Request
-from ..network.common import YDLRequest, update_YDLRequest
+from ..network.common import Request, update_YDLRequest
 
 
 class InfoExtractor(object):
@@ -726,14 +726,14 @@ class InfoExtractor(object):
             if 'X-Forwarded-For' not in headers:
                 headers['X-Forwarded-For'] = self._x_forwarded_for_ip
 
-        if isinstance(url_or_request, YDLRequest):
+        if isinstance(url_or_request, Request):
             url_or_request = update_YDLRequest(
                 url_or_request, data=data, headers=headers, query=query)
         else:
             if query:
                 url_or_request = update_url_query(url_or_request, query)
             if data is not None or headers:
-                url_or_request = YDLRequest(url_or_request, data, headers)
+                url_or_request = Request(url_or_request, data, headers)
         try:
             return self._downloader.urlopen(url_or_request)
         except network_exceptions as err:
@@ -3544,7 +3544,7 @@ class InfoExtractor(object):
 
     def _get_cookies(self, url):
         """ Return a compat_cookies_SimpleCookie with the cookies for the url """
-        req = YDLRequest(url)
+        req = Request(url)
         self._downloader.cookiejar.add_cookie_header(req)
         return compat_cookies_SimpleCookie(req.get_header('Cookie'))
 

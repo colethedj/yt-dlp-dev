@@ -9,7 +9,7 @@ from .common import InfoExtractor
 from ..compat import (
     compat_str,
 )
-from ..network.common import YDLRequest
+from ..network.common import Request
 from ..utils import (
     clean_html,
     int_or_none,
@@ -95,7 +95,7 @@ class NocoIE(InfoExtractor):
         if sub_lang:
             url += self._SUB_LANG_TEMPLATE % sub_lang
 
-        request = YDLRequest(url)
+        request = Request(url)
         request.add_header('Referer', self._referer)
 
         resp = self._download_json(request, video_id, note)

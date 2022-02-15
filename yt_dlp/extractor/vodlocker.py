@@ -2,7 +2,7 @@
 from __future__ import unicode_literals
 
 from .common import InfoExtractor
-from ..network.common import YDLRequest
+from ..network.common import Request
 from ..utils import (
     NO_DEFAULT,
     urlencode_postdata,
@@ -40,7 +40,7 @@ class VodlockerIE(InfoExtractor):
         if fields['op'] == 'download1':
             self._sleep(3, video_id)  # they do detect when requests happen too fast!
             post = urlencode_postdata(fields)
-            req = YDLRequest(url, post)
+            req = Request(url, post)
             req.add_header('Content-type', 'application/x-www-form-urlencoded')
             webpage = self._download_webpage(
                 req, video_id, 'Downloading video page')

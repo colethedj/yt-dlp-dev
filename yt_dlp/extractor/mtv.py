@@ -22,7 +22,7 @@ from ..utils import (
     xpath_text,
 )
 from ..exceptions import ExtractorError, RegexNotFoundError
-from ..network.common import HEADRequest, YDLRequest
+from ..network.common import HEADRequest, Request
 
 
 def _media_xml_tag(tag):
@@ -54,7 +54,7 @@ class MTVServicesInfoExtractor(InfoExtractor):
 
     def _extract_mobile_video_formats(self, mtvn_id):
         webpage_url = self._MOBILE_TEMPLATE % mtvn_id
-        req = YDLRequest(webpage_url)
+        req = Request(webpage_url)
         # Otherwise we get a webpage that would execute some javascript
         req.add_header('User-Agent', 'curl/7')
         webpage = self._download_webpage(req, mtvn_id,

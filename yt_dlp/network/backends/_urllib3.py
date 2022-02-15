@@ -18,7 +18,7 @@ from ...exceptions import (
     HTTPError,
     ProxyError, RequestError
 )
-from ..common import HTTPResponse, YDLBackendHandler, YDLRequest, get_std_headers
+from ..common import HTTPResponse, YDLBackendHandler, Request, get_std_headers
 from ..socksproxy import ProxyType, sockssocket
 from ..utils import (
     make_ssl_context
@@ -112,6 +112,18 @@ class Urllib3Handler(YDLBackendHandler):
             return True
         return False
 
+    # @staticmethod
+    # def unified_proxy_url(proxy_url):
+    #     """
+    #     TODO: better function name / move this to utils
+    #     Socks5 is treated as socks5h, and socks is treated as socks4
+    #     """
+    #     proxy_url_parsed = compat_urlparse.urlsplit(proxy_url)
+    #     scheme_compat_map = {'socks5': 'socks5h', 'socks': 'socks4'}
+    #     if proxy_url_parsed.scheme.lower() in scheme_compat_map:
+    #         proxy_url_parsed = proxy_url_parsed._replace(scheme=scheme_compat_map[proxy_url_parsed.scheme.lower()])
+    #     return proxy_url_parsed.geturl()
+
     def _create_pm(self, proxy=None):
         pm_args = {'ssl_context': make_ssl_context(self.ydl.params)}
         source_address = self.ydl.params.get('source_address')
@@ -119,7 +131,7 @@ class Urllib3Handler(YDLBackendHandler):
             pm_args['source_address'] = (source_address, 0)
 
         if proxy:
-            proxy = self.unified_proxy_url(proxy)
+            #proxy = self.unified_proxy_url(proxy)
             if proxy.startswith('socks'):
                 # TODO: implement custom SOCKSProxyManager
                 raise NotImplementedError
@@ -133,7 +145,7 @@ class Urllib3Handler(YDLBackendHandler):
     def get_pool(self, proxy=None):
         return self.pools.setdefault(proxy or '__noproxy__', self._create_pm(proxy))
 
-    def can_handle(self, request: YDLRequest, **req_kwargs) -> bool:
+    def can_handle(self, request: Request, **req_kwargs) -> bool:
         if isinstance(request.proxy, str) and request.proxy.startswith('socks'):
             self.report_warning('SOCKS proxy is not yet supported by urllib3 handler.', only_once=True)
             return False
@@ -142,7 +154,7 @@ class Urllib3Handler(YDLBackendHandler):
             return False
         return super().can_handle(request, **req_kwargs)
 
-    def _real_handle(self, request: YDLRequest, **kwargs) -> HTTPResponse:
+    def _real_handle(self, request: Request, **kwargs) -> HTTPResponse:
         self.cookiejar.add_cookie_header(request)
 
         # TODO: implement custom redirect mixin for unified redirect handling

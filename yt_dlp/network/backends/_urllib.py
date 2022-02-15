@@ -33,7 +33,7 @@ from ...exceptions import (
     bug_reports_message,
     HTTPError
 )
-from ..common import HTTPResponse, YDLBackendHandler, YDLRequest, get_std_headers
+from ..common import HTTPResponse, YDLBackendHandler, Request, get_std_headers
 from ..socksproxy import ProxyType, sockssocket
 from ..utils import (
     make_ssl_context, handle_youtubedl_headers
@@ -503,7 +503,7 @@ class UrllibHandler(YDLBackendHandler):
         """
         return self._openers.setdefault(proxy or '__noproxy__', self._create_opener(proxy))
 
-    def _real_handle(self, request: YDLRequest, **kwargs) -> HTTPResponse:
+    def _real_handle(self, request: Request, **kwargs) -> HTTPResponse:
         urllib_req = urllib.request.Request(
             url=request.url, data=request.data, headers=dict(request.headers), origin_req_host=request.origin_req_host,
             unverifiable=request.unverifiable, method=request.method

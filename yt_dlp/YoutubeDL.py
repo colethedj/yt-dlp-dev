@@ -110,7 +110,6 @@ from .utils import (
     version_tuple,
     write_json_file,
     write_string,
-    YDLLogger,
 )
 from .exceptions import ExtractorError, GeoRestrictedError, EntryNotInPlaylist, PostProcessingError, \
     ExistingVideoReached, RejectedVideoReached, MaxDownloadsReached, ReExtractInfo, UnavailableVideoError, \
@@ -148,7 +147,7 @@ from .postprocessor import (
 from .network.common import (
     HEADRequest,
     BackendManager,
-    YDLRequest,
+    Request,
     req_to_ydlreq
 )
 
@@ -3553,10 +3552,11 @@ class YoutubeDL(object):
 
     def urlopen(self, req):
         if isinstance(req, str):
-            req = YDLRequest(req)
-        # TODO: compat
+            req = Request(req)
         if isinstance(req, compat_urllib_request.Request):
-            self.deprecation_warning('Urllib request object detected.')
+            self.deprecation_warning(
+                'You have passed an urllib.request.Request object to ytdl.urlopen(). '
+                'This is deprecated and may not work in the future. Please use yt_dlp.network.common.YDLRequest instead.')
             req = req_to_ydlreq(req)
         if req.headers.get('Youtubedl-no-compression'):
             req.compression = False
@@ -3680,20 +3680,6 @@ class YoutubeDL(object):
                     'You are using an outdated version (newest version: %s)! '
                     'See https://yt-dl.org/update if you need help updating.' %
                     latest_version)
-
-    def _get_proxy_map(self):
-        opts_proxy = self.params.get('proxy')
-        if opts_proxy is not None:
-            if opts_proxy == '':
-                proxies = {}
-            else:
-                proxies = {'http': opts_proxy, 'https': opts_proxy}
-        else:
-            proxies = compat_urllib_request.getproxies()
-            # Set HTTPS proxy to HTTP one if given (https://github.com/ytdl-org/youtube-dl/issues/805)
-            if 'http' in proxies and 'https' not in proxies:
-                proxies['https'] = proxies['http']
-        return proxies
 
     def _setup_backends(self):
         params = {
@@ -3862,7 +3848,7 @@ class YoutubeDL(object):
             else:
                 self.to_screen(f'[info] Downloading {thumb_display_id} ...')
                 try:
-                    uf = self.urlopen(YDLRequest(t['url'], headers=t.get('http_headers', {})))
+                    uf = self.urlopen(Request(t['url'], headers=t.get('http_headers', {})))
                     self.to_screen(f'[info] Writing {thumb_display_id} to: {thumb_filename}')
                     with open(encodeFilename(thumb_filename), 'wb') as thumbf:
                         shutil.copyfileobj(uf, thumbf)

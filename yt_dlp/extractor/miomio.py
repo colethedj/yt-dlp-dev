@@ -5,7 +5,7 @@ import random
 
 from .common import InfoExtractor
 from ..compat import compat_urlparse
-from ..network.common import YDLRequest
+from ..network.common import Request
 from ..utils import (
     xpath_text,
     int_or_none,
@@ -64,7 +64,7 @@ class MioMioIE(InfoExtractor):
             'http://www.miomio.tv/mioplayer/mioplayerconfigfiles/xml.php?id=%s&r=%s' % (id, random.randint(100, 999)),
             video_id)
 
-        vid_config_request = YDLRequest(
+        vid_config_request = Request(
             'http://www.miomio.tv/mioplayer/mioplayerconfigfiles/sina.php?{0}'.format(xml_config),
             headers=http_headers)
 

@@ -4,7 +4,7 @@ import itertools
 import re
 
 from .common import InfoExtractor
-from ..network.common import YDLRequest
+from ..network.common import Request
 from ..utils import (
     int_or_none,
     js_to_json,
@@ -189,7 +189,7 @@ class XTubeUserIE(InfoExtractor):
 
         entries = []
         for pagenum in itertools.count(1):
-            request = YDLRequest(
+            request = Request(
                 'http://www.xtube.com/profile/%s/videos/%d' % (user_id, pagenum),
                 headers={
                     'Cookie': 'popunder=4',

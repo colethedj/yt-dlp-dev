@@ -8,7 +8,7 @@ from .brightcove import (
 from .common import InfoExtractor
 from ..compat import compat_str
 from ..exceptions import ExtractorError
-from ..network.common import YDLRequest
+from ..network.common import Request
 
 
 class NownessBaseIE(InfoExtractor):
@@ -41,7 +41,7 @@ class NownessBaseIE(InfoExtractor):
 
     def _api_request(self, url, request_path):
         display_id = self._match_id(url)
-        request = YDLRequest(
+        request = Request(
             'http://api.nowness.com/api/' + request_path % display_id,
             headers={
                 'X-Nowness-Language': 'zh-cn' if 'cn.nowness.com' in url else 'en-us',

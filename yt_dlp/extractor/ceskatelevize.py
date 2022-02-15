@@ -8,7 +8,7 @@ from ..compat import (
     compat_urllib_parse_unquote,
     compat_urllib_parse_urlparse,
 )
-from ..network.common import YDLRequest
+from ..network.common import Request
 from ..utils import (
     float_or_none,
     traverse_obj,
@@ -140,7 +140,7 @@ class CeskaTelevizeIE(InfoExtractor):
         entries = []
 
         for user_agent in (None, USER_AGENTS['Safari']):
-            req = YDLRequest(
+            req = Request(
                 'https://www.ceskatelevize.cz/ivysilani/ajax/get-client-playlist/',
                 data=urlencode_postdata(data))
 
@@ -160,7 +160,7 @@ class CeskaTelevizeIE(InfoExtractor):
             if playlist_url == 'error_region':
                 raise ExtractorError(NOT_AVAILABLE_STRING, expected=True)
 
-            req = YDLRequest(compat_urllib_parse_unquote(playlist_url))
+            req = Request(compat_urllib_parse_unquote(playlist_url))
             req.add_header('Referer', url)
 
             playlist = self._download_json(req, playlist_id, fatal=False)

@@ -27,7 +27,7 @@ from ..exceptions import bug_reports_message
 from .utils import random_user_agent
 
 
-class YDLRequest:
+class Request:
     """
     Our own request class, similar to urllib.request.Request
     This is used to send request information from youtube-dl to the backends.
@@ -46,8 +46,8 @@ class YDLRequest:
         self.__request_url_store = urllib.request.Request(url)
         self._method = method
         self._data = data
-        self._headers = YDLUniqueHTTPHeaderStore(headers)
-        self._unredirected_headers = YDLUniqueHTTPHeaderStore(unredirected_headers)
+        self._headers = UniqueHTTPHeaderStore(headers)
+        self._unredirected_headers = UniqueHTTPHeaderStore(unredirected_headers)
         self.timeout = timeout
 
         # TODO: add support for passing different types of auth into a YDlRequest, and don't add the headers.
@@ -134,25 +134,25 @@ class YDLRequest:
 
 
 def req_to_ydlreq(req: urllib.request.Request):
-    return YDLRequest(
+    return Request(
         req.get_full_url(), data=req.data, headers=req.headers.copy(), method=req.get_method(),
         unverifiable=req.unverifiable, unredirected_headers=req.unredirected_hdrs.copy(),
         origin_req_host=req.origin_req_host)
 
 
-class HEADRequest(YDLRequest):
+class HEADRequest(Request):
     @property
     def method(self):
         return 'HEAD'
 
 
-class PUTRequest(YDLRequest):
+class PUTRequest(Request):
     @property
     def method(self):
         return 'PUT'
 
 
-def update_YDLRequest(req: YDLRequest, url=None, data=None, headers=None, query=None):
+def update_YDLRequest(req: Request, url=None, data=None, headers=None, query=None):
     """
     Replaces the old update_Request.
     TODO: do we want to replace this with a better method?
@@ -176,7 +176,7 @@ class HTTPResponse(ABC, io.IOBase):
     REDIRECT_STATUS_CODES = [301, 302, 303, 307, 308]
 
     def __init__(self, headers, status, version=None, reason=None):
-        self.headers = YDLHTTPHeaderStore(headers)
+        self.headers = HTTPHeaderStore(headers)
         self.status = self.code = status
         self.reason = reason
         if not reason:
@@ -223,14 +223,14 @@ class BaseBackendHandler(ABC):
     SUPPORTED_PROTOCOLS: list
 
     @classmethod
-    def _is_supported_protocol(cls, request: YDLRequest):
+    def _is_supported_protocol(cls, request: Request):
         return urllib.parse.urlparse(request.url).scheme.lower() in cls._SUPPORTED_PROTOCOLS
 
-    def handle(self, request: YDLRequest, **req_kwargs):
+    def handle(self, request: Request, **req_kwargs):
         """Method to handle given request. Redefine in subclasses"""
 
     @classmethod
-    def can_handle(cls, request: YDLRequest, **req_kwargs) -> bool:
+    def can_handle(cls, request: Request, **req_kwargs) -> bool:
         """Validate if handler is suitable for given request. Can override in subclasses."""
 
 
@@ -261,19 +261,7 @@ class YDLBackendHandler(BaseBackendHandler):
         proxies = urllib.request.getproxies()
         return self.params.get('proxy') or proxies.get('http') or proxies.get('https')
 
-    @staticmethod
-    def unified_proxy_url(proxy_url):
-        """
-        TODO: better function name / move this to utils
-        Socks5 is treated as socks5h, and socks is treated as socks4
-        """
-        proxy_url_parsed = compat_urlparse.urlsplit(proxy_url)
-        scheme_compat_map = {'socks5': 'socks5h', 'socks': 'socks4'}
-        if proxy_url_parsed.scheme.lower() in scheme_compat_map:
-            proxy_url_parsed = proxy_url_parsed._replace(scheme=scheme_compat_map[proxy_url_parsed.scheme.lower()])
-        return proxy_url_parsed.geturl()
-
-    def handle(self, request: YDLRequest, **req_kwargs):
+    def handle(self, request: Request, **req_kwargs):
         return self._real_handle(request, **req_kwargs)
 
     def to_screen(self, *args, **kwargs):
@@ -291,7 +279,7 @@ class YDLBackendHandler(BaseBackendHandler):
     def write_debug(self, *args, **kwargs):
         self.ydl.write_debug(*args, **kwargs)
 
-    def can_handle(self, request: YDLRequest, **req_kwargs) -> bool:
+    def can_handle(self, request: Request, **req_kwargs) -> bool:
         """Validate if handler is suitable for given request. Can override in subclasses."""
         return self._is_supported_protocol(request)
 
@@ -299,7 +287,7 @@ class YDLBackendHandler(BaseBackendHandler):
         """Initialization process. Redefine in subclasses."""
         pass
 
-    def _real_handle(self, request: YDLRequest, **kwargs) -> HTTPResponse:
+    def _real_handle(self, request: Request, **kwargs) -> HTTPResponse:
         """Real request handling process. Redefine in subclasses"""
 
 
@@ -327,7 +315,7 @@ class BackendManager:
             finder = lambda x: x is handler
         self.handlers = [x for x in self.handlers if not finder(handler)]
 
-    def send_request(self, request: YDLRequest):
+    def send_request(self, request: Request):
         for handler in reversed(self.handlers):
             if not handler.can_handle(request):
                 continue
@@ -339,7 +327,7 @@ class BackendManager:
             return res
 
 
-class YDLHTTPHeaderStore(Message):
+class HTTPHeaderStore(Message):
     def __init__(self, data=None):
         super().__init__()
         if data is not None:
@@ -379,7 +367,7 @@ class YDLHTTPHeaderStore(Message):
         self._headers = []
 
 
-class YDLUniqueHTTPHeaderStore(YDLHTTPHeaderStore):
+class UniqueHTTPHeaderStore(HTTPHeaderStore):
     def add_header(self, *args, **kwargs):
         return self.replace_header(*args, **kwargs)
 
@@ -510,7 +498,7 @@ class YoutubeDLCookieJar(compat_cookiejar.MozillaCookieJar):
 
 
 # Use get_std_headers() to get a copy of these
-_std_headers = YDLUniqueHTTPHeaderStore({
+_std_headers = UniqueHTTPHeaderStore({
     'User-Agent': random_user_agent(),
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
     'Accept-Language': 'en-us,en;q=0.5',

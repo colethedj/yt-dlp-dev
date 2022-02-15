@@ -6,7 +6,7 @@ from ..utils import (
     urlencode_postdata,
 )
 from ..exceptions import ExtractorError
-from ..network.common import HEADRequest, YDLRequest
+from ..network.common import HEADRequest, Request
 
 
 class HotNewHipHopIE(InfoExtractor):
@@ -37,7 +37,7 @@ class HotNewHipHopIE(InfoExtractor):
             ('mediaType', 's'),
             ('mediaId', video_id),
         ])
-        r = YDLRequest(
+        r = Request(
             'http://www.hotnewhiphop.com/ajax/media/getActions/', data=reqdata)
         r.add_header('Content-Type', 'application/x-www-form-urlencoded')
         mkd = self._download_json(

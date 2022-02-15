@@ -2,7 +2,7 @@
 from __future__ import unicode_literals
 
 from .common import InfoExtractor
-from ..network.common import YDLRequest
+from ..network.common import Request
 
 from ..utils import (
     xpath_text,
@@ -36,7 +36,7 @@ class RegioTVIE(InfoExtractor):
 
         SOAP_TEMPLATE = '<?xml version="1.0" encoding="utf-8"?><soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><{0} xmlns="http://v.telvi.de/"><key xsi:type="xsd:string">{1}</key></{0}></soap:Body></soap:Envelope>'
 
-        request = YDLRequest(
+        request = Request(
             'http://v.telvi.de/',
             SOAP_TEMPLATE.format('GetHTML5VideoData', key).encode('utf-8'))
         video_data = self._download_xml(request, video_id, 'Downloading video XML')
