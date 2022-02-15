@@ -140,7 +140,7 @@ class Urllib3Handler(YDLBackendHandler):
         if not self._is_force_disabled:
             self.write_debug('Not using urllib3 backend as no-urllib3 compat opt is set.', only_once=True)
             return False
-        return super().can_handle(request, **req_kwargs)
+        return super()._can_handle(request, **req_kwargs)
 
     def _real_handle(self, request: YDLRequest, **kwargs) -> HTTPResponse:
         self.cookiejar.add_cookie_header(request)
