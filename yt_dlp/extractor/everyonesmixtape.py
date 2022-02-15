@@ -2,10 +2,8 @@ from __future__ import unicode_literals
 
 
 from .common import InfoExtractor
-from ..utils import (
-    sanitized_Request,
-)
 from ..exceptions import ExtractorError
+from ..network.common import YDLRequest
 
 
 class EveryonesMixtapeIE(InfoExtractor):
@@ -39,7 +37,7 @@ class EveryonesMixtapeIE(InfoExtractor):
         playlist_id = mobj.group('id')
 
         pllist_url = 'http://everyonesmixtape.com/mixtape.php?a=getMixes&u=-1&linked=%s&explore=' % playlist_id
-        pllist_req = sanitized_Request(pllist_url)
+        pllist_req = YDLRequest(pllist_url)
         pllist_req.add_header('X-Requested-With', 'XMLHttpRequest')
 
         playlist_list = self._download_json(
@@ -52,7 +50,7 @@ class EveryonesMixtapeIE(InfoExtractor):
             raise ExtractorError('Playlist id not found')
 
         pl_url = 'http://everyonesmixtape.com/mixtape.php?a=getMix&id=%s&userId=null&code=' % playlist_no
-        pl_req = sanitized_Request(pl_url)
+        pl_req = YDLRequest(pl_url)
         pl_req.add_header('X-Requested-With', 'XMLHttpRequest')
         playlist = self._download_json(
             pl_req, playlist_id, note='Downloading playlist info')

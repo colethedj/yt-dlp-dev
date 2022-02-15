@@ -11,6 +11,7 @@ from ..compat import (
     compat_urllib_parse_unquote,
     compat_urllib_parse_unquote_plus,
 )
+from ..network.common import YDLRequest
 from ..utils import (
     clean_html,
     determine_ext,
@@ -23,7 +24,6 @@ from ..utils import (
     parse_count,
     parse_qs,
     qualities,
-    sanitized_Request,
     traverse_obj,
     try_get,
     url_or_none,
@@ -332,7 +332,7 @@ class FacebookIE(InfoExtractor):
         if useremail is None:
             return
 
-        login_page_req = sanitized_Request(self._LOGIN_URL)
+        login_page_req = YDLRequest(self._LOGIN_URL)
         self._set_cookie('facebook.com', 'locale', 'en_US')
         login_page = self._download_webpage(login_page_req, None,
                                             note='Downloading login page',
@@ -353,7 +353,7 @@ class FacebookIE(InfoExtractor):
             'timezone': '-60',
             'trynum': '1',
         }
-        request = sanitized_Request(self._LOGIN_URL, urlencode_postdata(login_form))
+        request = YDLRequest(self._LOGIN_URL, urlencode_postdata(login_form))
         request.add_header('Content-Type', 'application/x-www-form-urlencoded')
         try:
             login_results = self._download_webpage(request, None,
@@ -380,7 +380,7 @@ class FacebookIE(InfoExtractor):
                 'h': h,
                 'name_action_selected': 'dont_save',
             }
-            check_req = sanitized_Request(self._CHECKPOINT_URL, urlencode_postdata(check_form))
+            check_req = YDLRequest(self._CHECKPOINT_URL, urlencode_postdata(check_form))
             check_req.add_header('Content-Type', 'application/x-www-form-urlencoded')
             check_response = self._download_webpage(check_req, None,
                                                     note='Confirming login')

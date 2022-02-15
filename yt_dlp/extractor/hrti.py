@@ -4,11 +4,11 @@ from __future__ import unicode_literals
 import json
 
 from .common import InfoExtractor
+from ..network.common import YDLRequest
 from ..utils import (
     clean_html,
     int_or_none,
     parse_age_limit,
-    sanitized_Request,
     try_get,
 )
 from ..exceptions import ExtractorError, HTTPError
@@ -43,7 +43,7 @@ class HRTiBaseIE(InfoExtractor):
             'application_version': self._APP_VERSION
         }
 
-        req = sanitized_Request(self._API_URL, data=json.dumps(app_data).encode('utf-8'))
+        req = YDLRequest(self._API_URL, data=json.dumps(app_data).encode('utf-8'))
         req.get_method = lambda: 'PUT'
 
         resources = self._download_json(

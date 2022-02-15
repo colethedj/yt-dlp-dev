@@ -13,7 +13,6 @@ from ..utils import (
     float_or_none,
     int_or_none,
     join_nonempty,
-    sanitized_Request,
     strip_or_none,
     timeconvert,
     try_get,
@@ -23,7 +22,7 @@ from ..utils import (
     xpath_text,
 )
 from ..exceptions import ExtractorError, RegexNotFoundError
-from ..network.common import HEADRequest
+from ..network.common import HEADRequest, YDLRequest
 
 
 def _media_xml_tag(tag):
@@ -55,7 +54,7 @@ class MTVServicesInfoExtractor(InfoExtractor):
 
     def _extract_mobile_video_formats(self, mtvn_id):
         webpage_url = self._MOBILE_TEMPLATE % mtvn_id
-        req = sanitized_Request(webpage_url)
+        req = YDLRequest(webpage_url)
         # Otherwise we get a webpage that would execute some javascript
         req.add_header('User-Agent', 'curl/7')
         webpage = self._download_webpage(req, mtvn_id,

@@ -4,10 +4,10 @@ from __future__ import unicode_literals
 import re
 
 from .common import InfoExtractor
+from ..network.common import YDLRequest
 from ..utils import (
     int_or_none,
     js_to_json,
-    sanitized_Request,
     urlencode_postdata,
 )
 from ..exceptions import ExtractorError
@@ -64,7 +64,7 @@ class TubiTvIE(InfoExtractor):
             'password': password,
         }
         payload = urlencode_postdata(form_data)
-        request = sanitized_Request(self._LOGIN_URL, payload)
+        request = YDLRequest(self._LOGIN_URL, payload)
         request.add_header('Content-Type', 'application/x-www-form-urlencoded')
         login_page = self._download_webpage(
             request, None, False, 'Wrong login info')

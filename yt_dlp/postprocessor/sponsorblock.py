@@ -6,8 +6,8 @@ import time
 
 from .ffmpeg import FFmpegPostProcessor
 from ..compat import compat_urllib_parse_urlencode
-from ..utils import sanitized_Request
 from ..exceptions import PostProcessingError, network_exceptions, HTTPError
+from ..network.common import YDLRequest
 
 
 class SponsorBlockPP(FFmpegPostProcessor):
@@ -104,7 +104,7 @@ class SponsorBlockPP(FFmpegPostProcessor):
         sleep_interval = self.get_param('sleep_interval_requests') or 0
         for retries in itertools.count():
             try:
-                rsp = self._downloader.urlopen(sanitized_Request(url))
+                rsp = self._downloader.urlopen(YDLRequest(url))
                 return json.loads(rsp.read().decode(rsp.info().get_param('charset') or 'utf-8'))
             except network_exceptions as e:
                 if isinstance(e, HTTPError) and e.code == 404:

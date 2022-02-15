@@ -2,11 +2,11 @@
 from __future__ import unicode_literals
 
 from .common import InfoExtractor
+from ..network.common import YDLRequest
 from ..utils import (
     float_or_none,
     int_or_none,
     parse_iso8601,
-    sanitized_Request,
 )
 
 
@@ -57,7 +57,7 @@ class EitbIE(InfoExtractor):
 
         hls_url = media.get('HLS_SURL')
         if hls_url:
-            request = sanitized_Request(
+            request = YDLRequest(
                 'http://mam.eitb.eus/mam/REST/ServiceMultiweb/DomainRestrictedSecurity/TokenAuth/',
                 headers={'Referer': url})
             token_data = self._download_json(

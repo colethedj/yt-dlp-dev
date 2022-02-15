@@ -3,11 +3,10 @@ from __future__ import unicode_literals
 from .common import InfoExtractor
 from ..compat import compat_b64decode
 from ..utils import (
-    sanitized_Request,
     urlencode_postdata,
 )
 from ..exceptions import ExtractorError
-from ..network.common import HEADRequest
+from ..network.common import HEADRequest, YDLRequest
 
 
 class HotNewHipHopIE(InfoExtractor):
@@ -38,7 +37,7 @@ class HotNewHipHopIE(InfoExtractor):
             ('mediaType', 's'),
             ('mediaId', video_id),
         ])
-        r = sanitized_Request(
+        r = YDLRequest(
             'http://www.hotnewhiphop.com/ajax/media/getActions/', data=reqdata)
         r.add_header('Content-Type', 'application/x-www-form-urlencoded')
         mkd = self._download_json(

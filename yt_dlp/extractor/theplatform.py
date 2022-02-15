@@ -10,12 +10,12 @@ import hashlib
 
 from .once import OnceIE
 from .adobepass import AdobePassIE
+from ..network.common import YDLRequest
 from ..utils import (
     determine_ext,
     float_or_none,
     int_or_none,
     parse_qs,
-    sanitized_Request,
     unsmuggle_url,
     update_url_query,
     xpath_with_ns,
@@ -277,7 +277,7 @@ class ThePlatformIE(ThePlatformBaseIE, AdobePassIE):
             source_url = smuggled_data.get('source_url')
             if source_url:
                 headers['Referer'] = source_url
-            request = sanitized_Request(url, headers=headers)
+            request = YDLRequest(url, headers=headers)
             webpage = self._download_webpage(request, video_id)
             smil_url = self._search_regex(
                 r'<link[^>]+href=(["\'])(?P<url>.+?)\1[^>]+type=["\']application/smil\+xml',

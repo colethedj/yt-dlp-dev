@@ -36,6 +36,7 @@ from ..downloader.f4m import (
     get_base_url,
     remove_encrypted_media,
 )
+
 from ..utils import (
     age_restricted,
     base_url,
@@ -64,7 +65,6 @@ from ..utils import (
     parse_m3u8_attributes,
     parse_resolution,
     sanitize_filename,
-    sanitized_Request,
     str_or_none,
     str_to_int,
     strip_or_none,
@@ -92,6 +92,7 @@ from ..exceptions import (
     HTTPError
 )
 from ..network.backends._urllib import update_Request
+from ..network.common import YDLRequest, update_YDLRequest
 
 
 class InfoExtractor(object):
@@ -699,7 +700,7 @@ class InfoExtractor(object):
 
         See _download_webpage docstring for arguments specification.
         """
-        # TODO
+        # TODO: some safeguards if urllib.request.Request is passed in
         if not self._downloader._first_webpage_request:
             sleep_interval = self.get_param('sleep_interval_requests') or 0
             if sleep_interval > 0:
@@ -725,14 +726,14 @@ class InfoExtractor(object):
             if 'X-Forwarded-For' not in headers:
                 headers['X-Forwarded-For'] = self._x_forwarded_for_ip
 
-        if isinstance(url_or_request, compat_urllib_request.Request):
-            url_or_request = update_Request(
+        if isinstance(url_or_request, YDLRequest):
+            url_or_request = update_YDLRequest(
                 url_or_request, data=data, headers=headers, query=query)
         else:
             if query:
                 url_or_request = update_url_query(url_or_request, query)
             if data is not None or headers:
-                url_or_request = sanitized_Request(url_or_request, data, headers)
+                url_or_request = YDLRequest(url_or_request, data, headers)
         try:
             return self._downloader.urlopen(url_or_request)
         except network_exceptions as err:
@@ -3543,7 +3544,7 @@ class InfoExtractor(object):
 
     def _get_cookies(self, url):
         """ Return a compat_cookies_SimpleCookie with the cookies for the url """
-        req = sanitized_Request(url)
+        req = YDLRequest(url)
         self._downloader.cookiejar.add_cookie_header(req)
         return compat_cookies_SimpleCookie(req.get_header('Cookie'))
 

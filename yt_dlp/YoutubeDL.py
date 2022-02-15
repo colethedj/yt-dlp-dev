@@ -3556,6 +3556,7 @@ class YoutubeDL(object):
             req = YDLRequest(req)
         # TODO: compat
         if isinstance(req, compat_urllib_request.Request):
+            self.deprecation_warning('Urllib request object detected.')
             req = req_to_ydlreq(req)
         if req.headers.get('Youtubedl-no-compression'):
             req.compression = False
@@ -3862,7 +3863,7 @@ class YoutubeDL(object):
             else:
                 self.to_screen(f'[info] Downloading {thumb_display_id} ...')
                 try:
-                    uf = self.urlopen(sanitized_Request(t['url'], headers=t.get('http_headers', {})))
+                    uf = self.urlopen(YDLRequest(t['url'], headers=t.get('http_headers', {})))
                     self.to_screen(f'[info] Writing {thumb_display_id} to: {thumb_filename}')
                     with open(encodeFilename(thumb_filename), 'wb') as thumbf:
                         shutil.copyfileobj(uf, thumbf)

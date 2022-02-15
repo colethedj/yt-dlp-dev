@@ -7,6 +7,7 @@ import os
 import time
 
 import yt_dlp.exceptions
+from ..network.common import YDLRequest
 
 try:
     import concurrent.futures
@@ -25,7 +26,6 @@ from ..compat import (
 from ..utils import (
     error_to_compat_str,
     encodeFilename,
-    sanitized_Request,
 )
 from ..exceptions import DownloadError
 
@@ -86,7 +86,7 @@ class FragmentFD(FileDownloader):
 
     def _prepare_url(self, info_dict, url):
         headers = info_dict.get('http_headers')
-        return sanitized_Request(url, None, headers) if headers else url
+        return YDLRequest(url, headers=headers)
 
     def _prepare_and_start_frag_download(self, ctx, info_dict):
         self._prepare_frag_download(ctx)

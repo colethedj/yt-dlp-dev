@@ -8,13 +8,13 @@ from ..compat import (
     compat_urllib_request,
     compat_urlparse,
 )
+from ..network.common import YDLRequest
 from ..utils import (
     determine_ext,
     extract_attributes,
     float_or_none,
     int_or_none,
     js_to_json,
-    sanitized_Request,
     try_get,
     unescapeHTML,
     url_or_none,
@@ -156,11 +156,11 @@ class UdemyIE(InfoExtractor):
                 headers['X-Udemy-Bearer-Token'] = cookie.value
                 headers['X-Udemy-Authorization'] = 'Bearer %s' % cookie.value
 
-        if isinstance(url_or_request, compat_urllib_request.Request):
+        if isinstance(url_or_request, YDLRequest):
             for header, value in headers.items():
                 url_or_request.add_header(header, value)
         else:
-            url_or_request = sanitized_Request(url_or_request, headers=headers)
+            url_or_request = YDLRequest(url_or_request, headers=headers)
 
         response = super(UdemyIE, self)._download_json(url_or_request, *args, **kwargs)
         self._handle_error(response)

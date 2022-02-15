@@ -4,8 +4,8 @@ from __future__ import unicode_literals
 import re
 
 from .common import InfoExtractor
+from ..network.common import YDLRequest
 from ..utils import (
-    sanitized_Request,
     urlencode_postdata,
     xpath_text,
     xpath_with_ns,
@@ -39,7 +39,7 @@ class NosVideoIE(InfoExtractor):
             'op': 'download1',
             'method_free': 'Continue to Video',
         }
-        req = sanitized_Request(url, urlencode_postdata(fields))
+        req = YDLRequest(url, urlencode_postdata(fields))
         req.add_header('Content-type', 'application/x-www-form-urlencoded')
         webpage = self._download_webpage(req, video_id,
                                          'Downloading download page')

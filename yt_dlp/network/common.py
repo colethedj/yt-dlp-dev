@@ -20,7 +20,7 @@ from ..utils import (
     escape_url,
     sanitize_url,
     write_string,
-    std_headers
+    std_headers, update_url_query
 )
 
 from ..exceptions import bug_reports_message
@@ -70,9 +70,22 @@ class YDLRequest:
     def url(self):
         return self.__request_url_store.full_url
 
+    @url.setter
+    def url(self, url):
+        self.__request_url_store.full_url = url
+
     @property
     def data(self):
         return self._data
+
+    @data.setter
+    def data(self, data):
+        if data == self._data:
+            return
+        # see urllib.request.Request data setter
+        if 'content-length' in self.headers:
+            del self.headers['content-length']
+        self._data = data
 
     @property
     def headers(self):
@@ -122,8 +135,8 @@ class YDLRequest:
 
 def req_to_ydlreq(req: urllib.request.Request):
     return YDLRequest(
-        req.get_full_url(), data=req.data, headers=req.headers, method=req.get_method(),
-        unverifiable=req.unverifiable, unredirected_headers=req.unredirected_hdrs,
+        req.get_full_url(), data=req.data, headers=req.headers.copy(), method=req.get_method(),
+        unverifiable=req.unverifiable, unredirected_headers=req.unredirected_hdrs.copy(),
         origin_req_host=req.origin_req_host)
 
 
@@ -137,6 +150,19 @@ class PUTRequest(YDLRequest):
     @property
     def method(self):
         return 'PUT'
+
+
+def update_YDLRequest(req: YDLRequest, url=None, data=None, headers=None, query=None):
+    """
+    Replaces the old update_Request.
+    TODO: do we want to replace this with a better method?
+    """
+    req = req.copy()
+    req.data = data or req.data
+    req.headers.replace_headers(headers or {})
+    req.unredirected_headers.clear()  # these were not copied in update_Request
+    req.url = update_url_query(url or req.url, query or {})
+    return req
 
 
 # TODO: add support for unified debug printing?
@@ -341,6 +367,9 @@ class YDLHTTPHeaderStore(Message):
             return super().replace_header(_name, str(_value) if isinstance(_value, int) else _value)
         except KeyError:
             return self._add_header(_name, _value)
+
+    def clear(self):
+        self._headers = []
 
 
 class YDLUniqueHTTPHeaderStore(YDLHTTPHeaderStore):
