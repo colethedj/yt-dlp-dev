@@ -88,3 +88,13 @@ def make_ssl_context(params):
                     _ssl_load_windows_store_certs(context, storename)
             context.set_default_verify_paths()
     return context
+
+
+def handle_youtubedl_headers(headers):
+    filtered_headers = headers
+
+    if 'Youtubedl-no-compression' in filtered_headers:
+        filtered_headers = dict((k, v) for k, v in filtered_headers.items() if k.lower() != 'accept-encoding')
+        del filtered_headers['Youtubedl-no-compression']
+
+    return filtered_headers

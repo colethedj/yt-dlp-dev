@@ -33,10 +33,10 @@ from ...exceptions import (
     bug_reports_message,
     HTTPError
 )
-from ..common import HTTPResponse, YDLBackendHandler, YDLRequest, HEADRequest, get_std_headers
+from ..common import HTTPResponse, YDLBackendHandler, YDLRequest, get_std_headers
 from ..socksproxy import ProxyType, sockssocket
 from ..utils import (
-    make_ssl_context
+    make_ssl_context, handle_youtubedl_headers
 )
 from ...utils import (
     escape_url,
@@ -112,16 +112,6 @@ def _create_http_connection(ydl_handler, http_class, is_https, *args, **kwargs):
             hc.connect = functools.partial(_hc_connect, hc)
 
     return hc
-
-
-def handle_youtubedl_headers(headers):
-    filtered_headers = headers
-
-    if 'Youtubedl-no-compression' in filtered_headers:
-        filtered_headers = dict((k, v) for k, v in filtered_headers.items() if k.lower() != 'accept-encoding')
-        del filtered_headers['Youtubedl-no-compression']
-
-    return filtered_headers
 
 
 class YoutubeDLHandler(compat_urllib_request.HTTPHandler):
