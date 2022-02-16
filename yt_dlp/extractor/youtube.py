@@ -2253,6 +2253,8 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                 r'player\\?/([0-9a-fA-F]{8})\\?/', res, 'player version', fatal=fatal)
             if player_version:
                 return f'https://www.youtube.com/s/player/{player_version}/player_ias.vflset/en_US/base.js'
+            else:
+                print(res)
 
     def _signature_cache_id(self, example_sig):
         """ Return a string representation of a signature """
