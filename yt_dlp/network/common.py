@@ -75,14 +75,6 @@ class Request:
         self.__request_url_store.full_url = url
 
     @property
-    def type(self):
-        return self.__request_url_store.type
-
-    @property
-    def host(self):
-        return self.__request_url_store.host
-
-    @property
     def data(self):
         return self._data
 
@@ -139,6 +131,14 @@ class Request:
 
     def get_method(self):
         return self.method
+
+    @property
+    def type(self):
+        return self.__request_url_store.type
+
+    @property
+    def host(self):
+        return self.__request_url_store.host
 
 
 def req_to_ydlreq(req: urllib.request.Request):
