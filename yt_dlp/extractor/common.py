@@ -478,6 +478,7 @@ class InfoExtractor(object):
         self._ready = False
         self._x_forwarded_for_ip = None
         self._printed_messages = set()
+        self._session = None
         self.set_downloader(downloader)
 
     @classmethod
@@ -521,6 +522,7 @@ class InfoExtractor(object):
             'countries': self._GEO_COUNTRIES,
             'ip_blocks': self._GEO_IP_BLOCKS,
         })
+        self._session = self._downloader._setup_backends()
         if not self._ready:
             self._real_initialize()
             self._ready = True
@@ -735,7 +737,7 @@ class InfoExtractor(object):
             if data is not None or headers:
                 url_or_request = Request(url_or_request, data, headers)
         try:
-            return self._downloader.urlopen(url_or_request)
+            return self._downloader.urlopen(url_or_request, session=self._session)
         except network_exceptions as err:
             if isinstance(err, HTTPError):
                 if self.__can_accept_status_code(err, expected_status):

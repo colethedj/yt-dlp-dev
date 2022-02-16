@@ -641,7 +641,12 @@ class YoutubeDL(object):
             else self.params['format'] if callable(self.params['format'])
             else self.build_format_selector(self.params['format']))
 
-        self.session = self._setup_backends()
+        self.default_session = self._setup_backends()
+        # compat
+        for handler in self.default_session.handlers:
+            if isinstance(handler, UrllibHandler):
+                self._opener = handler.get_opener(handler.get_default_proxy())
+                break
         if auto_init:
             if auto_init != 'no_verbose_header':
                 self.print_debug_header()
@@ -3550,7 +3555,7 @@ class YoutubeDL(object):
     def list_subtitles(self, video_id, subtitles, name='subtitles'):
         self.__list_table(video_id, name, self.render_subtitles_table, video_id, subtitles)
 
-    def urlopen(self, req):
+    def urlopen(self, req, session=None):
         if isinstance(req, str):
             req = Request(req)
         if isinstance(req, compat_urllib_request.Request):
@@ -3565,7 +3570,7 @@ class YoutubeDL(object):
         if proxy:
             req.proxy = proxy
             del req.headers['Ytdl-request-proxy']
-        return self.session.send_request(req)
+        return (session or self.default_session).send_request(req)
 
     def print_debug_header(self):
         if not self.params.get('verbose'):
@@ -3664,7 +3669,7 @@ class YoutubeDL(object):
             delim=', ') or 'none'
         write_debug('Optional libraries: %s' % lib_str)
 
-        for handler in self.session.handlers:
+        for handler in self.default_session.handlers:
             if hasattr(handler, 'proxy'):
                 write_debug(f'Proxy: {handler.proxy}')
                 break
@@ -3694,9 +3699,6 @@ class YoutubeDL(object):
                 continue
             handler = handler_class(self, params)
             manager.add_handler(handler)
-            # compat
-            if isinstance(handler, UrllibHandler):
-                self._opener = handler.get_opener(handler.get_default_proxy())
         return manager
 
     @property
