@@ -24,7 +24,7 @@ LONG_DESCRIPTION = '\n\n'.join((
     open('README.md', 'r', encoding='utf-8').read()))
 
 REQUIREMENTS = [
-    'mutagen', 'pycryptodomex', 'websockets', 'urllib3[socks]',
+    'mutagen', 'pycryptodomex', 'websockets', 'urllib3',
     'brotli>=1.0.9; platform_python_implementation=="CPython"',
     'brotlicffi>=1.0.9.0; platform_python_implementation!="CPython"']
 
