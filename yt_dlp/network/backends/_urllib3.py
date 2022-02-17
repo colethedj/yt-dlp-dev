@@ -29,6 +29,7 @@ from ..utils import (
 )
 
 import urllib3
+from urllib3.util.url import parse_url
 
 URLLIB3_SUPPORTED_ENCODINGS = [
     'gzip', 'deflate'
@@ -151,9 +152,15 @@ class Urllib3Handler(YDLBackendHandler):
         all_headers.replace_headers(request.unredirected_headers)
         if not request.compression:
             del all_headers['accept-encoding']
+
+        proxy = request.proxy or self.proxy
+        # urllib sets proxy scheme to url scheme if it is not set
+        proxy_parsed = parse_url(proxy)
+        if proxy_parsed.scheme is None:
+            proxy = proxy_parsed._replace(scheme=parse_url(request.url).scheme).url
         try:
             try:
-                urllib3_res = self.get_pool(request.proxy or self.proxy).urlopen(
+                urllib3_res = self.get_pool(proxy).urlopen(
                     method=request.method,
                     url=request.url,
                     request_url=request.url,  # TODO: needed for redirect compat
