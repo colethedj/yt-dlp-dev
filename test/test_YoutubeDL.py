@@ -14,7 +14,7 @@ import json
 
 from test.helper import FakeYDL, assertRegexpMatches
 from yt_dlp import YoutubeDL
-from yt_dlp.compat import compat_os_name, compat_setenv, compat_str, compat_urllib_error
+from yt_dlp.compat import compat_os_name, compat_setenv, compat_str
 from yt_dlp.extractor import YoutubeIE
 from yt_dlp.extractor.common import InfoExtractor
 from yt_dlp.postprocessor.common import PostProcessor

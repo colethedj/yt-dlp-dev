@@ -21,7 +21,6 @@ from test.helper import (
 )
 from yt_dlp.compat import (
     compat_str,
-    compat_urllib_request,
 )
 
 

@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from test.helper import http_server_port
 from yt_dlp import YoutubeDL
-from yt_dlp.compat import compat_http_server, compat_urllib_request
+from yt_dlp.compat import compat_http_server
 import ssl
 import threading
 
