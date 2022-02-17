@@ -38,9 +38,7 @@ from .compat import (
     compat_shlex_quote,
     compat_str,
     compat_tokenize_tokenize,
-    compat_urllib_error,
     compat_urllib_request,
-    compat_urllib_request_DataHandler,
     windows_enable_vt_mode
 )
 from .cookies import load_cookies

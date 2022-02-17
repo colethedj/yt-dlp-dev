@@ -20,13 +20,10 @@ from ..compat import (
     compat_etree_fromstring,
     compat_expanduser,
     compat_getpass,
-    compat_http_client,
     compat_os_name,
     compat_str,
-    compat_urllib_error,
     compat_urllib_parse_unquote,
     compat_urllib_parse_urlencode,
-    compat_urllib_request,
     compat_urlparse,
     compat_xml_parse_error,
     re,
@@ -91,7 +88,6 @@ from ..exceptions import (
     IncompleteRead,
     HTTPError
 )
-from ..network.backends._urllib import update_Request
 from ..network.common import Request, update_YDLRequest
 
 

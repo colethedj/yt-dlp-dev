@@ -224,6 +224,7 @@ class XAttrMetadataError(YoutubeDLError):
 class XAttrUnavailableError(YoutubeDLError):
     pass
 
+
 # TODO: deal with msg in places where we don't always want to specify it
 class RequestError(YoutubeDLError):
     def __init__(self, msg=None, url=None):
@@ -271,7 +272,7 @@ class ConnectionTimeoutError(TransportError, Timeout):
 
 class ResolveHostError(TransportError):
     def __init__(self, url=None, cause=None, host=None):
-        msg = f'Failed to resolve host' + f' {host or urllib.parse.urlparse(url).hostname if url else ""}'
+        msg = 'Failed to resolve host' + f' {host or urllib.parse.urlparse(url).hostname if url else ""}'
         super().__init__(msg, url, cause=cause)
 
 
@@ -300,8 +301,6 @@ class ContentDecodingError(RequestError):
 
 class MaxRedirectsError(RequestError):
     pass
-
-
 
 
 """
@@ -349,24 +348,16 @@ BackendError
 
 Other notes:
 - add original request obj to every RequestError
-- each BackendError will have backend details 
-"""
+- each BackendError will have backend details
 
-"""
-
-
-
-        #TransportError / Connection error / Network error (?). Prob most of our socket errors here
-       #  ProtocolError - errors during request/response (?)
-            # todo:
-            # HTTPException like Errors - related to reading the response
-            #    ConnectionResetError
-            #    RemoteDisconnected
-            #    Incomplete read
-            #    ...
-
-
-
+#TransportError / Connection error / Network error (?). Prob most of our socket errors here
+#  ProtocolError - errors during request/response (?)
+    # todo:
+    # HTTPException like Errors - related to reading the response
+    #    ConnectionResetError
+    #    RemoteDisconnected
+    #    Incomplete read
+    #    ...
 
 
 """

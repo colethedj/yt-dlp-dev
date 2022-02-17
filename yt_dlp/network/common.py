@@ -13,7 +13,7 @@ from email.message import Message
 import urllib.request
 import urllib.response
 
-from ..compat import compat_cookiejar, compat_str, compat_urlparse
+from ..compat import compat_cookiejar, compat_str
 
 from ..utils import (
     extract_basic_auth,
@@ -62,9 +62,9 @@ class Request:
         # and https://datatracker.ietf.org/doc/html/rfc2965.html
         self.unverifiable = unverifiable
         self.origin_req_host = (
-                origin_req_host
-                or urllib.parse.urlparse(self.url).netloc
-                or self.__request_url_store.origin_req_host)
+            origin_req_host
+            or urllib.parse.urlparse(self.url).netloc
+            or self.__request_url_store.origin_req_host)
 
     @property
     def url(self):
@@ -378,6 +378,7 @@ class HTTPHeaderStore(Message):
 class UniqueHTTPHeaderStore(HTTPHeaderStore):
     def add_header(self, *args, **kwargs):
         return self.replace_header(*args, **kwargs)
+
 
 """
 Youtube-dl request object

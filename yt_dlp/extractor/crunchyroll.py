@@ -16,7 +16,6 @@ from ..compat import (
     compat_etree_fromstring,
     compat_str,
     compat_urllib_parse_urlencode,
-    compat_urllib_request,
     compat_urlparse,
 )
 from ..network.common import Request

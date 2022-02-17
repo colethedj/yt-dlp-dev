@@ -7,9 +7,6 @@ import struct
 
 import yt_dlp.exceptions
 from .fragment import FragmentFD
-from ..compat import (
-    compat_urllib_error,
-)
 
 
 u8 = struct.Struct('>B')

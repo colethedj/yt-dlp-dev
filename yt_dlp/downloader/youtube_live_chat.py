@@ -5,7 +5,6 @@ import time
 
 import yt_dlp.exceptions
 from .fragment import FragmentFD
-from ..compat import compat_urllib_error
 from ..utils import (
     try_get,
     dict_get,

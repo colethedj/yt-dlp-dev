@@ -12,9 +12,7 @@ from ...exceptions import (
     ReadTimeoutError,
     TransportError,
     ConnectionTimeoutError,
-    ResolveHostError,
     SSLError,
-    bug_reports_message,
     HTTPError,
     ProxyError,
     RequestError

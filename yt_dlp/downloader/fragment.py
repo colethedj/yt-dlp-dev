@@ -20,7 +20,6 @@ from .http import HttpFD
 from ..aes import aes_cbc_decrypt_bytes, unpad_pkcs7
 from ..compat import (
     compat_os_name,
-    compat_urllib_error,
     compat_struct_pack,
 )
 from ..utils import (

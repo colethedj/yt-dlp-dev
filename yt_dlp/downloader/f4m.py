@@ -10,7 +10,6 @@ from ..compat import (
     compat_b64decode,
     compat_etree_fromstring,
     compat_urlparse,
-    compat_urllib_error,
     compat_urllib_parse_urlparse,
     compat_struct_pack,
     compat_struct_unpack,

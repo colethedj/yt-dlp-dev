@@ -180,6 +180,7 @@ __all__ = [
     'compat_HTMLParser',
     'compat_HTTPError',
     'compat_b64decode',
+    'compat_brotli',
     'compat_chr',
     'compat_collections_abc',
     'compat_cookiejar',
@@ -228,7 +229,6 @@ __all__ = [
     'compat_urllib_response',
     'compat_urlparse',
     'compat_urlretrieve',
-    'compat_websockets',
     'compat_xml_parse_error',
     'windows_enable_vt_mode',
 ]

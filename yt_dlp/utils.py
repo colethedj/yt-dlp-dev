@@ -3,7 +3,6 @@
 
 from __future__ import unicode_literals
 
-import asyncio
 import base64
 import binascii
 import calendar
@@ -249,6 +248,7 @@ def xpath_with_ns(path, ns_map):
 
 def xpath_element(node, xpath, name=None, fatal=False, default=NO_DEFAULT):
     from .exceptions import ExtractorError
+
     def _find_xpath(xpath):
         return node.find(xpath)
 
@@ -4211,4 +4211,3 @@ class YDLLogger:
     def error(self, message):
         if self._ydl:
             self._ydl.report_error(message)
-

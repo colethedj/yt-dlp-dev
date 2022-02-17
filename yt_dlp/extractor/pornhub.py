@@ -10,7 +10,6 @@ import re
 from .common import InfoExtractor
 from ..compat import (
     compat_str,
-    compat_urllib_request,
 )
 from .openload import PhantomJSwrapper
 from ..network.common import Request

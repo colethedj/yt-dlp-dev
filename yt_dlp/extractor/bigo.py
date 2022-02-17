@@ -5,6 +5,8 @@ from .common import InfoExtractor
 from ..utils import urlencode_postdata
 
 from ..exceptions import ExtractorError
+
+
 class BigoIE(InfoExtractor):
     _VALID_URL = r'https?://(?:www\.)?bigo\.tv/(?:[a-z]{2,}/)?(?P<id>[^/]+)'
 

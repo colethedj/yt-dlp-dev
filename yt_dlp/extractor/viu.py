@@ -8,7 +8,6 @@ from .common import InfoExtractor
 from ..compat import (
     compat_str,
     compat_urlparse,
-    compat_urllib_request,
 )
 from ..network.common import Request
 from ..utils import (

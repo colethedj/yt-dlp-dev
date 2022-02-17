@@ -18,7 +18,6 @@ from ...compat import (
     compat_http_client,
     compat_brotli,
     compat_urlparse,
-    compat_urllib_parse_unquote_plus,
     compat_HTTPError
 )
 from ...exceptions import (
@@ -34,7 +33,7 @@ from ...exceptions import (
     HTTPError
 )
 from ..common import HTTPResponse, YDLBackendHandler, Request, get_std_headers
-from ..socksproxy import ProxyType, sockssocket
+from ..socksproxy import sockssocket
 from ..utils import (
     make_ssl_context, handle_youtubedl_headers, socks_create_proxy_args
 )
@@ -400,6 +399,7 @@ class PerRequestProxyHandler(compat_urllib_request.ProxyHandler):
         return compat_urllib_request.ProxyHandler.proxy_open(
             self, req, proxy, type)
 
+
 """
 yt-dlp adapters
 """
@@ -515,11 +515,10 @@ class UrllibHandler(YDLBackendHandler):
                 if e.errno == errno.ETIMEDOUT:
                     raise ReadTimeoutError(url, cause=e)
                 raise SSLError(url=url, msg=str(e.reason), cause=e) from e
-            except:
+            except Exception as e:
                 raise TransportError(url=url, cause=e) from e
 
         except http.client.HTTPException as e:
             raise TransportError(cause=e) from e
 
         return UrllibResponseAdapter(res)
-
