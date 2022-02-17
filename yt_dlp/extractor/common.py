@@ -741,11 +741,9 @@ class InfoExtractor(object):
         except network_exceptions as err:
             if isinstance(err, HTTPError):
                 if self.__can_accept_status_code(err, expected_status):
-                    # TODO
                     # Retain reference to error to prevent file object from
                     # being closed before it can be read. Works around the
-                    # effects of <https://bugs.python.org/issue15002>
-                    # introduced in Python 3.4.1.
+                    # effects of tempfile._TemporaryFileWrapper
                     err.fp._error = err
                     return err.fp
 

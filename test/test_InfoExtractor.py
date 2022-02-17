@@ -1635,8 +1635,7 @@ jwplayer("mediaplayer").setup({"abouttext":"Visit Indie DB","aboutlink":"http:\/
                     expect_dict(self, entries[i], expected_entries[i])
 
     def test_response_with_expected_status_returns_content(self):
-        # Checks for mitigations against the effects of
-        # <https://bugs.python.org/issue15002> that affect Python 3.4.1+, which
+        # Checks for mitigations against the effects of tempfile._TemporaryFileWrapper, which
         # manifest as `_download_webpage`, `_download_xml`, `_download_json`,
         # or the underlying `_download_webpage_handle` returning no content
         # when a response matches `expected_status`.
