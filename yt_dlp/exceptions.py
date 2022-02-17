@@ -370,7 +370,7 @@ Other notes:
 
 
 """
-network_exceptions = [compat_urllib_error.URLError, compat_http_client.HTTPException, socket.error, HTTPError]
+network_exceptions = [compat_urllib_error.URLError, compat_http_client.HTTPException, socket.error, HTTPError, TransportError]
 if hasattr(ssl, 'CertificateError'):
     network_exceptions.append(ssl.CertificateError)
 network_exceptions = tuple(network_exceptions)
