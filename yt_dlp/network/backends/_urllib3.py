@@ -154,10 +154,11 @@ class Urllib3Handler(YDLBackendHandler):
             del all_headers['accept-encoding']
 
         proxy = request.proxy or self.proxy
-        # urllib sets proxy scheme to url scheme if it is not set
-        proxy_parsed = parse_url(proxy)
-        if proxy_parsed.scheme is None:
-            proxy = proxy_parsed._replace(scheme=parse_url(request.url).scheme).url
+        if proxy:
+            # urllib sets proxy scheme to url scheme if it is not set
+            proxy_parsed = parse_url(proxy)
+            if proxy_parsed.scheme is None:
+                proxy = proxy_parsed._replace(scheme=parse_url(request.url).scheme).url
         try:
             try:
                 urllib3_res = self.get_pool(proxy).urlopen(
