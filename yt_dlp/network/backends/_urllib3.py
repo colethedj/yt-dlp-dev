@@ -97,7 +97,7 @@ class Urllib3ResponseAdapter(HTTPResponse):
 
 
 class Urllib3Handler(YDLBackendHandler):
-    _SUPPORTED_PROTOCOLS = ['http', 'https']
+    SUPPORTED_PROTOCOLS = ['http', 'https']
 
     def _initialize(self):
         self.pools = {}

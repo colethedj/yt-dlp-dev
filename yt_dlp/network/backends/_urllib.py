@@ -444,7 +444,7 @@ class UrllibResponseAdapter(HTTPResponse):
 
 
 class UrllibHandler(YDLBackendHandler):
-    _SUPPORTED_PROTOCOLS = ['http', 'https', 'data']
+    SUPPORTED_PROTOCOLS = ['http', 'https', 'data']
 
     def _initialize(self):
         self._openers = {}

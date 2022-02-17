@@ -29,9 +29,10 @@ from .utils import random_user_agent
 
 class Request:
     """
-    Our own request class, similar to urllib.request.Request
-    This is used to send request information from youtube-dl to the backends.
-    Backends are expected to extract relevant data from this object rather that use it directly (e.g. passing to urllib)
+    Request class to define a request to be made.
+
+    A wrapper for urllib.request.Request with improvements for yt-dlp,
+    while retaining backwards-compatability where needed (e.g for cookiejar)
     """
     def __init__(
             self, url, data=None, headers=None, proxy=None, compression=True, method=None,
@@ -43,9 +44,7 @@ class Request:
         """
         url, basic_auth_header = extract_basic_auth(escape_url(sanitize_url(url)))
         # Using Request object for url parsing.
-        self.__request_url_store = urllib.request.Request(url)
-        self._method = method
-        self._data = data
+        self.__request_store = urllib.request.Request(url, data=data, method=method)
         self._headers = UniqueHTTPHeaderStore(headers)
         self._unredirected_headers = UniqueHTTPHeaderStore(unredirected_headers)
         self.timeout = timeout
@@ -64,28 +63,23 @@ class Request:
         self.origin_req_host = (
             origin_req_host
             or urllib.parse.urlparse(self.url).netloc
-            or self.__request_url_store.origin_req_host)
+            or self.__request_store.origin_req_host)
 
     @property
     def url(self):
-        return self.__request_url_store.full_url
+        return self.__request_store.full_url
 
     @url.setter
     def url(self, url):
-        self.__request_url_store.full_url = url
+        self.__request_store.full_url = url
 
     @property
     def data(self):
-        return self._data
+        return self.__request_store.data
 
     @data.setter
     def data(self, data):
-        if data == self._data:
-            return
-        # see urllib.request.Request data setter
-        if 'content-length' in self.headers:
-            del self.headers['content-length']
-        self._data = data
+        self.__request_store.data = data
 
     @property
     def headers(self):
@@ -98,14 +92,16 @@ class Request:
 
     @property
     def method(self):
-        return self._method or 'POST' if self._data else 'GET'
+        return self.__request_store.method
 
     def copy(self):
         return self.__class__(
             self.url, self.data, self.headers.copy(), self.proxy, self.compression, self.method, self.unverifiable,
             self.unredirected_headers.copy())
 
-    # Backwards compatible functions with urllib.request.Request for cookiejar handling
+    """
+    The following are backwards compatible functions with urllib.request.Request for cookiejar handling
+    """
 
     def add_unredirected_header(self, key, value):
         self._unredirected_headers.replace_header(key, value)
@@ -134,11 +130,11 @@ class Request:
 
     @property
     def type(self):
-        return self.__request_url_store.type
+        return self.__request_store.type
 
     @property
     def host(self):
-        return self.__request_url_store.host
+        return self.__request_store.host
 
 
 def req_to_ydlreq(req: urllib.request.Request):
@@ -226,13 +222,17 @@ class HTTPResponse(ABC, io.IOBase):
         raise NotImplementedError
 
 
-class BaseBackendHandler(ABC):
+class BackendHandler(ABC):
+    """
+    Bare-bones backend handler.
 
-    SUPPORTED_PROTOCOLS: list
+    Use this for defining custom protocols for extractors.
+    """
+    SUPPORTED_PROTOCOLS: list = None
 
     @classmethod
     def _is_supported_protocol(cls, request: Request):
-        return urllib.parse.urlparse(request.url).scheme.lower() in cls._SUPPORTED_PROTOCOLS
+        return urllib.parse.urlparse(request.url).scheme.lower() in cls.SUPPORTED_PROTOCOLS or []
 
     def handle(self, request: Request, **req_kwargs):
         """Method to handle given request. Redefine in subclasses"""
@@ -242,10 +242,14 @@ class BaseBackendHandler(ABC):
         """Validate if handler is suitable for given request. Can override in subclasses."""
 
 
-class YDLBackendHandler(BaseBackendHandler):
+class YDLBackendHandler(BackendHandler):
     """Network Backend Handler class
 
     Responsible for handling requests.
+
+    Backend handlers accept a lot of parameters. In order not to saturate
+    the object constructor with arguments, it receives a dictionary of
+    options instead.
 
     Available options:
 
@@ -305,7 +309,7 @@ class BackendManager:
         self.handlers = []
         self.ydl = ydl
 
-    def add_handler(self, handler: BaseBackendHandler):
+    def add_handler(self, handler: BackendHandler):
         if handler not in self.handlers:
             self.handlers.append(handler)
 
@@ -349,17 +353,11 @@ class HTTPHeaderStore(Message):
         for k, v in data.items():
             self.replace_header(k, v)
 
-    def copy(self):
-        return self.__class__(self)
-
-    """
-    Message requires value to be a str, but some extractors provide headers as integers.
-    """
     def add_header(self, _name: str, _value: str, **kwargs):
         return self._add_header(_name, _value, **kwargs)
 
     def _add_header(self, name, value, **kwargs):
-        return super().add_header(name, str(value) if isinstance(value, int) else value, **kwargs)
+        return super().add_header(name, str(value), **kwargs)
 
     def replace_header(self, _name: str, _value: str):
         """
@@ -367,25 +365,23 @@ class HTTPHeaderStore(Message):
         Unlike email.Message, will add the header if it does not already exist.
         """
         try:
-            return super().replace_header(_name, str(_value) if isinstance(_value, int) else _value)
+            return super().replace_header(_name, str(_value))
         except KeyError:
             return self._add_header(_name, _value)
 
     def clear(self):
         self._headers = []
 
+    def update(self, new_headers):
+        self.replace_headers(new_headers)
+
+    def copy(self):
+        return self.__class__(self)
+
 
 class UniqueHTTPHeaderStore(HTTPHeaderStore):
     def add_header(self, *args, **kwargs):
         return self.replace_header(*args, **kwargs)
-
-
-"""
-Youtube-dl request object
-This is used for communication between the network backends and youtube-dl only
-
-Network backends are responsible for validating and parsing the url, etc.
-"""
 
 
 class YoutubeDLCookieJar(compat_cookiejar.MozillaCookieJar):
