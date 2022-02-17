@@ -6,6 +6,9 @@ from __future__ import unicode_literals
 import os
 import sys
 import unittest
+
+from yt_dlp.network.common import Request
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from test.helper import http_server_port
@@ -126,7 +129,7 @@ class TestProxy(unittest.TestCase):
         response = ydl.urlopen(url).read().decode('utf-8')
         self.assertEqual(response, 'normal: {0}'.format(url))
 
-        req = compat_urllib_request.Request(url)
+        req = Request(url)
         req.add_header('Ytdl-request-proxy', geo_proxy)
         response = ydl.urlopen(req).read().decode('utf-8')
         self.assertEqual(response, 'geo: {0}'.format(url))
