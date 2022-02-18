@@ -92,7 +92,7 @@ class Request:
 
     @property
     def method(self):
-        return self.__request_store.method
+        return self.__request_store.get_method()
 
     def copy(self):
         return self.__class__(
