@@ -220,6 +220,12 @@ INNERTUBE_CLIENTS = {
     }
 }
 
+# Innertube hosts not documented in https://support.google.com/a/answer/6214622
+ALTERNATIVE_IT_HOSTS = [
+    'music.youtube.com',
+    'release-youtubei.sandbox.googleapis.com',
+]
+
 
 def build_innertube_clients():
     THIRD_PARTY = {
@@ -227,6 +233,12 @@ def build_innertube_clients():
     }
     BASE_CLIENTS = ('android', 'web', 'ios', 'mweb')
     priority = qualities(BASE_CLIENTS[::-1])
+
+    def _create_alt_clients(client, ytcfg):
+        for i, host in enumerate(ALTERNATIVE_IT_HOSTS):
+            INNERTUBE_CLIENTS[f'_{client}_alt_{i}'] = alt_ytcfg = copy.deepcopy(ytcfg)
+            alt_ytcfg['INNERTUBE_API_KEY'] = 'AIzaSyDCU8hByM-4DrUqRUYnGn-3llEO78bcxq8'
+            alt_ytcfg['INNERTUBE_HOST'] = host
 
     for client, ytcfg in tuple(INNERTUBE_CLIENTS.items()):
         ytcfg.setdefault('INNERTUBE_API_KEY', 'AIzaSyDCU8hByM-4DrUqRUYnGn-3llEO78bcxq8')
@@ -242,11 +254,14 @@ def build_innertube_clients():
             agegate_ytcfg['INNERTUBE_CONTEXT']['client']['clientScreen'] = 'EMBED'
             agegate_ytcfg['INNERTUBE_CONTEXT']['thirdParty'] = THIRD_PARTY
             agegate_ytcfg['priority'] -= 1
+            _create_alt_clients(f'{client}_agegate', agegate_ytcfg)
         elif variant == ['embedded']:
             ytcfg['INNERTUBE_CONTEXT']['thirdParty'] = THIRD_PARTY
             ytcfg['priority'] -= 2
         else:
             ytcfg['priority'] -= 3
+
+        _create_alt_clients(client, ytcfg)
 
 
 build_innertube_clients()
@@ -2904,6 +2919,9 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
     def _is_unplayable(player_response):
         return traverse_obj(player_response, ('playabilityStatus', 'status')) == 'UNPLAYABLE'
 
+    def _is_network_restricted(self, player_response):
+        return 'administrator' in (self._get_text(player_response, ('playabilityStatus', 'errorScreen', 'playerErrorMessageRenderer', ['subreason', 'reason'])) or '').lower()
+
     def _extract_player_response(self, client, video_id, master_ytcfg, player_ytcfg, player_url, initial_pr):
 
         session_index = self._extract_session_index(player_ytcfg, master_ytcfg)
@@ -2970,6 +2988,11 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
             if client_name in INNERTUBE_CLIENTS and client_name not in original_clients:
                 clients.append(client_name)
 
+        def get_alt_client(client_name):
+            current_alt_num = int_or_none(traverse_obj(client_name.split('alt_'), 1))
+            if current_alt_num is not None:
+                return client_name[:-len(str(current_alt_num))] + str((current_alt_num+1) % len(ALTERNATIVE_IT_HOSTS))
+            return f'_{client_name}_alt_0'
         # Android player_response does not have microFormats which are needed for
         # extraction of some data. So we return the initial_pr with formats
         # stripped out even if not requested by the user
@@ -3015,7 +3038,8 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                 append_client(client.replace('_agegate', '_creator'))
             elif self._is_agegated(pr):
                 append_client(f'{client}_agegate')
-
+            elif self._is_network_restricted(pr):
+                append_client(get_alt_client(client))
         if last_error:
             if not len(prs):
                 raise last_error
