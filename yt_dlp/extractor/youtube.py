@@ -444,21 +444,32 @@ class YoutubeBaseInfoExtractor(InfoExtractor):
             f'{time_now} {self._SAPISID} {origin}'.encode('utf-8')).hexdigest()
         return f'SAPISIDHASH {time_now}_{sapisidhash}'
 
+    def _unified_innertubehost(self, api_hostname=None, default_client=None):
+        return (
+            self._configuration_arg('innertube_host', ie_key='youtube', default=[''])[0]
+            or api_hostname
+            or self._get_innertube_host(default_client or 'web'))
+
     def _call_api(self, ep, query, video_id, fatal=True, headers=None,
                   note='Downloading API JSON', errnote='Unable to download API page',
                   context=None, api_key=None, api_hostname=None, default_client='web'):
 
         data = {'context': context} if context else {'context': self._extract_context(default_client=default_client)}
+        api_hostname = self._unified_innertubehost(api_hostname, default_client)
+        api_key = (
+            self._configuration_arg('innertube_key', ie_key='youtube', default=[''], casesense=True)[0]
+            or api_key or self._extract_api_key(default_client))
+
         data.update(query)
         real_headers = self.generate_api_headers(default_client=default_client)
         real_headers.update({'content-type': 'application/json'})
         if headers:
             real_headers.update(headers)
         return self._download_json(
-            'https://%s/youtubei/v1/%s' % (api_hostname or self._get_innertube_host(default_client), ep),
+            f'https://{api_hostname}/youtubei/v1/{ep}',
             video_id=video_id, fatal=fatal, note=note, errnote=errnote,
             data=json.dumps(data).encode('utf8'), headers=real_headers,
-            query={'key': api_key or self._extract_api_key(), 'prettyPrint': 'false'})
+            query={'key': api_key, 'prettyPrint': 'false'})
 
     def extract_yt_initial_data(self, item_id, webpage, fatal=True):
         data = self._search_regex(
@@ -533,8 +544,7 @@ class YoutubeBaseInfoExtractor(InfoExtractor):
     def generate_api_headers(
             self, *, ytcfg=None, account_syncid=None, session_index=None,
             visitor_data=None, identity_token=None, api_hostname=None, default_client='web'):
-
-        origin = 'https://' + (api_hostname if api_hostname else self._get_innertube_host(default_client))
+        origin = 'https://' + self._unified_innertubehost(api_hostname, default_client)
         headers = {
             'X-YouTube-Client-Name': compat_str(
                 self._ytcfg_get_safe(ytcfg, lambda x: x['INNERTUBE_CONTEXT_CLIENT_NAME'], default_client=default_client)),
