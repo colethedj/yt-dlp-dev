@@ -17,6 +17,7 @@ import sys
 import time
 import traceback
 import threading
+from base64 import urlsafe_b64decode, urlsafe_b64encode
 
 from .common import InfoExtractor, SearchInfoExtractor
 from ..compat import (
@@ -70,6 +71,8 @@ from ..utils import (
     url_or_none,
     urljoin,
     variadic,
+    bytes_to_intlist,
+    intlist_to_bytes,
 )
 
 
@@ -2807,6 +2810,14 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                 note_prefix = '%sDownloading comment%s API JSON page %d %s' % (
                     '       ' if parent else '', ' replies' if parent else '',
                     page_num, comment_prog_str)
+
+            if continuation and parent:
+                cont_intlist = bytes_to_intlist(urlsafe_b64decode(continuation['continuation'].replace('%3D', '=')))
+                idx = max(i for i, n in enumerate(cont_intlist) if n in (50, 10))
+                if idx is not None:
+                    cont_intlist.pop(idx)
+                    cont_intlist.insert(idx, 127)  # TODO: larger?
+                    continuation['continuation'] = urlsafe_b64encode(intlist_to_bytes(cont_intlist)).decode('utf-8')
 
             response = self._extract_response(
                 item_id=None, query=continuation,
