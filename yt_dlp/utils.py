@@ -37,6 +37,7 @@ import subprocess
 import sys
 import tempfile
 import traceback
+import urllib.error
 import xml.etree.ElementTree
 import zlib
 import mimetypes
@@ -1133,24 +1134,15 @@ class TransportError(RequestError):
         return f'<transport error{backend_msg}: {self.__class__.__name__} {self.msg}{cause_msg}>'
 
 
-# TODO: Add tests for reading, closing, trying to read again etc.
-# Test for making sure connection is released
-# TODO: what parameters do we want? code/reason, response or both?
-# Similar API as urllib.error.HTTPError
-
-
-class HTTPError(TransportError, tempfile._TemporaryFileWrapper):
-    def __init__(self, response, redirect_loop=False):
-        self.response = self.fp = response
-        self.code = response.code
-        msg = f'HTTP Error {self.code}: {response.reason}'
+# Backwards compatible with urllib.error.HTTPError
+class HTTPError(urllib.error.HTTPError, TransportError):
+    def __init__(self, response: "networking.common.HTTPResponse", redirect_loop=False):
+        self.response = response
+        msg = response.reason or ''
         if redirect_loop:
             msg += ' (redirect loop detected)'
-        super().__init__(msg=msg)
-        tempfile._TemporaryFileWrapper.__init__(self, response, '<yt-dlp response>', delete=False)
-
-    def __str__(self):
-        return self.msg
+        super().__init__(
+            url=response.url, code=response.code, msg=msg, hdrs=response.headers, fp=response)
 
 
 class YDLTimeoutError(TransportError, TimeoutError):
