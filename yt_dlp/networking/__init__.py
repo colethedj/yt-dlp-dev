@@ -5,6 +5,13 @@ from .common import BackendRH
 
 from ..utils import RequestError
 
+try:
+    from ._requests import RequestsRH
+    has_requests = True
+except ImportError:
+    has_requests = False
+    RequestsRH = None
+
 
 class UnsupportedRH(BackendRH):
     """
@@ -25,5 +32,7 @@ class UnsupportedRH(BackendRH):
 
 
 REQUEST_HANDLERS = [UnsupportedRH, UrllibRH]
+if RequestsRH is not None:
+    REQUEST_HANDLERS.append(RequestsRH)
 
 __all__ = ['UrllibRH', 'UnsupportedRH', 'REQUEST_HANDLERS']
