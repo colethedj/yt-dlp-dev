@@ -3738,7 +3738,7 @@ class YoutubeDL(object):
 
     @property
     def cookiejar(self):
-        if not self._cookiejar:
+        if self._cookiejar is None:
             opts_cookiesfrombrowser = self.params.get('cookiesfrombrowser')
             opts_cookiefile = self.params.get('cookiefile')
             self._cookiejar = load_cookies(opts_cookiefile, opts_cookiesfrombrowser, self)
