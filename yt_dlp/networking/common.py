@@ -234,11 +234,6 @@ class RequestHandler:
     def can_handle(cls, request: Request, **req_kwargs) -> bool:
         """Validate if handler is suitable for given request. Can override in subclasses."""
 
-    @classmethod
-    def rh_key(cls):
-        """A string representing the request handler"""
-        return cls.__name__[:-2]
-
 
 class BackendRH(RequestHandler):
     """Network Backend adapter class
