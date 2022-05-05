@@ -135,13 +135,6 @@ class Request:
         return self.__request_store.host
 
 
-def req_to_ydlreq(req: urllib.request.Request):
-    return Request(
-        req.get_full_url(), data=req.data, headers=req.headers.copy(), method=req.get_method(),
-        unverifiable=req.unverifiable, unredirected_headers=req.unredirected_hdrs.copy(),
-        origin_req_host=req.origin_req_host)
-
-
 class HEADRequest(Request):
     @property
     def method(self):
@@ -316,13 +309,16 @@ class RHManager:
     def urlopen(self, req):
         if isinstance(req, str):
             req = Request(req)
+        elif isinstance(req, urllib.request.Request):
+            # Backwards compat for urllib request
+            req = Request(
+                req.get_full_url(), data=req.data, headers=req.headers.copy(), method=req.get_method(),
+                unverifiable=req.unverifiable, unredirected_headers=req.unredirected_hdrs.copy(),
+                origin_req_host=req.origin_req_host)
 
-        if isinstance(req, compat_urllib_request.Request):
-            self.ydl.deprecation_warning(
-                'An urllib.request.Request has been passed to urlopen(). '
-                'This is deprecated and may not work in the future. Please use yt_dlp.networking.common.Request instead.')
-            req = req_to_ydlreq(req)
+        assert isinstance(req, Request)
 
+        # Alternative/backwards compat to providing req.compression and req.proxy
         if req.headers.get('Youtubedl-no-compression'):
             req.compression = False
             del req.headers['Youtubedl-no-compression']
@@ -352,6 +348,7 @@ class RHManager:
                 continue
             assert isinstance(res, HTTPResponse)
             return res
+        raise YoutubeDLError('No request handlers configured')
 
 
 class HTTPHeaderStore(Message):
