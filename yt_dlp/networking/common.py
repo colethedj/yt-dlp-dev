@@ -341,11 +341,11 @@ class RHManager:
                     self.ydl.report_warning(f'Unexpected error from request handler: {e.__class__.__name__}: {e}' + bug_reports_message())
 
                 if isinstance(e, RequestError):
-                    e.backend_key = handler.rh_key()
+                    e.handler = handler
                 raise
 
             if not res:
-                self.ydl.report_warning(f'{handler.rh_key()} request handler returned nothing for response' + bug_reports_message())
+                self.ydl.report_warning(f'{handler.__name__} request handler returned nothing for response' + bug_reports_message())
                 continue
             assert isinstance(res, HTTPResponse)
             return res

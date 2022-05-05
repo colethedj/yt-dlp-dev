@@ -1112,26 +1112,26 @@ class XAttrUnavailableError(YoutubeDLError):
 
 
 class RequestError(YoutubeDLError):
-    def __init__(self, msg, backend_key=None):
-        self.backend_key = backend_key
+    def __init__(self, msg, handler=None):
+        self.handler = handler  # TODO: some way of knowing what backend we used
         super().__init__(msg)
 
 
 # TODO: deal with msg in places where we don't always want to specify it
 # TODO: better name
 class TransportError(RequestError):
-    def __init__(self, msg, cause=None, backend_key=None):
+    def __init__(self, msg, cause=None, handler=None):
         self.cause = cause
-        super().__init__(msg, backend_key=backend_key)
+        super().__init__(msg, handler=handler)
 
     def __str__(self):
         # TODO
         backend_msg = cause_msg = ''
-        if self.backend_key:
-            backend_msg = f' in {self.backend_key}'
+        if self.handler:
+            backend_msg = f' in {self.handler.__class__.__name__}'
         if self.cause:
             cause_msg = f' (caused by {self.cause.__class__.__name__})'
-        return f'<transport error{backend_msg}: {self.__class__.__name__} {self.msg}{cause_msg}>'
+        return f'<{self.__class__.__name__} exception{backend_msg}: {self.msg}{cause_msg}>'
 
 
 # Backwards compatible with urllib.error.HTTPError
@@ -1162,6 +1162,7 @@ class ConnectTimeoutError(YDLTimeoutError):
     msg = 'Timed out while connecting'
 
 
+# Backwards compat with http.client.IncompleteRead
 class IncompleteRead(TransportError, http.client.IncompleteRead):
     def __init__(self, partial, cause=None, expected=None):
         self.partial = partial
