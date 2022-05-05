@@ -501,7 +501,7 @@ class UrllibRH(BackendRH):
         """
         return self._openers.setdefault(proxy or '__noproxy__', self._create_opener(proxy))
 
-    def _real_handle(self, request: Request, **kwargs) -> HTTPResponse:
+    def _real_handle(self, request: Request) -> HTTPResponse:
         urllib_req = urllib.request.Request(
             url=request.url, data=request.data, headers=dict(request.headers), origin_req_host=request.origin_req_host,
             unverifiable=request.unverifiable, method=request.method

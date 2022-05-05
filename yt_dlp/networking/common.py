@@ -220,11 +220,11 @@ class RequestHandler:
     def _is_supported_scheme(cls, request: Request):
         return urllib.parse.urlparse(request.url).scheme.lower() in cls.SUPPORTED_SCHEMES or []
 
-    def handle(self, request: Request, **req_kwargs):
+    def handle(self, request: Request):
         """Method to handle given request. Redefine in subclasses"""
 
     @classmethod
-    def can_handle(cls, request: Request, **req_kwargs) -> bool:
+    def can_handle(cls, request: Request) -> bool:
         """Validate if handler is suitable for given request. Can override in subclasses."""
 
 
@@ -247,8 +247,9 @@ class BackendRH(RequestHandler):
         self.print_traffic = bool(self.params.get('verbose'))
         self._initialize()
 
-    def handle(self, request: Request, **req_kwargs):
-        return self._real_handle(request, **req_kwargs)
+    def handle(self, request: Request):
+        # TODO: if there isn't anything to define here, then subclasses can just override handle()
+        return self._real_handle(request)
 
     def to_screen(self, *args, **kwargs):
         self.ydl.to_stdout(*args, **kwargs)
@@ -265,7 +266,7 @@ class BackendRH(RequestHandler):
     def write_debug(self, *args, **kwargs):
         self.ydl.write_debug(*args, **kwargs)
 
-    def can_handle(self, request: Request, **req_kwargs) -> bool:
+    def can_handle(self, request: Request,) -> bool:
         """Validate if adapter is suitable for given request. Can override in subclasses."""
         return self._is_supported_scheme(request)
 
@@ -273,7 +274,7 @@ class BackendRH(RequestHandler):
         """Initialization process. Redefine in subclasses."""
         pass
 
-    def _real_handle(self, request: Request, **kwargs) -> HTTPResponse:
+    def _real_handle(self, request: Request) -> HTTPResponse:
         """Real request handling process. Redefine in subclasses"""
 
 
