@@ -52,7 +52,7 @@ from .networking.common import (
 
 from .networking.utils import has_certifi
 
-from .networking import network_handlers, UrllibRH
+from .networking import REQUEST_HANDLERS, UrllibRH
 
 from .utils import (
     age_restricted,
@@ -663,7 +663,7 @@ class YoutubeDL(object):
         self.params['http_headers'] = UniqueHTTPHeaderStore(
             make_std_headers(), self.params.get('http_headers', {}))
 
-        self.default_session = self.make_RHManager(network_handlers)
+        self.default_session = self.make_RHManager(REQUEST_HANDLERS)
 
         if auto_init:
             if auto_init != 'no_verbose_header':

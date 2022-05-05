@@ -533,15 +533,3 @@ _std_headers = UniqueHTTPHeaderStore({
 # Get a copy of std headers, while also retaining backwards compat with utils.std_headers
 def make_std_headers():
     return UniqueHTTPHeaderStore(_std_headers, std_headers)
-
-
-class UnsupportedRH(BackendRH):
-    """
-    Fallback backend adapter if a request is not supported.
-
-    Add useful messages here of why the request may not be supported, if possible.
-    E.g. a dependency is required.
-
-    """
-    def can_handle(self, request, **req_kwargs):
-        raise RequestError('This request is not supported')

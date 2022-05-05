@@ -6,8 +6,8 @@ import sys
 import unittest
 from random import random
 
-from yt_dlp.networking import UrllibRH, network_handlers
-from yt_dlp.networking.common import Request, RHManager, UnsupportedRH, HEADRequest
+from yt_dlp.networking import UrllibRH, REQUEST_HANDLERS, UnsupportedRH
+from yt_dlp.networking.common import Request, RHManager, HEADRequest
 from yt_dlp.utils import HTTPError, SSLError, TransportError
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -20,7 +20,7 @@ import threading
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 
-REQUEST_HANDLERS = [UrllibRH]
+TEST_BACKEND_HANDLERS = [UrllibRH]
 
 
 class FakeLogger(object):
@@ -222,7 +222,7 @@ class RequestHandlerCommonTestsBase(RequestHandlerTestBase):
         self.assertEquals(res.method, 'GET')
 
 
-def with_request_handlers(handlers=REQUEST_HANDLERS):
+def with_request_handlers(handlers=TEST_BACKEND_HANDLERS):
     def inner_func(test):
         @functools.wraps(test)
         def wrapper(self, *args, **kwargs):
