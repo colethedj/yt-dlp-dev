@@ -118,10 +118,10 @@ class YDLRequestsHTTPAdapter(requests.adapters.HTTPAdapter):
         super().__init__(*args, **kwargs)
 
     def init_poolmanager(self, *args, **kwargs):
-        super().init_poolmanager(*args, **kwargs, **self._pm_args)
+        return super().init_poolmanager(*args, **kwargs, **self._pm_args)
 
     def proxy_manager_for(self, *args, **kwargs):
-        super().proxy_manager_for(*args, **kwargs, **self._pm_args)
+        return super().proxy_manager_for(*args, **kwargs, **self._pm_args)
 
     def cert_verify(*args, **kwargs):
         pass
@@ -222,11 +222,11 @@ class SocksHTTPConnection(urllib3.connection.HTTPConnection):
 
         # TODO
         except TimeoutError as e:
-            raise urllib3.exceptions.ConnectTimeoutError from e
+            raise urllib3.exceptions.ConnectTimeoutError(self, None) from e
         except SocksProxyError as e:
-            raise urllib3.exceptions.ProxyError from e
+            raise urllib3.exceptions.ProxyError(self, None) from e
         except OSError as e:
-            raise urllib3.exceptions.NewConnectionError from e
+            raise urllib3.exceptions.NewConnectionError(self, None) from e
 
         return sock
 
