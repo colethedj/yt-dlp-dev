@@ -161,6 +161,7 @@ class RequestsRH(BackendRH):
         if not request.compression:
             del headers['accept-encoding']
 
+        max_redirects_exceeded = False
         try:
             res = self.session.request(
                 method=request.method,
@@ -173,12 +174,15 @@ class RequestsRH(BackendRH):
                 verify=False,  # We use SSLContext for this which is set in the PoolManager
                 stream=True
             )
-            requests_res = RequestsResponseAdapter(res)
-            # TODO: rest of error handling
 
+        # TODO: rest of error handling
+        except requests.exceptions.TooManyRedirects as e:
+            max_redirects_exceeded = True
+            res = e.response
         finally:
             self.session.cookies.clear()
 
+        requests_res = RequestsResponseAdapter(res)
         if not 200 <= requests_res.status < 300:
             """
             Close the connection when finished instead of releasing it to the pool.
@@ -189,7 +193,7 @@ class RequestsRH(BackendRH):
                     res.raw._connection.close()
                     res.raw._connection = None
             res.raw.release_conn = release_conn_override
-            raise HTTPError(requests_res, redirect_loop=False)  # TODO: redirect loop
+            raise HTTPError(requests_res, redirect_loop=max_redirects_exceeded)  # TODO: redirect loop
 
         # TODO: cookies won't get updated if something fails mid-redirect (also might be inefficent)
         merge_cookies(self.cookiejar, res.cookies)
