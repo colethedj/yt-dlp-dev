@@ -69,12 +69,13 @@ class _Urllib3HTTPError(HTTPError):
 
 
 class RequestsResponseAdapter(HTTPResponse):
-    def __init__(self, res):
+    def __init__(self, res: requests.models.Response):
         self._res = res
         self._url = res.url
 
         super().__init__(
-            headers=res.headers, status=res.status_code)
+            headers=res.headers, status=res.status_code,
+            method=res.request.method, reason=res.reason)
 
     def geturl(self):
         return self._url
@@ -102,7 +103,10 @@ class RequestsResponseAdapter(HTTPResponse):
 
 
 class YDLRequestsHTTPAdapter(requests.adapters.HTTPAdapter):
-
+    """
+    Need to pass our SSLContext and source address to the underlying
+    urllib3 PoolManager
+    """
     def __init__(self, ydl, *args, **kwargs):
         self.ydl = ydl
         self._pm_args = {
@@ -113,13 +117,11 @@ class YDLRequestsHTTPAdapter(requests.adapters.HTTPAdapter):
             self._pm_args['source_address'] = (source_address, 0)
         super().__init__(*args, **kwargs)
 
-    def init_poolmanager(self, connections, maxsize, block=..., **pool_kwargs):
-        pool_kwargs.update(self._pm_args)
-        super().init_poolmanager(connections, maxsize, block, **pool_kwargs)
+    def init_poolmanager(self, *args, **kwargs):
+        super().init_poolmanager(*args, **kwargs, **self._pm_args)
 
-    def proxy_manager_for(self, proxy, **proxy_kwargs):
-        proxy_kwargs.update(self._pm_args)
-        super().proxy_manager_for(proxy, **proxy_kwargs)
+    def proxy_manager_for(self, *args, **kwargs):
+        super().proxy_manager_for(*args, **kwargs, **self._pm_args)
 
 
 class RequestsRH(BackendRH):
@@ -130,7 +132,7 @@ class RequestsRH(BackendRH):
         _http_adapter = YDLRequestsHTTPAdapter(ydl=self.ydl)
         self.session.mount('https', _http_adapter)
         self.session.mount('http', _http_adapter)
-        # TODO
+        # TODO: could use requests hooks for additional logging
         if not self._is_force_disabled:
             if self.print_traffic:
                 urllib3.add_stderr_logger()
@@ -151,23 +153,47 @@ class RequestsRH(BackendRH):
     def _real_handle(self, request: Request) -> HTTPResponse:
         # TODO: no-compression handling
         proxies = {'http': request.proxy, 'https': request.proxy}
+        headers = UniqueHTTPHeaderStore(
+            make_std_headers(), self.ydl.params.get('http_headers'), request.headers, request.unredirected_headers)
+        if 'Accept-Encoding' not in headers:
+            headers['Accept-Encoding'] = ', '.join(SUPPORTED_ENCODINGS)
+
+        if not request.compression:
+            del headers['accept-encoding']
+
         try:
             res = self.session.request(
                 method=request.method,
                 url=request.url,
                 data=request.data,
-                headers=UniqueHTTPHeaderStore(request.headers, request.unredirected_headers),
+                headers=headers,
                 timeout=request.timeout,
                 proxies=proxies,
                 cookies=self.cookiejar,
                 verify=False,  # We use SSLContext for this which is set in the PoolManager
                 stream=True
             )
-            # TODO: rest of handling
+            requests_res = RequestsResponseAdapter(res)
+            # TODO: rest of error handling
+
         finally:
             self.session.cookies.clear()
-        merge_cookies(self.cookiejar, res.cookies)  # TODO: cookies won't get updated if something fails mid-redirect
-        return RequestsResponseAdapter(res)
+
+        if not 200 <= requests_res.status < 300:
+            """
+            Close the connection when finished instead of releasing it to the pool.
+            May help with recovering from temporary errors related to persistent connections (e.g. temp block)
+            """
+            def release_conn_override():
+                if hasattr(res.raw, '_connection') and res.raw._connection is not None:
+                    res.raw._connection.close()
+                    res.raw._connection = None
+            res.raw.release_conn = release_conn_override
+            raise HTTPError(requests_res, redirect_loop=False)  # TODO: redirect loop
+
+        # TODO: cookies won't get updated if something fails mid-redirect (also might be inefficent)
+        merge_cookies(self.cookiejar, res.cookies)
+        return requests_res
 
 
 # Since we already have a socks proxy implementation,
