@@ -123,6 +123,9 @@ class YDLRequestsHTTPAdapter(requests.adapters.HTTPAdapter):
     def proxy_manager_for(self, *args, **kwargs):
         super().proxy_manager_for(*args, **kwargs, **self._pm_args)
 
+    def cert_verify(*args, **kwargs):
+        pass
+
 
 class RequestsRH(BackendRH):
     SUPPORTED_SCHEMES = ['http', 'https']
@@ -130,8 +133,9 @@ class RequestsRH(BackendRH):
     def _initialize(self):
         self.session = requests.session()
         _http_adapter = YDLRequestsHTTPAdapter(ydl=self.ydl)
-        self.session.mount('https', _http_adapter)
-        self.session.mount('http', _http_adapter)
+        self.session.adapters.clear()
+        self.session.mount('https://', _http_adapter)
+        self.session.mount('http://', _http_adapter)
         # TODO: could use requests hooks for additional logging
         if not self._is_force_disabled:
             if self.print_traffic:
@@ -171,11 +175,12 @@ class RequestsRH(BackendRH):
                 timeout=request.timeout,
                 proxies=proxies,
                 cookies=self.cookiejar,
-                verify=False,  # We use SSLContext for this which is set in the PoolManager
                 stream=True
             )
 
         # TODO: rest of error handling
+        except requests.exceptions.SSLError as e:
+            raise SSLError(e, cause=e)
         except requests.exceptions.TooManyRedirects as e:
             max_redirects_exceeded = True
             res = e.response
