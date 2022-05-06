@@ -51,23 +51,6 @@ if compat_brotli and not (compat_brotli.__name__ == 'brotlicffi' and urllib3.__v
     SUPPORTED_ENCODINGS.append('br')
 
 
-# TODO: implement this for requests
-class _Urllib3HTTPError(HTTPError):
-    """
-    INTERNAL USE ONLY, catch utils.HTTPError instead.
-
-    Close the connection instead of releasing it to the pool.
-    May help with recovering from temporary errors related to persistent connections (e.g. temp block)
-    """
-    def __init__(self, response, *args, **kwargs):
-        def release_conn_override():
-            if response._res._connection:
-                response._res._connection.close()
-                response._res._connection = None
-        response._res.release_conn = release_conn_override
-        super().__init__(response, *args, **kwargs)
-
-
 class RequestsResponseAdapter(HTTPResponse):
     def __init__(self, res: requests.models.Response):
         self._res = res
