@@ -83,9 +83,15 @@ class RequestsResponseAdapter(HTTPResponse):
         try:
             # Interact with urllib3 response directly.
             return self._res.raw.read(amt, decode_content=True)
-        # TODO (these will be urllib3 errors afaik)
-        except Exception as e:
-            pass
+        # raw is an urllib3 HTTPResponse, so exceptions will be from urllib3
+        except urllib3.exceptions.ReadTimeoutError as e:
+            raise ReadTimeoutError(cause=e) from e
+        except urllib3.exceptions.IncompleteRead as e:
+            raise IncompleteRead(partial=e.partial, expected=e.expected, cause=e) from e
+        except urllib3.exceptions.SSLError as e:
+            # TODO: can we get access to the underlying SSL reason?
+            original_cause = e.__cause__
+            raise SSLError(cause=e, msg=str(original_cause.args if original_cause else str(e))) from e
 
     def close(self):
         super().close()
