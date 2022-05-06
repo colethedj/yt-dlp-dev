@@ -6,7 +6,7 @@ import sys
 import unittest
 from random import random
 
-from yt_dlp.networking import UrllibRH, REQUEST_HANDLERS, UnsupportedRH
+from yt_dlp.networking import UrllibRH, REQUEST_HANDLERS, UnsupportedRH, RequestsRH
 from yt_dlp.networking.common import Request, RHManager, HEADRequest
 from yt_dlp.utils import HTTPError, SSLError, TransportError
 
@@ -20,7 +20,7 @@ import threading
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 
-TEST_BACKEND_HANDLERS = [UrllibRH]
+TEST_BACKEND_HANDLERS = [UrllibRH, RequestsRH]
 
 
 class FakeLogger(object):
@@ -237,6 +237,35 @@ def with_request_handlers(handlers=TEST_BACKEND_HANDLERS):
 class TestUrllibRH(RequestHandlerCommonTestsBase, unittest.TestCase):
     handler = UrllibRH
 
+
+class TestRequestsRH(RequestHandlerCommonTestsBase, unittest.TestCase):
+    """
+    Notes
+    - test_redirect_loop: the error doesn't say we hit a loop
+    """
+    handler = RequestsRH
+
+    def test_close_conn_on_http_error(self):
+        from urllib3.util.connection import is_connection_dropped
+        ydl = self.make_ydl()
+        res = ydl.urlopen(Request('http://127.0.0.1:%d/gen_200' % self.http_port, compression=False))
+        # Get connection before we read, since it gets released back to pool after read
+        conn = res._res.raw.connection
+        a = res.read()
+        self.assertFalse(is_connection_dropped(conn))
+        with self.assertRaises(HTTPError) as e:
+            ydl.urlopen(Request('http://127.0.0.1:%d/gen_404' % self.http_port, compression=False))
+        self.assertIs(conn, e.exception.response._res.raw.connection)
+        e.exception.response.read()
+        self.assertTrue(is_connection_dropped(conn))
+
+    def test_no_persistent_connections(self):
+        from urllib3.util.connection import is_connection_dropped
+        ydl = self.make_ydl({'no_persistent_connections': True})
+        res = ydl.urlopen(Request('http://127.0.0.1:%d/gen_200' % self.http_port, compression=False))
+        conn = res._res.raw.connection
+        a = res.read()
+        self.assertTrue(is_connection_dropped(conn))
 
 if __name__ == '__main__':
     unittest.main()
