@@ -184,6 +184,8 @@ class RequestsRH(BackendRH):
         except requests.exceptions.TooManyRedirects as e:
             max_redirects_exceeded = True
             res = e.response
+        except requests.exceptions.ConnectionError as e:
+            raise TransportError(msg=str(e), cause=e)
         finally:
             self.session.cookies.clear()
 
@@ -203,6 +205,23 @@ class RequestsRH(BackendRH):
         # TODO: cookies won't get updated if something fails mid-redirect (also might be inefficent)
         merge_cookies(self.cookiejar, res.cookies)
         return requests_res
+
+"""
+Workaround for issue in urllib.util.ssl_.py. ssl_wrap_context does not pass 
+server_hostname to SSLContext.wrap_socket if server_hostname is an IP, 
+however this is an issue because we set check_hostname to True in our SSLContext.
+
+Monkey-patching IS_SECURETRANSPORT forces ssl_wrap_context to pass server_hostname regardless.
+
+This has been fixed in urllib3 2.0, which is still in development.
+See https://github.com/urllib3/urllib3/issues/517 for more details
+"""
+
+if urllib3.__version__ < '2.0':
+    try:
+        urllib3.util.IS_SECURETRANSPORT = urllib3.util.ssl_.IS_SECURETRANSPORT = True
+    except AttributeError:
+        pass
 
 
 # Since we already have a socks proxy implementation,
