@@ -1,11 +1,4 @@
-import errno
-
-from requests.cookies import merge_cookies
-
 from ..compat import (
-    compat_http_client,
-    compat_urllib_parse_urlparse,
-    compat_urllib_parse,
     compat_brotli
 )
 
@@ -35,7 +28,7 @@ from ..utils import (
 )
 
 import requests.adapters
-
+from requests.cookies import merge_cookies
 import requests
 from urllib3.util.url import parse_url
 import urllib3.connection
@@ -123,7 +116,7 @@ class RequestsRH(BackendRH):
         if not self._is_force_disabled:
             if self.print_traffic:
                 urllib3.add_stderr_logger()
-        urllib3.disable_warnings()
+        #urllib3.disable_warnings()
 
     @property
     def _is_force_disabled(self):
@@ -138,7 +131,7 @@ class RequestsRH(BackendRH):
         return super().can_handle(request)
 
     def _real_handle(self, request: Request) -> HTTPResponse:
-        # TODO: no-compression handling
+        # TODO: bring back proxy map
         proxies = {'http': request.proxy, 'https': request.proxy}
         headers = UniqueHTTPHeaderStore(
             make_std_headers(), self.ydl.params.get('http_headers'), request.headers, request.unredirected_headers)
