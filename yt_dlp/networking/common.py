@@ -308,6 +308,8 @@ class RHManager:
         self.handlers = [x for x in self.handlers if not finder(handler)]
 
     def urlopen(self, req):
+        if len(self.handlers) == 0:
+            raise YoutubeDLError('No request handlers configured')
         if isinstance(req, str):
             req = Request(req)
         elif isinstance(req, urllib.request.Request):
@@ -349,7 +351,7 @@ class RHManager:
                 continue
             assert isinstance(res, HTTPResponse)
             return res
-        raise YoutubeDLError('No request handlers configured')
+        raise YoutubeDLError('No request handlers configured that could handle this request.')
 
 
 class HTTPHeaderStore(Message):
