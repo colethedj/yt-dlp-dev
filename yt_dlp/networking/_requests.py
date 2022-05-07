@@ -135,6 +135,7 @@ class RequestsRH(BackendRH):
         self.session.adapters.clear()
         self.session.mount('https://', _http_adapter)
         self.session.mount('http://', _http_adapter)
+        self.session.cookies = self.cookiejar
         # TODO: could use requests hooks for additional logging
         if not self._is_force_disabled:
             if self.print_traffic:
@@ -173,7 +174,6 @@ class RequestsRH(BackendRH):
                 headers=headers,
                 timeout=request.timeout,
                 proxies=proxies,
-                cookies=self.cookiejar,
                 stream=True
             )
 
@@ -185,8 +185,6 @@ class RequestsRH(BackendRH):
             res = e.response
         except requests.exceptions.ConnectionError as e:
             raise TransportError(msg=str(e), cause=e)
-        finally:
-            self.session.cookies.clear()
 
         requests_res = RequestsResponseAdapter(res)
         if not 200 <= requests_res.status < 300:
@@ -200,9 +198,6 @@ class RequestsRH(BackendRH):
                     res.raw._connection = None
             res.raw.release_conn = release_conn_override
             raise HTTPError(requests_res, redirect_loop=max_redirects_exceeded)  # TODO: redirect loop
-
-        # TODO: cookies won't get updated if something fails mid-redirect (also might be inefficent)
-        merge_cookies(self.cookiejar, res.cookies)
         return requests_res
 
 """
