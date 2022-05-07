@@ -251,6 +251,7 @@ class TestRequestsRH(RequestHandlerCommonTestsBase, unittest.TestCase):
         res = ydl.urlopen(Request('http://127.0.0.1:%d/gen_200' % self.http_port, compression=False))
         # Get connection before we read, since it gets released back to pool after read
         conn = res._res.raw.connection
+        self.assertIsNotNone(conn)
         a = res.read()
         self.assertFalse(is_connection_dropped(conn))
         with self.assertRaises(HTTPError) as e:
@@ -264,7 +265,8 @@ class TestRequestsRH(RequestHandlerCommonTestsBase, unittest.TestCase):
         ydl = self.make_ydl({'no_persistent_connections': True})
         res = ydl.urlopen(Request('http://127.0.0.1:%d/gen_200' % self.http_port, compression=False))
         conn = res._res.raw.connection
-        a = res.read()
+        self.assertIsNotNone(conn)
+        res.read()
         self.assertTrue(is_connection_dropped(conn))
 
 if __name__ == '__main__':
