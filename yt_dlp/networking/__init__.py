@@ -35,4 +35,4 @@ REQUEST_HANDLERS = [UnsupportedRH, UrllibRH]
 if RequestsRH is not None:
     REQUEST_HANDLERS.append(RequestsRH)
 
-__all__ = ['UrllibRH', 'UnsupportedRH', 'REQUEST_HANDLERS']
+__all__ = ['UrllibRH', 'UnsupportedRH', 'REQUEST_HANDLERS', 'RequestsRH', 'has_requests']
