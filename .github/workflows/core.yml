@@ -25,6 +25,8 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install pytest
       run: pip install pytest
+    - name: Install requests
+      run: pip install requests
     - name: Run tests
       continue-on-error: False
       run: ./devscripts/run_tests.${{ matrix.run-tests-ext }} core
