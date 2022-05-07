@@ -1,3 +1,5 @@
+import urllib3
+
 from ..compat import (
     compat_brotli
 )
@@ -140,7 +142,7 @@ class RequestsRH(BackendRH):
         if not self._is_force_disabled:
             if self.print_traffic:
                 urllib3.add_stderr_logger()
-        #urllib3.disable_warnings()
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     @property
     def _is_force_disabled(self):
