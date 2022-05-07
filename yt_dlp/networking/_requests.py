@@ -26,7 +26,7 @@ from ..utils import (
     TransportError,
     SSLError,
     HTTPError,
-    ProxyError, ConnectTimeoutError, urljoin
+    ProxyError, ConnectTimeoutError, urljoin, RequestError
 )
 
 import requests.adapters
@@ -63,14 +63,9 @@ class RequestsResponseAdapter(HTTPResponse):
             # Interact with urllib3 response directly.
             return self._res.raw.read(amt, decode_content=True)
         # raw is an urllib3 HTTPResponse, so exceptions will be from urllib3
-        except urllib3.exceptions.ReadTimeoutError as e:
-            raise ReadTimeoutError(cause=e) from e
-        except urllib3.exceptions.IncompleteRead as e:
-            raise IncompleteRead(partial=e.partial, expected=e.expected, cause=e) from e
-        except urllib3.exceptions.SSLError as e:
-            # TODO: can we get access to the underlying SSL reason?
-            original_cause = e.__cause__
-            raise SSLError(cause=e, msg=str(original_cause.args if original_cause else str(e))) from e
+        except urllib3.exceptions.HTTPError as e:
+            handle_urllib3_read_exceptions(e)
+            raise TransportError(cause=e) from e
 
     def close(self):
         super().close()
@@ -78,6 +73,15 @@ class RequestsResponseAdapter(HTTPResponse):
 
     def tell(self) -> int:
         return self._res.raw.tell()
+
+
+def handle_urllib3_read_exceptions(e):
+    if isinstance(e, urllib3.exceptions.ReadTimeoutError):
+        raise ReadTimeoutError(cause=e) from e
+    elif isinstance(e, urllib3.exceptions.IncompleteRead):
+        raise IncompleteRead(partial=e.partial, expected=e.expected, cause=e) from e
+    elif isinstance(e, urllib3.exceptions.SSLError):
+        raise SSLError(cause=e) from e
 
 
 class YDLRequestsHTTPAdapter(requests.adapters.HTTPAdapter):
@@ -179,15 +183,27 @@ class RequestsRH(BackendRH):
                 stream=True
             )
 
-        # TODO: rest of error handling
-        except requests.exceptions.SSLError as e:
-            raise SSLError(e, cause=e)
         except requests.exceptions.TooManyRedirects as e:
             max_redirects_exceeded = True
             res = e.response
+        except requests.exceptions.SSLError as e:
+            raise SSLError(cause=e) from e
+        except requests.exceptions.ConnectTimeout as e:
+            raise ConnectTimeoutError(cause=e) from e
+        except requests.exceptions.ReadTimeout as e:
+            raise ReadTimeoutError(cause=e) from e
+        except requests.exceptions.ProxyError as e:
+            raise ProxyError(cause=e) from e
         except requests.exceptions.ConnectionError as e:
-            raise TransportError(msg=str(e), cause=e)
-
+            # TODO: can we process any urllib3 exceptions that may occur here?
+            raise TransportError(cause=e) from e
+        except urllib3.exceptions.HTTPError as e:
+            # Catch any urllib3 exceptions that may leak through
+            handle_urllib3_read_exceptions(e)
+            raise TransportError(cause=e) from e
+        # Any misc Requests exception. May not necessary be network related e.g. InvalidURL
+        except requests.exceptions.RequestException as e:
+            raise RequestError(cause=e) from e
         requests_res = RequestsResponseAdapter(res)
         if not 200 <= requests_res.status < 300:
             """
