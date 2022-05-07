@@ -139,6 +139,7 @@ class RequestsRH(BackendRH):
         self.session = YDLRequestsSession()
         _http_adapter = YDLRequestsHTTPAdapter(ydl=self.ydl)
         self.session.adapters.clear()
+        self.session.headers = requests.models.CaseInsensitiveDict({'Connection': 'keep-alive'})
         self.session.mount('https://', _http_adapter)
         self.session.mount('http://', _http_adapter)
         self.session.cookies = self.cookiejar
