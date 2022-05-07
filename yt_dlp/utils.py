@@ -1112,17 +1112,12 @@ class XAttrUnavailableError(YoutubeDLError):
 
 
 class RequestError(YoutubeDLError):
-    def __init__(self, msg, handler=None):
-        self.handler = handler  # TODO: some way of knowing what backend we used
-        super().__init__(msg)
-
-
-# TODO: deal with msg in places where we don't always want to specify it
-# TODO: better name
-class TransportError(RequestError):
-    def __init__(self, msg, cause=None, handler=None):
+    def __init__(self, msg=None, cause=None, handler=None):
+        self.handler = handler
         self.cause = cause
-        super().__init__(msg, handler=handler)
+        if not msg and cause:
+            msg = str(cause)
+        super().__init__(msg)
 
     def __str__(self):
         # TODO
@@ -1132,6 +1127,10 @@ class TransportError(RequestError):
         if self.cause:
             cause_msg = f' (caused by {self.cause.__class__.__name__})'
         return f'<{self.__class__.__name__} exception{backend_msg}: {self.msg}{cause_msg}>'
+
+
+class TransportError(RequestError):
+    """Network related errors"""
 
 
 # Backwards compatible with urllib.error.HTTPError
