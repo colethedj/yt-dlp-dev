@@ -910,15 +910,10 @@ def _ssl_load_windows_store_certs(ssl_context, storename):
         with contextlib.suppress(ssl.SSLError):
             ssl_context.load_verify_locations(cadata=cert)
 
-
-def make_HTTPS_handler(params, **kwargs):
+def make_sslcontext(params):
     opts_check_certificate = not params.get('nocheckcertificate')
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     context.check_hostname = opts_check_certificate
-    if params.get('legacyserverconnect'):
-        context.options |= 4  # SSL_OP_LEGACY_SERVER_CONNECT
-        # Allow use of weaker ciphers in Python 3.10+. See https://bugs.python.org/issue43998
-        context.set_ciphers('DEFAULT')
     context.verify_mode = ssl.CERT_REQUIRED if opts_check_certificate else ssl.CERT_NONE
     if opts_check_certificate:
         if has_certifi and 'no-certifi' not in params.get('compat_opts', []):
@@ -935,6 +930,28 @@ def make_HTTPS_handler(params, **kwargs):
                     for storename in ('CA', 'ROOT'):
                         _ssl_load_windows_store_certs(context, storename)
                 context.set_default_verify_paths()
+    if not params.get('allowlegacyssl'):
+        if getattr(context, 'minimum_version', None) is not None:
+            context.minimum_version = ssl.TLSVersion.TLSv1_2
+        else:
+            # context.minimum_version may not be available; set using options instead.
+            context.options |= ssl.OP_NO_TLSv1
+            context.options |= ssl.OP_NO_TLSv1_1
+    else:
+        context.options |= 4  # SSL_OP_LEGACY_SERVER_CONNECT
+        # Allow use of weaker ciphers in Python 3.10+. See https://bugs.python.org/issue43998
+        context.set_ciphers('DEFAULT')
+
+    # Deprecated
+    if params.get('legacyserverconnect'):
+        context.options |= 4  # SSL_OP_LEGACY_SERVER_CONNECT
+
+    # Enable PHA for TLS > 1.3. It is buggy for python versions < 3.7.4
+    # so don't enable it unless cert vertification is enabled [1]
+    # 1. https://bugs.python.org/issue37428
+    if getattr(context, 'post_handshake_auth', None) is not None and (opts_check_certificate or sys.version_info >= (3, 7, 4)):
+        context.post_handshake_auth = True
+
     client_certfile = params.get('client_certificate')
     if client_certfile:
         try:
@@ -943,7 +960,10 @@ def make_HTTPS_handler(params, **kwargs):
                 password=params.get('client_certificate_password'))
         except ssl.SSLError:
             raise YoutubeDLError('Unable to load client certificate')
-    return YoutubeDLHTTPSHandler(params, context=context, **kwargs)
+
+
+def make_HTTPS_handler(params, **kwargs):
+    return YoutubeDLHTTPSHandler(params, context=make_sslcontext(params), **kwargs)
 
 
 def bug_reports_message(before=';'):
