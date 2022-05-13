@@ -4,6 +4,7 @@ import collections
 import http.cookiejar
 import inspect
 import io
+import ssl
 import sys
 import time
 import urllib.parse
@@ -265,6 +266,22 @@ class BackendRH(RequestHandler):
 
     def write_debug(self, *args, **kwargs):
         self.ydl.write_debug(*args, **kwargs)
+
+    def make_sslcontext(self, **kwargs):
+        """
+        Make a new SSLContext configured for this backend.
+        Note: _make_sslcontext must be implemented
+        """
+        context = self._make_sslcontext(
+            verify=not self.ydl.params.get('nocheckcertificate'), **kwargs)
+        if not context:
+            return context
+        if self.ydl.params.get('legacyserverconnect'):
+            context.options |= 4  # SSL_OP_LEGACY_SERVER_CONNECT
+        return context
+
+    def _make_sslcontext(self, verify, **kwargs) -> ssl.SSLContext:
+        """Generate a backend-specific SSLContext. Redefine in subclasses"""
 
     def can_handle(self, request: Request,) -> bool:
         """Validate if adapter is suitable for given request. Can override in subclasses."""

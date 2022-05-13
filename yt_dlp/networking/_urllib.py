@@ -20,7 +20,7 @@ from ..compat import (
 
 from .common import HTTPResponse, BackendRH, Request, make_std_headers
 from .socksproxy import sockssocket
-from .utils import handle_youtubedl_headers, make_ssl_context, socks_create_proxy_args
+from .utils import handle_youtubedl_headers, socks_create_proxy_args, ssl_load_certs
 from ..utils import (
     escape_url,
     update_url_query,
@@ -38,10 +38,6 @@ SUPPORTED_ENCODINGS = [
 
 if compat_brotli:
     SUPPORTED_ENCODINGS.append('br')
-
-
-def make_HTTPS_handler(params, **kwargs):
-    return YoutubeDLHTTPSHandler(params, context=make_ssl_context(params), **kwargs)
 
 
 def _create_http_connection(ydl_handler, http_class, is_https, *args, **kwargs):
@@ -469,7 +465,9 @@ class UrllibRH(BackendRH):
         proxies = {'http': proxy, 'https': proxy} if proxy else None
         proxy_handler = PerRequestProxyHandler(proxies)
         debuglevel = int(self.print_traffic)
-        https_handler = make_HTTPS_handler(self.ydl.params, debuglevel=debuglevel)
+        https_handler = YoutubeDLHTTPSHandler(
+            self.params, context=self.make_sslcontext(), debuglevel=debuglevel)
+
         ydlh = YoutubeDLHandler(self.ydl.params, debuglevel=debuglevel)
         redirect_handler = YoutubeDLRedirectHandler()
         data_handler = compat_urllib_request_DataHandler()
@@ -500,6 +498,14 @@ class UrllibRH(BackendRH):
         it is not stable enough for general use. E.g. redirects are not proxied.
         """
         return self._openers.setdefault(proxy or '__noproxy__', self._create_opener(proxy))
+
+    def _make_sslcontext(self, verify, **kwargs) -> ssl.SSLContext:
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        context.check_hostname = verify
+        context.verify_mode = ssl.CERT_REQUIRED if verify else ssl.CERT_NONE
+        if verify:
+            ssl_load_certs(context, self.ydl.params)
+        return context
 
     def _real_handle(self, request: Request) -> HTTPResponse:
         urllib_req = urllib.request.Request(
