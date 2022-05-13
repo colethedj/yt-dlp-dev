@@ -25,11 +25,9 @@ from ..utils import (
     escape_url,
     update_url_query,
     IncompleteRead,
-    ReadTimeoutError,
-    ConnectTimeoutError,
     TransportError,
     SSLError,
-    HTTPError, extract_basic_auth, sanitize_url
+    HTTPError, extract_basic_auth, sanitize_url, ProxyError
 )
 
 SUPPORTED_ENCODINGS = [
@@ -431,27 +429,31 @@ class UrllibResponseAdapter(HTTPResponse):
 def handle_sslerror(e):
     if not isinstance(e, ssl.SSLError):
         return
+    # TODO
     if e.errno == errno.ETIMEDOUT:
-        raise ReadTimeoutError(cause=e) from e
-    raise SSLError(msg=str(e.reason), cause=e) from e
+        raise TransportError(cause=e) from e
+    raise SSLError(msg=str(e.reason or e), cause=e) from e
 
 
 def handle_response_read_exceptions(e):
     try:
         raise e
     except http.client.IncompleteRead as e:
-        raise IncompleteRead(partial=e.partial, cause=e, excepted=e.expected)
+        raise IncompleteRead(partial=e.partial, cause=e, expected=e.expected)
     # The response is partially read on request (for headers etc.)
     except http.client.HTTPException as e:
         raise TransportError(msg=str(e), cause=e) from e
 
     except TimeoutError as e:
-        raise ReadTimeoutError(cause=e) from e
+        raise TransportError(cause=e) from e
 
     except ssl.SSLError as e:
         handle_sslerror(e)
     except ConnectionError as e:
         raise TransportError(msg=str(e), cause=e) from e
+    except OSError as e:
+        if 'tunnel connection failed' in str(e).lower():
+            raise ProxyError(cause=e)
 
 
 class UrllibRH(BackendRH):
@@ -524,8 +526,6 @@ class UrllibRH(BackendRH):
             raise  # RHManager will catch leaked exception
         except urllib.error.URLError as e:
             cause = e.reason
-            if isinstance(cause, TimeoutError):
-                raise ConnectTimeoutError(cause=cause) from e
             handle_sslerror(cause)
             handle_response_read_exceptions(cause)
             raise TransportError(msg=str(e), cause=e)

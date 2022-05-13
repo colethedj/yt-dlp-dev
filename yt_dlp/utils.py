@@ -1126,7 +1126,7 @@ class RequestError(YoutubeDLError):
             backend_msg = f' in {self.handler.__class__.__name__}'
         if self.cause:
             cause_msg = f' (caused by {self.cause.__class__.__name__})'
-        return f'<{self.__class__.__name__} exception{backend_msg}: {self.msg}{cause_msg}>'
+        return f'<{self.__class__.__name__}{backend_msg}: {self.msg}{cause_msg}>'
 
 
 class TransportError(RequestError):
@@ -1134,7 +1134,7 @@ class TransportError(RequestError):
 
 
 # Backwards compatible with urllib.error.HTTPError
-class HTTPError(urllib.error.HTTPError, TransportError):
+class HTTPError(urllib.error.HTTPError, RequestError):
     def __init__(self, response: "networking.common.HTTPResponse", redirect_loop=False):
         self.response = response
         msg = response.reason or ''
@@ -1142,23 +1142,6 @@ class HTTPError(urllib.error.HTTPError, TransportError):
             msg += ' (redirect loop detected)'
         super().__init__(
             url=response.url, code=response.code, msg=msg, hdrs=response.headers, fp=response)
-
-
-class YDLTimeoutError(TransportError, TimeoutError):
-    msg = None
-
-    def __init__(self, msg=None, **kwargs):
-        if not msg:
-            self.msg = 'Timeout while connecting or reading'
-        super().__init__(self.msg, **kwargs)
-
-
-class ReadTimeoutError(YDLTimeoutError):
-    msg = 'Timed out while reading'
-
-
-class ConnectTimeoutError(YDLTimeoutError):
-    msg = 'Timed out while connecting'
 
 
 # Backwards compat with http.client.IncompleteRead

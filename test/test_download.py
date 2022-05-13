@@ -30,7 +30,7 @@ from yt_dlp.utils import (
     ExtractorError,
     format_bytes,
     HTTPError,
-    UnavailableVideoError,
+    UnavailableVideoError, TransportError,
 )
 from yt_dlp.extractor import get_info_extractor
 
@@ -167,7 +167,7 @@ def generator(test_case, tname):
                         force_generic_extractor=params.get('force_generic_extractor', False))
                 except (DownloadError, ExtractorError) as err:
                     # Check if the exception is not a network related one
-                    if not err.exc_info[0] in (TimeoutError, UnavailableVideoError) or (err.exc_info[0] == HTTPError and err.exc_info[1].code == 503):
+                    if not err.exc_info[0] in (TransportError, UnavailableVideoError) or (err.exc_info[0] == HTTPError and err.exc_info[1].code == 503):
                         raise
 
                     if try_num == RETRIES:
