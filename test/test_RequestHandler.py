@@ -8,7 +8,7 @@ from random import random
 
 from yt_dlp.networking import UrllibRH, REQUEST_HANDLERS, UnsupportedRH, RequestsRH
 from yt_dlp.networking.common import Request, RHManager, HEADRequest
-from yt_dlp.utils import HTTPError, SSLError, TransportError
+from yt_dlp.utils import HTTPError, SSLError, TransportError, IncompleteRead
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -88,6 +88,14 @@ class HTTPTestRequestHandler(compat_http_server.BaseHTTPRequestHandler):
             self.end_headers()
         elif self.path.startswith('/redirect_'):
             self._redirect()
+        elif self.path.startswith('/incompleteread'):
+            payload = b'<html></html>'
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.send_header('Content-Length', '234234')
+            self.end_headers()
+            self.wfile.write(payload)
+            self.finish()
         else:
             assert False
 
@@ -220,6 +228,11 @@ class RequestHandlerCommonTestsBase(RequestHandlerTestBase):
 
         res = ydl.urlopen('http://127.0.0.1:%d/redirect_301' % self.http_port)
         self.assertEquals(res.method, 'GET')
+
+    def test_incompleteread(self):
+        ydl = self.make_ydl({'socket_timeout': 2})
+        with self.assertRaises(IncompleteRead):
+            ydl.urlopen('http://127.0.0.1:%d/incompleteread' % self.http_port).read()
 
 
 def with_request_handlers(handlers=TEST_BACKEND_HANDLERS):
