@@ -1,3 +1,5 @@
+import http.client
+import re
 import ssl
 
 import urllib3
@@ -24,11 +26,10 @@ from .utils import (
 
 from ..utils import (
     IncompleteRead,
-    ReadTimeoutError,
     TransportError,
     SSLError,
     HTTPError,
-    ProxyError, ConnectTimeoutError, urljoin, RequestError
+    ProxyError, urljoin, RequestError
 )
 
 import requests.adapters
@@ -79,11 +80,12 @@ class RequestsResponseAdapter(HTTPResponse):
 
 
 def handle_urllib3_read_exceptions(e):
-    if isinstance(e, urllib3.exceptions.ReadTimeoutError):
-        raise ReadTimeoutError(cause=e) from e
-    elif isinstance(e, urllib3.exceptions.IncompleteRead):
-        raise IncompleteRead(partial=e.partial, expected=e.expected, cause=e) from e
-    elif isinstance(e, urllib3.exceptions.SSLError):
+    # Sometimes IncompleteRead is wrapped by urllib.exceptions.ProtocolError, so we have to check the args
+    ic_read_err = next(
+        (err for err in (e, e.__cause__, *(e.args or [])) if isinstance(err, (http.client.IncompleteRead, urllib3.exceptions.IncompleteRead))), None)
+    if ic_read_err is not None:
+        raise IncompleteRead(partial=ic_read_err.partial, expected=ic_read_err.expected)
+    if isinstance(e, urllib3.exceptions.SSLError):
         raise SSLError(cause=e) from e
 
 
@@ -92,7 +94,7 @@ class YDLRequestsHTTPAdapter(requests.adapters.HTTPAdapter):
     Need to pass our SSLContext and source address to the underlying
     urllib3 PoolManager
     """
-    def __init__(self, ydl, ssl_context, *args, **kwargs):
+    def __init__(self, ydl, ssl_context):
         self.ydl = ydl
         self._pm_args = {
             'ssl_context': ssl_context,
@@ -100,7 +102,7 @@ class YDLRequestsHTTPAdapter(requests.adapters.HTTPAdapter):
         source_address = self.ydl.params.get('source_address')
         if source_address:
             self._pm_args['source_address'] = (source_address, 0)
-        super().__init__(*args, **kwargs)
+        super().__init__(max_retries=urllib3.util.retry.Retry(False))
 
     def init_poolmanager(self, *args, **kwargs):
         return super().init_poolmanager(*args, **kwargs, **self._pm_args)
@@ -200,14 +202,11 @@ class RequestsRH(BackendRH):
             res = e.response
         except requests.exceptions.SSLError as e:
             raise SSLError(cause=e) from e
-        except requests.exceptions.ConnectTimeout as e:
-            raise ConnectTimeoutError(cause=e) from e
-        except requests.exceptions.ReadTimeout as e:
-            raise ReadTimeoutError(cause=e) from e
         except requests.exceptions.ProxyError as e:
             raise ProxyError(cause=e) from e
         except requests.exceptions.ConnectionError as e:
             # TODO: can we process any urllib3 exceptions that may occur here?
+            # We could check the args for any relevant errors
             raise TransportError(cause=e) from e
         except urllib3.exceptions.HTTPError as e:
             # Catch any urllib3 exceptions that may leak through
