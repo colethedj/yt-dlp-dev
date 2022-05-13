@@ -1,3 +1,5 @@
+import ssl
+
 import urllib3
 
 from ..compat import (
@@ -16,7 +18,7 @@ from .socksproxy import (
     ProxyError as SocksProxyError
 )
 from .utils import (
-    make_ssl_context,
+    ssl_load_certs,
     socks_create_proxy_args
 )
 
@@ -33,6 +35,7 @@ import requests.adapters
 from requests.cookies import merge_cookies
 import requests
 from urllib3.util.url import parse_url
+from urllib3.util.ssl_ import create_urllib3_context
 import urllib3.connection
 
 SUPPORTED_ENCODINGS = [
@@ -89,10 +92,10 @@ class YDLRequestsHTTPAdapter(requests.adapters.HTTPAdapter):
     Need to pass our SSLContext and source address to the underlying
     urllib3 PoolManager
     """
-    def __init__(self, ydl, *args, **kwargs):
+    def __init__(self, ydl, ssl_context, *args, **kwargs):
         self.ydl = ydl
         self._pm_args = {
-            'ssl_context': make_ssl_context(self.ydl.params),
+            'ssl_context': ssl_context,
         }
         source_address = self.ydl.params.get('source_address')
         if source_address:
@@ -137,7 +140,7 @@ class RequestsRH(BackendRH):
 
     def _initialize(self):
         self.session = YDLRequestsSession()
-        _http_adapter = YDLRequestsHTTPAdapter(ydl=self.ydl)
+        _http_adapter = YDLRequestsHTTPAdapter(ydl=self.ydl, ssl_context=self.make_sslcontext())
         self.session.adapters.clear()
         self.session.headers = requests.models.CaseInsensitiveDict({'Connection': 'keep-alive'})
         self.session.mount('https://', _http_adapter)
@@ -154,6 +157,14 @@ class RequestsRH(BackendRH):
         if 'no-requests' in self.ydl.params.get('compat_opts', []):
             return True
         return False
+
+    def _make_sslcontext(self, verify, **kwargs) -> ssl.SSLContext:
+        context = create_urllib3_context(cert_reqs=ssl.CERT_REQUIRED if verify else ssl.CERT_NONE)
+        if verify:
+            # urllib3 < 2.0 always sets this to false, but we want it to be true when ssl.CERT_REQUIRED
+            context.check_hostname = True
+            ssl_load_certs(context, self.ydl.params)
+        return context
 
     def can_handle(self, request: Request) -> bool:
         if self._is_force_disabled:
