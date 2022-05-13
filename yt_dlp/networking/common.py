@@ -349,7 +349,8 @@ class RHManager:
 
         req.proxy = proxy or req.proxy or self.proxy
         req.timeout = req.timeout or self.socket_timeout
-
+        if req.proxy == '__noproxy__':
+            req.proxy = None
         for handler in reversed(self.handlers):
             if not handler.can_handle(req):
                 continue
