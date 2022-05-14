@@ -84,6 +84,12 @@ class Request:
     def headers(self):
         return self._headers
 
+    @headers.setter
+    def headers(self, new_headers):
+        if not isinstance(new_headers, UniqueHTTPHeaderStore):
+            raise TypeError('headers must be UniqueHTTPHeaderStore')
+        self._headers = new_headers
+
     @property
     def unredirected_headers(self):
         """Headers to not send in a redirect"""
@@ -341,7 +347,7 @@ class RHManager:
 
         assert isinstance(req, Request)
         req = req.copy()
-        req.headers.update(UniqueHTTPHeaderStore(self.ydl.params.get('http_headers', {}), req.headers))
+        req.headers = UniqueHTTPHeaderStore(self.ydl.params.get('http_headers', {}), req.headers)
         if req.headers.get('Youtubedl-no-compression'):
             req.compression = False
             del req.headers['Youtubedl-no-compression']
