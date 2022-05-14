@@ -368,22 +368,9 @@ def update_Request(req, url=None, data=None, headers={}, query={}):
     return new_req
 
 
-class PerRequestProxyHandler(compat_urllib_request.ProxyHandler):
-    def __init__(self, proxies=None):
-        # Set default handlers
-        for type in ('http', 'https'):
-            setattr(self, '%s_open' % type,
-                    lambda r, proxy='__noproxy__', type=type, meth=self.proxy_open:
-                        meth(r, proxy, type))
-        compat_urllib_request.ProxyHandler.__init__(self, proxies)
-
+class YDLProxyHandler(compat_urllib_request.ProxyHandler):
     def proxy_open(self, req, proxy, type):
-        req_proxy = req.headers.get('Ytdl-request-proxy')
-        if req_proxy is not None:
-            proxy = req_proxy
-            del req.headers['Ytdl-request-proxy']
-
-        if proxy == '__noproxy__':
+        if proxy is None:
             return None  # No Proxy
         if compat_urlparse.urlparse(proxy).scheme.lower() in ('socks', 'socks4', 'socks4a', 'socks5'):
             req.add_header('Ytdl-socks-proxy', proxy)
@@ -464,7 +451,7 @@ class UrllibRH(BackendRH):
 
     def _create_opener(self, proxies=None):
         cookie_processor = YoutubeDLCookieProcessor(self.cookiejar)
-        proxy_handler = PerRequestProxyHandler(proxies)
+        proxy_handler = YDLProxyHandler(proxies)
         debuglevel = int(self.print_traffic)
         https_handler = YoutubeDLHTTPSHandler(
             self.params, context=self.make_sslcontext(), debuglevel=debuglevel)
