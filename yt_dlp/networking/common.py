@@ -53,7 +53,7 @@ class Request:
         if basic_auth_header:
             self.unredirected_headers['Authorization'] = basic_auth_header
 
-        self.proxies = proxies
+        self.proxies = proxies or {}
         self.compression = compression
 
         # See https://docs.python.org/3/library/urllib.request.html#urllib.request.Request
@@ -84,6 +84,12 @@ class Request:
     def headers(self):
         return self._headers
 
+    @headers.setter
+    def headers(self, new_headers):
+        if not isinstance(new_headers, UniqueHTTPHeaderStore):
+            raise TypeError('headers must be UniqueHTTPHeaderStore')
+        self._headers = new_headers
+
     @property
     def unredirected_headers(self):
         """Headers to not send in a redirect"""
@@ -95,7 +101,7 @@ class Request:
 
     def copy(self):
         return self.__class__(
-            self.url, self.data, self.headers.copy(), self.proxy, self.compression, self.method, self.unverifiable,
+            self.url, self.data, self.headers.copy(), self.proxies.copy(), self.compression, self.method, self.unverifiable,
             self.unredirected_headers.copy())
 
     """
@@ -340,17 +346,20 @@ class RHManager:
                 origin_req_host=req.origin_req_host)
 
         assert isinstance(req, Request)
-
+        req = req.copy()
+        req.headers = UniqueHTTPHeaderStore(self.ydl.params.get('http_headers', {}), req.headers)
         if req.headers.get('Youtubedl-no-compression'):
             req.compression = False
             del req.headers['Youtubedl-no-compression']
 
-        # TODO: unified support for __noproxy__ (set to None?)
         req.proxies = {**(self.proxies or {}), **(req.proxies or {})}
         req_proxy = req.headers.get('Ytdl-request-proxy')
         if req_proxy:
             del req.headers['Ytdl-request-proxy']
             req.proxies.update({'http': req_proxy, 'https': req_proxy})
+        for k, v in req.proxies.items():
+            if v == '__noproxy__':
+                req.proxies[k] = None
 
         req.timeout = req.timeout or self.socket_timeout
 
