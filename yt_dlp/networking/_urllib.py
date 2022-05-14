@@ -462,9 +462,8 @@ class UrllibRH(BackendRH):
     def _initialize(self):
         self._openers = {}
 
-    def _create_opener(self, proxy=None):
+    def _create_opener(self, proxies=None):
         cookie_processor = YoutubeDLCookieProcessor(self.cookiejar)
-        proxies = {'http': proxy, 'https': proxy} if proxy else None
         proxy_handler = PerRequestProxyHandler(proxies)
         debuglevel = int(self.print_traffic)
         https_handler = YoutubeDLHTTPSHandler(
@@ -493,13 +492,14 @@ class UrllibRH(BackendRH):
         opener.addheaders = []
         return opener
 
-    def get_opener(self, proxy=None):
+    def get_opener(self, proxies=None):
         """
         For each proxy (or no proxy) we store an opener.
         While we could make use of the per-request proxy functionality in PerRequestProxyManager,
         it is not stable enough for general use. E.g. redirects are not proxied.
         """
-        return self._openers.setdefault(proxy or '__noproxy__', self._create_opener(proxy))
+        # TODO: implement some general caching strategy while also support dict args
+        return self._openers.setdefault(frozenset(proxies.items() or {}), self._create_opener(proxies))
 
     def _make_sslcontext(self, verify, **kwargs) -> ssl.SSLContext:
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
@@ -519,7 +519,7 @@ class UrllibRH(BackendRH):
             urllib_req.add_header('Youtubedl-no-compression', '1')
 
         try:
-            res = self.get_opener(request.proxy).open(urllib_req, timeout=request.timeout)
+            res = self.get_opener(request.proxies).open(urllib_req, timeout=request.timeout)
         except urllib.error.HTTPError as e:
             if isinstance(e.fp, (http.client.HTTPResponse, urllib.response.addinfourl)):
                 raise HTTPError(UrllibResponseAdapter(e.fp), redirect_loop='redirect error' in str(e))

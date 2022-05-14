@@ -36,10 +36,10 @@ class Request:
     while retaining backwards-compatability where needed (e.g for cookiejar)
     """
     def __init__(
-            self, url, data=None, headers=None, proxy=None, compression=True, method=None,
+            self, url, data=None, headers=None, proxies=None, compression=True, method=None,
             unverifiable=False, unredirected_headers=None, origin_req_host=None, timeout=None):
         """
-        @param proxy: proxy to use for the request, e.g. socks5://127.0.0.1:1080. Default is None.
+        @param proxies: proxy dict mapping to use for the request and any redirects
         @param compression: whether to include content-encoding header on request (i.e. disable/enable compression).
         For everything else, see urllib.request.Request docs: https://docs.python.org/3/library/urllib.request.html?highlight=request#urllib.request.Request
         """
@@ -53,7 +53,7 @@ class Request:
         if basic_auth_header:
             self.unredirected_headers['Authorization'] = basic_auth_header
 
-        self.proxy = proxy
+        self.proxies = proxies
         self.compression = compression
 
         # See https://docs.python.org/3/library/urllib.request.html#urllib.request.Request
@@ -301,11 +301,14 @@ class RHManager:
         self.handlers = []
         self.ydl = ydl
         self.socket_timeout = float(self.ydl.params.get('socket_timeout') or 20)  # do not accept 0
-        self.proxy = self.get_default_proxy()
+        self.proxies = self.get_default_proxies()
 
-    def get_default_proxy(self):
-        proxies = urllib.request.getproxies()
-        return self.ydl.params.get('proxy') or proxies.get('http') or proxies.get('https')
+    def get_default_proxies(self):
+        proxies = urllib.request.getproxies() or {}
+        conf_proxy = self.ydl.params.get('proxy')
+        if conf_proxy:
+            proxies.update({'http': conf_proxy, 'https': conf_proxy})
+        return proxies
 
     def add_handler(self, handler: RequestHandler):
         if handler not in self.handlers:
@@ -338,19 +341,18 @@ class RHManager:
 
         assert isinstance(req, Request)
 
-        # Alternative/backwards compat to providing req.compression and req.proxy
         if req.headers.get('Youtubedl-no-compression'):
             req.compression = False
             del req.headers['Youtubedl-no-compression']
 
-        proxy = req.headers.get('Ytdl-request-proxy')
-        if proxy:
+        # TODO: unified support for __noproxy__ (set to None?)
+        req.proxies = {**(self.proxies or {}), **(req.proxies or {})}
+        req_proxy = req.headers.get('Ytdl-request-proxy')
+        if req_proxy:
             del req.headers['Ytdl-request-proxy']
+            req.proxies.update({'http': req_proxy, 'https': req_proxy})
 
-        req.proxy = proxy or req.proxy or self.proxy
         req.timeout = req.timeout or self.socket_timeout
-        if req.proxy == '__noproxy__':
-            req.proxy = None
         for handler in reversed(self.handlers):
             if not handler.can_handle(req):
                 continue

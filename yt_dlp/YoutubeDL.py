@@ -3696,10 +3696,9 @@ class YoutubeDL(object):
             delim=', ') or 'none'
         write_debug('Optional libraries: %s' % lib_str)
 
-        for handler in self.default_session.handlers:
-            if hasattr(handler, 'proxy'):
-                write_debug(f'Proxy: {handler.proxy}')
-                break
+        proxies = self.default_session.proxies
+        if proxies:
+            write_debug(f'Proxy map: {proxies}')
 
         # Not implemented
         if False and self.params.get('call_home'):
