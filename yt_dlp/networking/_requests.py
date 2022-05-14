@@ -176,8 +176,7 @@ class RequestsRH(BackendRH):
 
     def _real_handle(self, request: Request) -> HTTPResponse:
         # TODO: bring back proxy map
-        headers = UniqueHTTPHeaderStore(
-            make_std_headers(), self.ydl.params.get('http_headers'), request.headers, request.unredirected_headers)
+        headers = UniqueHTTPHeaderStore(request.headers, request.unredirected_headers)
         if 'Accept-Encoding' not in headers:
             headers['Accept-Encoding'] = ', '.join(SUPPORTED_ENCODINGS)
 
