@@ -72,9 +72,14 @@ class NebulaBaseIE(InfoExtractor):
         assert auth_type in ('api', 'bearer',)
 
         def inner_call():
-            authorization = f'Token {self._nebula_api_token}' if auth_type == 'api' else f'Bearer {self._nebula_bearer_token}'
+            if self._nebula_api_token and auth_type == 'api':
+                authorization = f'Token {self._nebula_api_token}'
+            elif self._nebula_bearer_token and auth_type == 'bearer':
+                authorization = f'Bearer {self._nebula_bearer_token}'
+            else:
+                authorization = None
             return self._download_json(
-                url, video_id, note=note, headers={'Authorization': authorization},
+                url, video_id, note=note, headers={'Authorization': authorization} if authorization else {},
                 data=b'' if method == 'POST' else None)
 
         try:
@@ -116,16 +121,28 @@ class NebulaBaseIE(InfoExtractor):
             raise ExtractorError('Unable to extract Zype access token from Nebula API authentication endpoint')
         return access_token
 
-    def _build_video_info(self, episode):
+    def _build_video_info(self, episode, stream_data=None):
         zype_id = episode['zype_id']
-        zype_video_url = f'https://player.zype.com/embed/{zype_id}.html?access_token={self._zype_access_token}'
+        formats = []
+        if stream_data:
+            manifest_url = stream_data.get('manifest')
+            formats.extend(self._extract_m3u8_formats(manifest_url, episode['zype_id']))
+        dest_info  = {}
+        if formats:
+            dest_info.update({
+                'formats': formats,
+            })
+        else:
+            dest_info.update({
+                '_type': 'url_transparent',
+                'url': f'https://player.zype.com/embed/{zype_id}.html?access_token={self._zype_access_token}',
+                'ie_key': 'Zype',
+            })
+
         channel_slug = episode['channel_slug']
         return {
             'id': episode['zype_id'],
             'display_id': episode['slug'],
-            '_type': 'url_transparent',
-            'ie_key': 'Zype',
-            'url': zype_video_url,
             'title': episode['title'],
             'description': episode['description'],
             'timestamp': parse_iso8601(episode['published_at']),
@@ -143,13 +160,15 @@ class NebulaBaseIE(InfoExtractor):
             'uploader_url': f'https://nebula.app/{channel_slug}',
             'series': episode['channel_title'],
             'creator': episode['channel_title'],
+            **dest_info
         }
 
     def _perform_login(self, username=None, password=None):
         # FIXME: username should be passed from here to inner functions
-        self._nebula_api_token = self._retrieve_nebula_api_token()
+        # TODO: likely require a redesign since we completely broke an assumption
+        #self._nebula_api_token = self._retrieve_nebula_api_token()
         self._nebula_bearer_token = self._fetch_nebula_bearer_token()
-        self._zype_access_token = self._fetch_zype_access_token()
+      #  self._zype_access_token = self._fetch_zype_access_token()
 
 
 class NebulaIE(NebulaBaseIE):
@@ -224,10 +243,17 @@ class NebulaIE(NebulaBaseIE):
                                      auth_type='bearer',
                                      note='Fetching video meta data')
 
+    def _fetch_video_formats(self, slug):
+        return self._call_nebula_api(f'https://content.watchnebula.com/video/{slug}/stream/',
+                                     video_id=slug,
+                                     auth_type='bearer',
+                                     note='Fetching video stream data')
+
     def _real_extract(self, url):
         slug = self._match_id(url)
         video = self._fetch_video_metadata(slug)
-        return self._build_video_info(video)
+        formats = self._fetch_video_formats(slug)
+        return self._build_video_info(video, formats)
 
 
 class NebulaCollectionIE(NebulaBaseIE):
