@@ -21,7 +21,7 @@ from .socksproxy import (
 )
 from .utils import (
     ssl_load_certs,
-    socks_create_proxy_args
+    socks_create_proxy_args, select_proxy
 )
 
 from ..utils import (
@@ -148,6 +148,7 @@ class RequestsRH(BackendRH):
         self.session.mount('https://', _http_adapter)
         self.session.mount('http://', _http_adapter)
         self.session.cookies = self.cookiejar
+        self.session.trust_env = False  # no need, we already load proxies from env
         # TODO: could use requests hooks for additional logging
         if not self._is_force_disabled:
             if self.print_traffic:
@@ -156,6 +157,7 @@ class RequestsRH(BackendRH):
 
     @property
     def _is_force_disabled(self):
+        # TODO: improve implementation and purpose
         if 'no-requests' in self.ydl.params.get('compat_opts', []):
             return True
         return False
@@ -171,6 +173,11 @@ class RequestsRH(BackendRH):
     def can_handle(self, request: Request) -> bool:
         if self._is_force_disabled:
             self.write_debug('Not using requests backend as no-requests compat opt is set.', only_once=True)
+            return False
+        if request.proxies and 'no' in request.proxies:
+            # NO_PROXY is buggy in requests.
+            # Disable the handler for now until it is fixed, or we implement a workaround
+            # See https://github.com/psf/requests/issues/5000 and related issues
             return False
         return super().can_handle(request)
 
@@ -227,23 +234,6 @@ class RequestsRH(BackendRH):
             raise HTTPError(requests_res, redirect_loop=max_redirects_exceeded)  # TODO: redirect loop
         return requests_res
 
-"""
-Workaround for issue in urllib.util.ssl_.py. ssl_wrap_context does not pass 
-server_hostname to SSLContext.wrap_socket if server_hostname is an IP, 
-however this is an issue because we set check_hostname to True in our SSLContext.
-
-Monkey-patching IS_SECURETRANSPORT forces ssl_wrap_context to pass server_hostname regardless.
-
-This has been fixed in urllib3 2.0, which is still in development.
-See https://github.com/urllib3/urllib3/issues/517 for more details
-"""
-
-if urllib3.__version__ < '2.0':
-    try:
-        urllib3.util.IS_SECURETRANSPORT = urllib3.util.ssl_.IS_SECURETRANSPORT = True
-    except AttributeError:
-        pass
-
 
 # Since we already have a socks proxy implementation,
 # we can use that with urllib3 instead of requiring an extra dependency.
@@ -295,3 +285,21 @@ class SocksProxyManager(urllib3.PoolManager):
 
 
 requests.adapters.SOCKSProxyManager = SocksProxyManager
+requests.adapters.select_proxy = select_proxy
+
+"""
+Workaround for issue in urllib.util.ssl_.py. ssl_wrap_context does not pass 
+server_hostname to SSLContext.wrap_socket if server_hostname is an IP, 
+however this is an issue because we set check_hostname to True in our SSLContext.
+
+Monkey-patching IS_SECURETRANSPORT forces ssl_wrap_context to pass server_hostname regardless.
+
+This has been fixed in urllib3 2.0, which is still in development.
+See https://github.com/urllib3/urllib3/issues/517 for more details
+"""
+
+if urllib3.__version__ < '2.0':
+    try:
+        urllib3.util.IS_SECURETRANSPORT = urllib3.util.ssl_.IS_SECURETRANSPORT = True
+    except AttributeError:
+        pass
