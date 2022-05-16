@@ -184,8 +184,10 @@ class RequestHandlerCommonTestsBase(RequestHandlerTestBase):
         self.assertEqual(response, 'normal: {0}'.format(url))
         req = Request(url)
         req.add_header('Ytdl-request-proxy', geo_proxy)
-        response = ydl.urlopen(Request(url, proxy=geo_proxy)).read().decode('utf-8')
-        self.assertEqual(response, 'geo: {0}'.format(url))
+        response1 = ydl.urlopen(req).read().decode('utf-8')
+        response2 = ydl.urlopen(Request(url, proxies={'http': geo_proxy})).read().decode('utf-8')
+        self.assertEqual(response1, 'geo: {0}'.format(url))
+        self.assertEqual(response2, 'geo: {0}'.format(url))
 
     def test_http_proxy_with_idn(self):
         ydl = self.make_ydl({
