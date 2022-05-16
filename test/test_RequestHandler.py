@@ -96,6 +96,13 @@ class HTTPTestRequestHandler(compat_http_server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(payload)
             self.finish()
+        elif self.path.startswith('/headers'):
+            payload = str(self.headers).encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
         else:
             assert False
 
@@ -276,13 +283,11 @@ class TestRequestsRH(RequestHandlerCommonTestsBase, unittest.TestCase):
         self.assertTrue(is_connection_dropped(conn))
 
     def test_no_persistent_connections(self):
-        from urllib3.util.connection import is_connection_dropped
         ydl = self.make_ydl({'no_persistent_connections': True})
-        res = ydl.urlopen(Request('http://127.0.0.1:%d/gen_200' % self.http_port, compression=False))
-        conn = res._res.raw.connection
-        self.assertIsNotNone(conn)
-        res.read()
-        self.assertTrue(is_connection_dropped(conn))
+        content = str(ydl.urlopen(Request('http://127.0.0.1:%d/headers' % self.http_port, compression=False)).read())
+        # TODO: will need to rethink when implementing http/2
+        self.assertIn('Connection: close', content)
+
 
 if __name__ == '__main__':
     unittest.main()
