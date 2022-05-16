@@ -311,9 +311,12 @@ class RHManager:
 
     def get_default_proxies(self):
         proxies = urllib.request.getproxies() or {}
+        # compat. Set HTTPS_PROXY to __noproxy__ to revert
+        if 'http' in proxies and 'https' not in proxies:
+            proxies['https'] = proxies['http']
         conf_proxy = self.ydl.params.get('proxy')
         if conf_proxy:
-            proxies.update({'http': conf_proxy, 'https': conf_proxy})
+            proxies.update({'all': conf_proxy})
         return proxies
 
     def add_handler(self, handler: RequestHandler):

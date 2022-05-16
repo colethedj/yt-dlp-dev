@@ -1,6 +1,7 @@
 import random
 import ssl
 import sys
+import urllib.parse
 
 from ..compat import compat_urlparse, compat_urllib_parse_unquote_plus
 from .socksproxy import ProxyType
@@ -128,3 +129,15 @@ def socks_create_proxy_args(socks_proxy):
         'username': unquote_if_non_empty(url_components.username),
         'password': unquote_if_non_empty(url_components.password),
     }
+
+
+def select_proxy(url, proxies):
+    """Unified proxy selector for all backends"""
+    if proxies is None:
+        proxies = {}
+    url_components = urllib.parse.urlparse(url)
+    priority = [
+        url_components.scheme or 'http',  # prioritise more specific mappings
+        'all'
+    ]
+    return next((proxies[key] for key in priority if key in proxies), None)

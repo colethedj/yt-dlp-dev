@@ -20,7 +20,7 @@ from ..compat import (
 
 from .common import HTTPResponse, BackendRH, Request, make_std_headers
 from .socksproxy import sockssocket
-from .utils import handle_youtubedl_headers, socks_create_proxy_args, ssl_load_certs
+from .utils import handle_youtubedl_headers, socks_create_proxy_args, ssl_load_certs, select_proxy
 from ..utils import (
     escape_url,
     update_url_query,
@@ -368,16 +368,25 @@ def update_Request(req, url=None, data=None, headers={}, query={}):
     return new_req
 
 
-class YDLProxyHandler(compat_urllib_request.ProxyHandler):
-    def proxy_open(self, req, proxy, type):
+class YDLProxyHandler(urllib.request.BaseHandler):
+    handler_order = 100
+
+    def __init__(self, proxies=None):
+        self.proxies = proxies
+        # Set default handlers
+        for type in ('http', 'https'):
+            setattr(self, '%s_open' % type, lambda r, meth=self.proxy_open: meth(r))
+
+    def proxy_open(self, req):
+        proxy = select_proxy(req.get_full_url(), self.proxies)
         if proxy is None:
-            return None  # No Proxy
+            return
         if compat_urlparse.urlparse(proxy).scheme.lower() in ('socks', 'socks4', 'socks4a', 'socks5'):
             req.add_header('Ytdl-socks-proxy', proxy)
             # yt-dlp's http/https handlers do wrapping the socket with socks
             return None
-        return compat_urllib_request.ProxyHandler.proxy_open(
-            self, req, proxy, type)
+        return urllib.request.ProxyHandler.proxy_open(
+            self, req, proxy, None)
 
 
 """
