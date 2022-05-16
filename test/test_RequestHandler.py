@@ -1,5 +1,6 @@
 # Allow direct execution
 import functools
+import http.server
 import os
 import subprocess
 import sys
@@ -137,7 +138,7 @@ class RequestHandlerTestBase:
 class RequestHandlerCommonTestsBase(RequestHandlerTestBase):
     def setUp(self):
         # HTTP server
-        self.http_httpd = compat_http_server.HTTPServer(
+        self.http_httpd = http.server.ThreadingHTTPServer(
             ('127.0.0.1', 0), HTTPTestRequestHandler)
         self.http_port = http_server_port(self.http_httpd)
         self.http_server_thread = threading.Thread(target=self.http_httpd.serve_forever)
@@ -146,7 +147,7 @@ class RequestHandlerCommonTestsBase(RequestHandlerTestBase):
 
         # HTTPS server
         certfn = os.path.join(TEST_DIR, 'testcert.pem')
-        self.https_httpd = compat_http_server.HTTPServer(
+        self.https_httpd = http.server.ThreadingHTTPServer(
             ('127.0.0.1', 0), HTTPTestRequestHandler)
         self.https_httpd.socket = ssl.wrap_socket(
             self.https_httpd.socket, certfile=certfn, server_side=True)
@@ -156,7 +157,7 @@ class RequestHandlerCommonTestsBase(RequestHandlerTestBase):
         self.https_server_thread.start()
 
         # HTTP Proxy server
-        self.proxy = compat_http_server.HTTPServer(
+        self.proxy = http.server.ThreadingHTTPServer(
             ('127.0.0.1', 0), _build_proxy_handler('normal'))
         self.proxy_port = http_server_port(self.proxy)
         self.proxy_thread = threading.Thread(target=self.proxy.serve_forever)
@@ -164,7 +165,7 @@ class RequestHandlerCommonTestsBase(RequestHandlerTestBase):
         self.proxy_thread.start()
 
         # Geo proxy server
-        self.geo_proxy = compat_http_server.HTTPServer(
+        self.geo_proxy = http.server.ThreadingHTTPServer(
             ('127.0.0.1', 0), _build_proxy_handler('geo'))
         self.geo_port = http_server_port(self.geo_proxy)
         self.geo_proxy_thread = threading.Thread(target=self.geo_proxy.serve_forever)
@@ -210,7 +211,7 @@ class RequestHandlerCommonTestsBase(RequestHandlerTestBase):
         for bad_status in (400, 500, 599, 302):
             with self.assertRaises(HTTPError):
                 ydl.urlopen('http://127.0.0.1:%d/gen_%d' % (self.http_port, bad_status))
-
+            # wait for server to detect that the connection has been dropped; since it can only handle one at a time
         # Should not raise an error
         ydl.urlopen('http://127.0.0.1:%d/gen_200' % self.http_port)
 
