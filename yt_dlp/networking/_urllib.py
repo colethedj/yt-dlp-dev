@@ -440,7 +440,7 @@ def handle_response_read_exceptions(e):
     except http.client.HTTPException as e:
         raise TransportError(msg=str(e), cause=e) from e
 
-    except TimeoutError as e:
+    except (TimeoutError, socket.timeout) as e:
         raise TransportError(cause=e) from e
 
     except ssl.SSLError as e:
