@@ -209,7 +209,7 @@ class RequestsRH(BackendRH):
             raise SSLError(cause=e) from e
         except requests.exceptions.ProxyError as e:
             raise ProxyError(cause=e) from e
-        except requests.exceptions.ConnectionError as e:
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
             # TODO: can we process any urllib3 exceptions that may occur here?
             # We could check the args for any relevant errors
             raise TransportError(cause=e) from e
