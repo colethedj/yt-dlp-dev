@@ -501,6 +501,10 @@ class UrllibRH(BackendRH):
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         context.check_hostname = verify
         context.verify_mode = ssl.CERT_REQUIRED if verify else ssl.CERT_NONE
+        try:
+            context.set_alpn_protocols(['http/1.1'])
+        except (AttributeError, NotImplementedError):
+            pass
         if verify:
             ssl_load_certs(context, self.ydl.params)
         return context
