@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+from __future__ import annotations
 
 import collections
 import http.cookiejar
@@ -7,12 +8,14 @@ import io
 import ssl
 import sys
 import time
+import typing
 import urllib.parse
 from abc import ABC, abstractmethod
 from http import HTTPStatus
 from email.message import Message
 import urllib.request
 import urllib.response
+from typing import Union, Type
 
 from ..compat import compat_cookiejar, compat_str, compat_urllib_request
 
@@ -27,6 +30,9 @@ from ..utils import (
 )
 
 from .utils import random_user_agent
+
+if typing.TYPE_CHECKING:
+    from ..YoutubeDL import YoutubeDL
 
 
 class Request:
@@ -303,13 +309,12 @@ class BackendRH(RequestHandler):
 
 class RHManager:
 
-    def __init__(self, ydl):
+    def __init__(self, ydl: YoutubeDL):
         self.handlers = []
-        self.ydl = ydl
-        self.socket_timeout = float(self.ydl.params.get('socket_timeout') or 20)  # do not accept 0
-        self.proxies = self.get_default_proxies()
+        self.ydl: YoutubeDL = ydl
+        self.proxies: dict = self.get_default_proxies()
 
-    def get_default_proxies(self):
+    def get_default_proxies(self) -> dict:
         proxies = urllib.request.getproxies() or {}
         # compat. Set HTTPS_PROXY to __noproxy__ to revert
         if 'http' in proxies and 'https' not in proxies:
@@ -324,12 +329,10 @@ class RHManager:
         if handler not in self.handlers:
             self.handlers.append(handler)
 
-    def remove_handler(self, handler):
+    def remove_handler(self, handler: Union[RequestHandler, Type[RequestHandler]]):
         """
-        Remove request handler(s)
-        @param handler: Handler object or handler type.
-        Specifying handler type will remove all handlers of that type.
-        idea from yt-dlp#1687
+        Remove RequestHandler(s)
+        @param handler: Handler object or handler type. Specifying handler type will remove all handlers of that type.
         """
         if inspect.isclass(handler):
             finder = lambda x: isinstance(x, handler)
@@ -337,35 +340,41 @@ class RHManager:
             finder = lambda x: x is handler
         self.handlers = [x for x in self.handlers if not finder(handler)]
 
-    def urlopen(self, req):
+    def urlopen(self, req: Union[Request, str, urllib.request.Request]) -> HTTPResponse:
+        """
+        Passes a request onto a suitable RequestHandler
+        """
         if len(self.handlers) == 0:
             raise YoutubeDLError('No request handlers configured')
         if isinstance(req, str):
             req = Request(req)
         elif isinstance(req, urllib.request.Request):
-            # Backwards compat for urllib request
+            # compat
             req = Request(
                 req.get_full_url(), data=req.data, headers=req.headers.copy(), method=req.get_method(),
                 unverifiable=req.unverifiable, unredirected_headers=req.unredirected_hdrs.copy(),
                 origin_req_host=req.origin_req_host)
 
         assert isinstance(req, Request)
+
         req = req.copy()
         req.headers = UniqueHTTPHeaderStore(self.ydl.params.get('http_headers', {}), req.headers)
+
         if req.headers.get('Youtubedl-no-compression'):
             req.compression = False
             del req.headers['Youtubedl-no-compression']
 
+        # Proxy preference: header req proxy > req proxies > ydl opt proxies > env proxies
         req.proxies = {**(self.proxies or {}), **(req.proxies or {})}
         req_proxy = req.headers.get('Ytdl-request-proxy')
         if req_proxy:
             del req.headers['Ytdl-request-proxy']
             req.proxies.update({'http': req_proxy, 'https': req_proxy})
         for k, v in req.proxies.items():
-            if v == '__noproxy__':
+            if v == '__noproxy__':  # compat
                 req.proxies[k] = None
+        req.timeout = float(req.timeout or self.ydl.params.get('socket_timeout') or 20)  # do not accept 0
 
-        req.timeout = req.timeout or self.socket_timeout
         for handler in reversed(self.handlers):
             if not handler.can_handle(req):
                 continue
