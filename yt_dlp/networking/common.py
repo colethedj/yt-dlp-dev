@@ -173,34 +173,45 @@ def update_YDLRequest(req: Request, url=None, data=None, headers=None, query=Non
     return req
 
 
-class HTTPResponse(ABC, io.IOBase):
+class HTTPResponse(io.IOBase):
     """
-    Adapter interface for responses
+    Adapter interface for HTTP responses
     """
     REDIRECT_STATUS_CODES = [301, 302, 303, 307, 308]
 
-    def __init__(self, headers, status, http_version=None, reason=None, method=None):
+    def __init__(
+            self, raw: typing.BinaryIO,
+            headers: typing.Mapping[str, str],
+            url: str,
+            status: int = 200,
+            reason: typing.Optional[str] = None):
+        """
+        @param raw: Original response
+        @headers: response headers
+        @status: Response HTTP status code
+        @reason: HTTP status reason
+        """
+        self.raw = raw
         self.headers = HTTPHeaderStore(headers)
-        self.status = self.code = status
+        self.code = self.status = status
         self.reason = reason
-        self.method = method
+        self.url = url
         if not reason:
             try:
-                self.reason = HTTPStatus(status).name.replace('_', ' ').title()
+                self.reason = HTTPStatus(status).phrase
             except ValueError:
                 pass
-        self.version = self.http_version = http_version  # HTTP Version, e.g. HTTP 1.1 = 11
 
+    # compat
     def getcode(self):
         return self.status
 
-    @property
-    def url(self):
-        return self.geturl()
+    # compat
+    def getstatus(self):
+        return self.status
 
-    @abstractmethod
     def geturl(self):
-        pass
+        return self.url
 
     def get_redirect_url(self):
         return self.getheader('location') if self.status in self.REDIRECT_STATUS_CODES else None
@@ -217,9 +228,15 @@ class HTTPResponse(ABC, io.IOBase):
     def readable(self):
         return True
 
-    @abstractmethod
     def read(self, amt: int = None):
-        raise NotImplementedError
+        return self.raw.read(amt)
+
+    def tell(self) -> int:
+        return self.raw.tell()
+
+    def close(self):
+        self.raw.close()
+        return super().close()
 
 
 class RequestHandler:
