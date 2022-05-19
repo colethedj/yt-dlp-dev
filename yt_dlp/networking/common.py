@@ -180,7 +180,7 @@ class HTTPResponse(io.IOBase):
     REDIRECT_STATUS_CODES = [301, 302, 303, 307, 308]
 
     def __init__(
-            self, raw: typing.BinaryIO,
+            self, raw,
             headers: typing.Mapping[str, str],
             url: str,
             status: int = 200,
