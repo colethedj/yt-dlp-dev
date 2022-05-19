@@ -273,13 +273,13 @@ class TestRequestsRH(RequestHandlerCommonTestsBase, unittest.TestCase):
         ydl = self.make_ydl()
         res = ydl.urlopen(Request('http://127.0.0.1:%d/gen_200' % self.http_port, compression=False))
         # Get connection before we read, since it gets released back to pool after read
-        conn = res._res.raw.connection
+        conn = res.raw.raw.connection
         self.assertIsNotNone(conn)
         a = res.read()
         self.assertFalse(is_connection_dropped(conn))
         with self.assertRaises(HTTPError) as e:
             ydl.urlopen(Request('http://127.0.0.1:%d/gen_404' % self.http_port, compression=False))
-        self.assertIs(conn, e.exception.response._res.raw.connection)
+        self.assertIs(conn, e.exception.response.raw.raw.connection)
         e.exception.response.read()
         self.assertTrue(is_connection_dropped(conn))
 

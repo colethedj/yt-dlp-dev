@@ -50,33 +50,20 @@ if compat_brotli and not (compat_brotli.__name__ == 'brotlicffi' and urllib3.__v
     SUPPORTED_ENCODINGS.append('br')
 
 
-class RequestsResponseAdapter(HTTPResponse):
+class RequestsHTTPResponseAdapter(HTTPResponse):
     def __init__(self, res: requests.models.Response):
-        self._res = res
-        self._url = res.url
-
         super().__init__(
-            headers=res.headers, status=res.status_code,
-            method=res.request.method, reason=res.reason)
-
-    def geturl(self):
-        return self._url
+            raw=res, headers=res.headers, url=res.url,
+            status=res.status_code, reason=res.reason)
 
     def read(self, amt: int = None):
         try:
             # Interact with urllib3 response directly.
-            return self._res.raw.read(amt, decode_content=True)
+            return self.raw.raw.read(amt, decode_content=True)
         # raw is an urllib3 HTTPResponse, so exceptions will be from urllib3
         except urllib3.exceptions.HTTPError as e:
             handle_urllib3_read_exceptions(e)
             raise TransportError(cause=e) from e
-
-    def close(self):
-        super().close()
-        return self._res.close()
-
-    def tell(self) -> int:
-        return self._res.raw.tell()
 
 
 def handle_urllib3_read_exceptions(e):
@@ -220,7 +207,7 @@ class RequestsRH(BackendRH):
         # Any misc Requests exception. May not necessary be network related e.g. InvalidURL
         except requests.exceptions.RequestException as e:
             raise RequestError(cause=e) from e
-        requests_res = RequestsResponseAdapter(res)
+        requests_res = RequestsHTTPResponseAdapter(res)
         if not 200 <= requests_res.status < 300:
             """
             Close the connection when finished instead of releasing it to the pool.
