@@ -10,6 +10,7 @@ import urllib.error
 import urllib.request
 import urllib.response
 import zlib
+from typing import Union
 
 from ..compat import (
     compat_urllib_request_DataHandler,
@@ -389,37 +390,25 @@ class YDLProxyHandler(urllib.request.BaseHandler):
             self, req, proxy, None)
 
 
-"""
-yt-dlp adapters
-"""
-
-
-# Supports both addinfourl and http.client.HTTPResponse
-class UrllibResponseAdapter(HTTPResponse):
-    def __init__(self, res: http.client.HTTPResponse):
-        self._res = res
+class UrllibHTTPResponseAdapter(HTTPResponse):
+    """
+    HTTP Response adapter class for urllib addinfourl and http.client.HTTPResponse
+    """
+    def __init__(self, res: Union[http.client.HTTPResponse, urllib.response.addinfourl]):
+        # addinfourl: In Python 3.9+, .status was introduced and .getcode() was deprecated [1]
+        # HTTPResponse: .getcode() was deprecated, .status always existed [2]
+        # 1. https://docs.python.org/3/library/urllib.request.html#urllib.response.addinfourl.getstatus
+        # 2. https://docs.python.org/3.10/library/http.client.html#http.client.HTTPResponse.status
         super().__init__(
-            # In Python 3.9+, res.status was introduced and res.getcode() was deprecated [1]
-            # 1. https://github.com/python/cpython/commit/ff2e18286560e981f4e09afb0d2448ea994414d8
-            headers=res.headers, status=res.status if hasattr(res, 'status') else res.getcode() if hasattr(res, 'getcode') else None,
-            http_version=res.version if hasattr(res, 'version') else None, method=res._method if hasattr(res, '_method') else None)
-
-    def geturl(self):
-        return self._res.geturl()
+            raw=res, headers=res.headers, url=res.url,
+            status=getattr(res, 'status', None) or res.getcode(), reason=getattr(res, 'reason', None))
 
     def read(self, amt=None):
         try:
-            return self._res.read(amt)
+            return self.raw.read(amt)
         except Exception as e:
             handle_response_read_exceptions(e)
             raise e
-
-    def close(self):
-        super().close()
-        return self._res.close()
-
-    def tell(self) -> int:
-        return self._res.tell()
 
 
 def handle_sslerror(e):
@@ -440,7 +429,7 @@ def handle_response_read_exceptions(e):
     except http.client.HTTPException as e:
         raise TransportError(msg=str(e), cause=e) from e
 
-    except TimeoutError as e:
+    except (TimeoutError, socket.timeout) as e:
         raise TransportError(cause=e) from e
 
     except ssl.SSLError as e:
@@ -501,6 +490,10 @@ class UrllibRH(BackendRH):
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         context.check_hostname = verify
         context.verify_mode = ssl.CERT_REQUIRED if verify else ssl.CERT_NONE
+        try:
+            context.set_alpn_protocols(['http/1.1'])
+        except (AttributeError, NotImplementedError):
+            pass
         if verify:
             ssl_load_certs(context, self.ydl.params)
         return context
@@ -518,7 +511,7 @@ class UrllibRH(BackendRH):
             res = self.get_opener(request.proxies).open(urllib_req, timeout=request.timeout)
         except urllib.error.HTTPError as e:
             if isinstance(e.fp, (http.client.HTTPResponse, urllib.response.addinfourl)):
-                raise HTTPError(UrllibResponseAdapter(e.fp), redirect_loop='redirect error' in str(e))
+                raise HTTPError(UrllibHTTPResponseAdapter(e.fp), redirect_loop='redirect error' in str(e))
             raise  # RHManager will catch leaked exception
         except urllib.error.URLError as e:
             cause = e.reason
@@ -531,7 +524,7 @@ class UrllibRH(BackendRH):
             raise e
         # TODO: other errors outside URLError
 
-        return UrllibResponseAdapter(res)
+        return UrllibHTTPResponseAdapter(res)
 
 
 def sanitized_Request(url, *args, **kwargs):
