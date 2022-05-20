@@ -26,6 +26,7 @@ import tokenize
 import traceback
 import random
 import unicodedata
+import urllib.request
 
 from enum import Enum
 from string import ascii_letters
@@ -50,7 +51,7 @@ from .networking.common import (
     HEADRequest
 )
 
-from .networking.utils import has_certifi, HTTPHeaderDict
+from .networking.utils import has_certifi, HTTPHeaderDict, get_cookie_header
 
 from .networking import REQUEST_HANDLERS, UrllibRH
 
@@ -2278,9 +2279,7 @@ class YoutubeDL(object):
         return res
 
     def _calc_cookies(self, info_dict):
-        pr = Request(info_dict['url'])
-        self.cookiejar.add_cookie_header(pr)
-        return pr.get_header('Cookie')
+        return get_cookie_header(Request(info_dict['url']), self.cookiejar)
 
     def _sort_thumbnails(self, thumbnails):
         thumbnails.sort(key=lambda t: (
