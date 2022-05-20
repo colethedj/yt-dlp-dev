@@ -444,7 +444,8 @@ def handle_response_read_exceptions(e):
 class UrllibRH(BackendRH):
     SUPPORTED_SCHEMES = ['http', 'https', 'data', 'ftp']
 
-    def _initialize(self):
+    def __init__(self, ydl, params):
+        super().__init__(ydl, params)
         self._openers = {}
 
     def _create_opener(self, proxies=None):
@@ -458,7 +459,6 @@ class UrllibRH(BackendRH):
         redirect_handler = YoutubeDLRedirectHandler()
         data_handler = compat_urllib_request_DataHandler()
 
-        # TODO: technically the following is not required now, but will keep in for now
         # When passing our own FileHandler instance, build_opener won't add the
         # default FileHandler and allows us to disable the file protocol, which
         # can be used for malicious purposes (see
@@ -486,7 +486,7 @@ class UrllibRH(BackendRH):
         # TODO: implement some general caching strategy while also support dict args
         return self._openers.setdefault(frozenset(proxies.items() or {}), self._create_opener(proxies))
 
-    def _make_sslcontext(self, verify, **kwargs) -> ssl.SSLContext:
+    def _make_sslcontext(self, verify: bool, **kwargs) -> ssl.SSLContext:
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         context.check_hostname = verify
         context.verify_mode = ssl.CERT_REQUIRED if verify else ssl.CERT_NONE
@@ -498,7 +498,7 @@ class UrllibRH(BackendRH):
             ssl_load_certs(context, self.ydl.params)
         return context
 
-    def _real_handle(self, request: Request) -> HTTPResponse:
+    def handle(self, request: Request) -> HTTPResponse:
         urllib_req = urllib.request.Request(
             url=request.url, data=request.data, headers=dict(request.headers), origin_req_host=request.origin_req_host,
             unverifiable=request.unverifiable, method=request.method
