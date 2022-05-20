@@ -920,7 +920,7 @@ def make_HTTPS_handler(params, **kwargs):
     if params.get('legacyserverconnect'):
         context.options |= 4  # SSL_OP_LEGACY_SERVER_CONNECT
         # Allow use of weaker ciphers in Python 3.10+. See https://bugs.python.org/issue43998
-        context.set_ciphers('DEFAULT')
+        context.set_ciphers('DEFAULT@SECLEVEL=0')
     context.verify_mode = ssl.CERT_REQUIRED if opts_check_certificate else ssl.CERT_NONE
     if opts_check_certificate:
         if has_certifi and 'no-certifi' not in params.get('compat_opts', []):
