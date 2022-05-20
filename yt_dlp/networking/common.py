@@ -10,14 +10,12 @@ import sys
 import time
 import typing
 import urllib.parse
-from abc import ABC, abstractmethod
 from http import HTTPStatus
-from email.message import Message
 import urllib.request
 import urllib.response
 from typing import Union, Type
 
-from ..compat import compat_cookiejar, compat_str, compat_urllib_request
+from ..compat import compat_cookiejar, compat_str
 
 from ..utils import (
     extract_basic_auth,
@@ -29,7 +27,7 @@ from ..utils import (
     bug_reports_message, TransportError, YoutubeDLError, RequestError
 )
 
-from .utils import random_user_agent
+from .utils import random_user_agent, HTTPHeaderDict, MultiHTTPHeaderDict
 
 if typing.TYPE_CHECKING:
     from ..YoutubeDL import YoutubeDL
@@ -51,8 +49,8 @@ class Request:
         """
         url, basic_auth_header = extract_basic_auth(escape_url(sanitize_url(url)))
         self.__request_store = urllib.request.Request(url, data=data, method=method)
-        self._headers = UniqueHTTPHeaderStore(headers)
-        self._unredirected_headers = UniqueHTTPHeaderStore(unredirected_headers)
+        self._headers = HTTPHeaderDict(headers)
+        self._unredirected_headers = HTTPHeaderDict(unredirected_headers)
         self.timeout = timeout
 
         # TODO: add support for passing different types of auth into a YDlRequest, and don't add the headers.
@@ -92,8 +90,8 @@ class Request:
 
     @headers.setter
     def headers(self, new_headers):
-        if not isinstance(new_headers, UniqueHTTPHeaderStore):
-            raise TypeError('headers must be UniqueHTTPHeaderStore')
+        if not isinstance(new_headers, HTTPHeaderDict):
+            raise TypeError('headers must be HTTPHeaderDict')
         self._headers = new_headers
 
     @property
@@ -192,7 +190,7 @@ class HTTPResponse(io.IOBase):
         @reason: HTTP status reason
         """
         self.raw = raw
-        self.headers = HTTPHeaderStore(headers)
+        self.headers = MultiHTTPHeaderDict(headers)
         self.code = self.status = status
         self.reason = reason
         self.url = url
@@ -361,7 +359,7 @@ class RHManager:
         assert isinstance(req, Request)
 
         req = req.copy()
-        req.headers = UniqueHTTPHeaderStore(self.ydl.params.get('http_headers', {}), req.headers)
+        req.headers = HTTPHeaderDict(self.ydl.params.get('http_headers', {}), req.headers)
 
         if req.headers.get('Youtubedl-no-compression'):
             req.compression = False
@@ -397,60 +395,6 @@ class RHManager:
             assert isinstance(res, HTTPResponse)
             return res
         raise YoutubeDLError('No request handlers configured that could handle this request.')
-
-
-class HTTPHeaderStore(Message):
-    """
-    An object to store and access headers case-insensitively.
-    Note: This allows multiple headers of the same key.
-    Accepts multiple dict-like instances in constructor, for easy merging
-    """
-    def __init__(self, *data):
-        super().__init__()
-        for store in data:
-            if hasattr(store, 'items'):
-                self.add_headers(store)
-
-    def add_headers(self, data):
-        for k, v in data.items():
-            self.add_header(k, v)
-
-    def replace_headers(self, data):
-        for k, v in data.items():
-            self.replace_header(k, v)
-
-    def add_header(self, _name: str, _value: str, **kwargs):
-        return self._add_header(_name, _value, **kwargs)
-
-    def _add_header(self, name, value, **kwargs):
-        return super().add_header(name, str(value), **kwargs)
-
-    def replace_header(self, _name: str, _value: str):
-        """
-        Similar to add_header, but will replace all existing headers of such name if exists.
-        Unlike email.Message, will add the header if it does not already exist.
-        """
-        try:
-            return super().replace_header(_name, str(_value))
-        except KeyError:
-            return self._add_header(_name, _value)
-
-    def clear(self):
-        self._headers = []
-
-    def update(self, new_headers):
-        self.replace_headers(new_headers)
-
-    def copy(self):
-        return self.__class__(self)
-
-
-class UniqueHTTPHeaderStore(HTTPHeaderStore):
-    """
-    Same as HTTPHeaderStore, but does not allow duplicate/multiple headers.
-    """
-    def add_header(self, *args, **kwargs):
-        return self.replace_header(*args, **kwargs)
 
 
 class YoutubeDLCookieJar(compat_cookiejar.MozillaCookieJar):
@@ -569,7 +513,7 @@ class YoutubeDLCookieJar(compat_cookiejar.MozillaCookieJar):
 
 
 # Use make_std_headers() to get a copy of these
-_std_headers = UniqueHTTPHeaderStore({
+_std_headers = HTTPHeaderDict({
     'User-Agent': random_user_agent(),
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
     'Accept-Language': 'en-us,en;q=0.5',
@@ -579,4 +523,4 @@ _std_headers = UniqueHTTPHeaderStore({
 
 # Get a copy of std headers, while also retaining backwards compat with utils.std_headers
 def make_std_headers():
-    return UniqueHTTPHeaderStore(_std_headers, std_headers)
+    return HTTPHeaderDict(_std_headers, std_headers)

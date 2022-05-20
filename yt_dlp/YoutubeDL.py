@@ -47,10 +47,10 @@ from .networking.common import (
     Request,
     RHManager,
     make_std_headers,
-    HEADRequest, UniqueHTTPHeaderStore
+    HEADRequest
 )
 
-from .networking.utils import has_certifi
+from .networking.utils import has_certifi, HTTPHeaderDict
 
 from .networking import REQUEST_HANDLERS, UrllibRH
 
@@ -660,7 +660,7 @@ class YoutubeDL(object):
             else self.build_format_selector(self.params['format']))
 
         # Set http_headers defaults according to std_headers
-        self.params['http_headers'] = UniqueHTTPHeaderStore(
+        self.params['http_headers'] = HTTPHeaderDict(
             make_std_headers(), self.params.get('http_headers', {}))
 
         self.default_session = self.make_RHManager(REQUEST_HANDLERS)
@@ -2265,7 +2265,7 @@ class YoutubeDL(object):
         return _build_selector_function(parsed_selector)
 
     def _calc_headers(self, info_dict):
-        res = UniqueHTTPHeaderStore(self.params['http_headers'], info_dict.get('http_headers'))
+        res = HTTPHeaderDict(self.params['http_headers'], info_dict.get('http_headers'))
         cookies = self._calc_cookies(info_dict)
         if cookies:
             res['Cookie'] = cookies
