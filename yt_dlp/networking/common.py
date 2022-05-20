@@ -180,7 +180,7 @@ class HTTPResponse(io.IOBase):
     REDIRECT_STATUS_CODES = [301, 302, 303, 307, 308]
 
     def __init__(
-            self, raw: typing.BinaryIO,
+            self, raw,
             headers: typing.Mapping[str, str],
             url: str,
             status: int = 200,
@@ -250,12 +250,12 @@ class RequestHandler:
     def _is_supported_scheme(cls, request: Request):
         return urllib.parse.urlparse(request.url).scheme.lower() in cls.SUPPORTED_SCHEMES or []
 
+    def can_handle(self, request: Request) -> bool:
+        """Validate if handler is suitable for given request. Can override in subclasses."""
+        return self._is_supported_scheme(request)
+
     def handle(self, request: Request):
         """Method to handle given request. Redefine in subclasses"""
-
-    @classmethod
-    def can_handle(cls, request: Request) -> bool:
-        """Validate if handler is suitable for given request. Can override in subclasses."""
 
 
 class BackendRH(RequestHandler):
@@ -264,23 +264,20 @@ class BackendRH(RequestHandler):
 
     It receives a dictionary of options.
 
+    # TODO
     Available options:
     cookiejar:          A YoutubeDLCookieJar to store cookies in
     verbose:            Print traffic for debugging to stdout
     """
     params = None
 
-    def __init__(self, ydl, params):
+    def __init__(self, ydl: YoutubeDL, params):
         self.ydl = ydl
         self.params = params or self.params or {}
         self.cookiejar = params.get('cookiejar', http.cookiejar.CookieJar())
         self.print_traffic = bool(self.params.get('verbose'))
-        self._initialize()
 
-    def handle(self, request: Request):
-        # TODO: if there isn't anything to define here, then subclasses can just override handle()
-        return self._real_handle(request)
-
+    # TODO: rework
     def to_screen(self, *args, **kwargs):
         self.ydl.to_stdout(*args, **kwargs)
 
@@ -309,19 +306,8 @@ class BackendRH(RequestHandler):
             context.options |= 4  # SSL_OP_LEGACY_SERVER_CONNECT
         return context
 
-    def _make_sslcontext(self, verify, **kwargs) -> ssl.SSLContext:
+    def _make_sslcontext(self, verify: bool, **kwargs) -> ssl.SSLContext:
         """Generate a backend-specific SSLContext. Redefine in subclasses"""
-
-    def can_handle(self, request: Request,) -> bool:
-        """Validate if adapter is suitable for given request. Can override in subclasses."""
-        return self._is_supported_scheme(request)
-
-    def _initialize(self):
-        """Initialization process. Redefine in subclasses."""
-        pass
-
-    def _real_handle(self, request: Request) -> HTTPResponse:
-        """Real request handling process. Redefine in subclasses"""
 
 
 class RHManager:
