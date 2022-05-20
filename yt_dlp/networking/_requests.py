@@ -9,11 +9,10 @@ from ..compat import (
 )
 
 from .common import (
-    make_std_headers,
     HTTPResponse,
     BackendRH,
     Request,
-    UniqueHTTPHeaderStore
+    HTTPHeaderDict
 )
 from .socksproxy import (
     sockssocket,
@@ -29,11 +28,11 @@ from ..utils import (
     TransportError,
     SSLError,
     HTTPError,
-    ProxyError, urljoin, RequestError
+    ProxyError,
+    RequestError
 )
 
 import requests.adapters
-from requests.cookies import merge_cookies
 import requests
 from urllib3.util.url import parse_url
 from urllib3.util.ssl_ import create_urllib3_context
@@ -174,7 +173,7 @@ class RequestsRH(BackendRH):
         return super().can_handle(request)
 
     def handle(self, request: Request) -> HTTPResponse:
-        headers = UniqueHTTPHeaderStore(request.headers, request.unredirected_headers)
+        headers = HTTPHeaderDict(request.headers, request.unredirected_headers)
         if 'Accept-Encoding' not in headers:
             headers['Accept-Encoding'] = ', '.join(SUPPORTED_ENCODINGS)
 
