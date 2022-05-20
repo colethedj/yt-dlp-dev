@@ -127,20 +127,25 @@ class YDLRequestsSession(requests.sessions.Session):
 class RequestsRH(BackendRH):
     SUPPORTED_SCHEMES = ['http', 'https']
 
-    def _initialize(self):
-        self.session = YDLRequestsSession()
-        _http_adapter = YDLRequestsHTTPAdapter(ydl=self.ydl, ssl_context=self.make_sslcontext())
-        self.session.adapters.clear()
-        self.session.headers = requests.models.CaseInsensitiveDict({'Connection': 'keep-alive'})
-        self.session.mount('https://', _http_adapter)
-        self.session.mount('http://', _http_adapter)
-        self.session.cookies = self.cookiejar
-        self.session.trust_env = False  # no need, we already load proxies from env
+    def __init__(self, ydl, params):
+        super().__init__(ydl, params)
+        self.session = self._create_session()
         # TODO: could use requests hooks for additional logging
         if not self._is_force_disabled:
             if self.print_traffic:
                 urllib3.add_stderr_logger()
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+    def _create_session(self):
+        session = YDLRequestsSession()
+        _http_adapter = YDLRequestsHTTPAdapter(ydl=self.ydl, ssl_context=self.make_sslcontext())
+        session.adapters.clear()
+        session.headers = requests.models.CaseInsensitiveDict({'Connection': 'keep-alive'})
+        session.mount('https://', _http_adapter)
+        session.mount('http://', _http_adapter)
+        session.cookies = self.cookiejar
+        session.trust_env = False  # no need, we already load proxies from env
+        return session
 
     @property
     def _is_force_disabled(self):
@@ -168,8 +173,7 @@ class RequestsRH(BackendRH):
             return False
         return super().can_handle(request)
 
-    def _real_handle(self, request: Request) -> HTTPResponse:
-        # TODO: bring back proxy map
+    def handle(self, request: Request) -> HTTPResponse:
         headers = UniqueHTTPHeaderStore(request.headers, request.unredirected_headers)
         if 'Accept-Encoding' not in headers:
             headers['Accept-Encoding'] = ', '.join(SUPPORTED_ENCODINGS)
