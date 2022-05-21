@@ -342,9 +342,6 @@ class RHManager:
                 req.proxies[k] = None
         req.timeout = float(req.timeout or self.ydl.params.get('socket_timeout') or 20)  # do not accept 0
 
-        if self.ydl.params.get('no_persistent_connections', False) is True:
-            req.headers['Connection'] = 'close'
-
         for handler in reversed(self.handlers):
             if not handler.can_handle(req):
                 continue

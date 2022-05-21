@@ -173,12 +173,15 @@ class RequestsRH(BackendRH):
         return super().can_handle(request)
 
     def handle(self, request: Request) -> HTTPResponse:
-        headers = HTTPHeaderDict(request.headers, request.unredirected_headers)
+        headers = request.headers.copy()  # TODO: make a copy of request for each handler
         if 'Accept-Encoding' not in headers:
             headers['Accept-Encoding'] = ', '.join(SUPPORTED_ENCODINGS)
 
         if not request.compression:
             del headers['accept-encoding']
+
+        if self.ydl.params.get('no_persistent_connections', False) is True:
+            headers['Connection'] = 'close'
 
         max_redirects_exceeded = False
         try:
