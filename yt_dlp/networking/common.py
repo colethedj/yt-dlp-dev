@@ -37,36 +37,25 @@ class Request:
     """
     Request class to define a request to be made.
     A wrapper for urllib.request.Request with improvements for yt-dlp,
-    while retaining backwards-compatability where needed (e.g for cookiejar)
+    while retaining required backwards-compat functions used in yt-dlp.
     """
     def __init__(
-            self, url, data=None, headers=None, proxies=None, compression=True, method=None,
-            unverifiable=False, unredirected_headers=None, origin_req_host=None, timeout=None):
+            self, url, data=None, headers=None, proxies=None, compression=True, method=None, timeout=None):
         """
         @param proxies: proxy dict mapping to use for the request and any redirects
         @param compression: whether to include content-encoding header on request (i.e. disable/enable compression).
-        For everything else, see urllib.request.Request docs: https://docs.python.org/3/library/urllib.request.html?highlight=request#urllib.request.Request
         """
         url, basic_auth_header = extract_basic_auth(escape_url(sanitize_url(url)))
         self.__request_store = urllib.request.Request(url, data=data, method=method)
-        self._headers = HTTPHeaderDict(headers)
-        self._unredirected_headers = HTTPHeaderDict(unredirected_headers)
+        self._headers: HTTPHeaderDict = HTTPHeaderDict(headers)
         self.timeout = timeout
 
         # TODO: add support for passing different types of auth into a YDlRequest, and don't add the headers.
         if basic_auth_header:
-            self.unredirected_headers['Authorization'] = basic_auth_header
+            self.headers['Authorization'] = basic_auth_header
 
         self.proxies = proxies or {}
         self.compression = compression
-
-        # See https://docs.python.org/3/library/urllib.request.html#urllib.request.Request
-        # and https://datatracker.ietf.org/doc/html/rfc2965.html
-        self.unverifiable = unverifiable
-        self.origin_req_host = (
-            origin_req_host
-            or urllib.parse.urlparse(self.url).netloc
-            or self.__request_store.origin_req_host)
 
     @property
     def url(self):
@@ -95,41 +84,18 @@ class Request:
         self._headers = new_headers
 
     @property
-    def unredirected_headers(self):
-        """Headers to not send in a redirect"""
-        return self._unredirected_headers
-
-    @property
     def method(self):
         return self.__request_store.get_method()
 
     def copy(self):
         return self.__class__(
-            self.url, self.data, self.headers.copy(), self.proxies.copy(), self.compression, self.method, self.unverifiable,
-            self.unredirected_headers.copy())
-
-    """
-    The following are backwards compatible functions with urllib.request.Request for cookiejar handling
-    """
-
-    def add_unredirected_header(self, key, value):
-        self._unredirected_headers.replace_header(key, value)
+            self.url, self.data, self.headers.copy(), self.proxies.copy(), self.compression, self.method)
 
     def add_header(self, key, value):
         self._headers.replace_header(key, value)
 
-    def has_header(self, header):
-        return header in self._headers or header in self._unredirected_headers
-
-    def remove_header(self, key):
-        del self._headers[key]
-        del self._unredirected_headers[key]
-
     def get_header(self, key, default=None):
-        return self._headers.get(key, self._unredirected_headers.get(key, default))
-
-    def header_items(self):
-        return list({**self._unredirected_headers, **self._headers}.items())
+        return self._headers.get(key, default)
 
     def get_full_url(self):
         return self.url
@@ -139,6 +105,7 @@ class Request:
 
     @property
     def type(self):
+        """URI scheme"""
         return self.__request_store.type
 
     @property
@@ -166,7 +133,6 @@ def update_YDLRequest(req: Request, url=None, data=None, headers=None, query=Non
     req = req.copy()
     req.data = data or req.data
     req.headers.replace_headers(headers or {})
-    req.unredirected_headers.clear()  # these were not copied in update_Request
     req.url = update_url_query(url or req.url, query or {})
     return req
 

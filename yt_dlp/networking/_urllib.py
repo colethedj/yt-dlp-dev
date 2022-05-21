@@ -500,8 +500,7 @@ class UrllibRH(BackendRH):
 
     def handle(self, request: Request) -> HTTPResponse:
         urllib_req = urllib.request.Request(
-            url=request.url, data=request.data, headers=dict(request.headers), origin_req_host=request.origin_req_host,
-            unverifiable=request.unverifiable, method=request.method
+            url=request.url, data=request.data, headers=dict(request.headers), method=request.method
         )
 
         if not request.compression:

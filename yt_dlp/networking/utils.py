@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import email.policy
 import random
 import ssl
 import sys
+import typing
 from collections.abc import ItemsView, KeysView, ValuesView, MutableMapping
 from email.message import Message
 
@@ -13,6 +16,12 @@ try:
     has_certifi = True
 except ImportError:
     has_certifi = False
+
+if typing.TYPE_CHECKING:
+    from .common import Request
+    from http.cookiejar import CookieJar
+
+import urllib.request
 
 
 def random_user_agent():
@@ -238,3 +247,9 @@ class HTTPHeaderDict(MultiHTTPHeaderDict):
             super().__setitem__(name, val)
 
     _MESSAGE_CLS = _UniqueHeaderMessage
+
+
+def get_cookie_header(req: Request, cookiejar: CookieJar):
+    cookie_req = urllib.request.Request(url=req.url)
+    cookiejar.add_cookie_header(cookie_req)
+    return cookie_req.get_header('Cookie')

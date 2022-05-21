@@ -34,6 +34,7 @@ from ..downloader.f4m import (
     remove_encrypted_media,
 )
 from ..networking.common import Request, update_YDLRequest
+from ..networking.utils import get_cookie_header
 from ..utils import (
     age_restricted,
     base_url,
@@ -3583,9 +3584,8 @@ class InfoExtractor(object):
 
     def _get_cookies(self, url):
         """ Return a compat_cookies_SimpleCookie with the cookies for the url """
-        req = Request(url)
-        self._downloader.cookiejar.add_cookie_header(req)
-        return compat_cookies_SimpleCookie(req.get_header('Cookie'))
+        return compat_cookies_SimpleCookie(
+            get_cookie_header(Request(url), self._downloader.cookiejar))
 
     def _apply_first_set_cookie_header(self, url_handle, cookie):
         """
