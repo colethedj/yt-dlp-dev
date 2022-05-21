@@ -31,8 +31,10 @@ class TestNetworkingUtils(unittest.TestCase):
         # TODO
         headers = HTTPHeaderDict()
         headers.add_header('test', '1')
-        headers.add_header('test', '2')
-        self.assertEqual(list(headers.items()), [('test', '2')])
+        headers.add_header('Test', '2')
+        self.assertEqual(list(headers.items()), [('Test', '2')])
+        self.assertEqual(str(headers), str(dict(headers)))
+        self.assertEqual(repr(headers), str(dict(headers)))
 
 
 if __name__ == '__main__':

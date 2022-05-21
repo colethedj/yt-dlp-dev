@@ -248,6 +248,12 @@ class HTTPHeaderDict(MultiHTTPHeaderDict):
 
     _MESSAGE_CLS = _UniqueHeaderMessage
 
+    def __str__(self):
+        return str(dict(self))
+
+    def __repr__(self):
+        return str(self)
+
 
 def get_cookie_header(req: Request, cookiejar: CookieJar):
     cookie_req = urllib.request.Request(url=req.url)
