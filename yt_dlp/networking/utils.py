@@ -5,7 +5,8 @@ import random
 import ssl
 import sys
 import typing
-from collections.abc import ItemsView, KeysView, ValuesView, MutableMapping
+from collections import UserDict
+from collections.abc import MutableMapping
 from email.message import Message
 
 from ..compat import compat_urlparse, compat_urllib_parse_unquote_plus
@@ -253,6 +254,94 @@ class HTTPHeaderDict(MultiHTTPHeaderDict):
 
     def __repr__(self):
         return str(self)
+
+
+class NewHTTPHeaderDict(MutableMapping):
+    _MESSAGE_CLS = Message
+
+    def __init__(self, data=None, /, **kwargs):
+        self.data = self._MESSAGE_CLS(policy=email.policy.HTTP)
+        if data is not None:
+            self.update(data)
+        if kwargs:
+            self.update(kwargs)
+
+    def get(self, name, default=None):
+        return self.data.get(name, default)
+
+    def copy(self):
+        return self.__class__(self)
+
+    def items(self):
+        return self.data.items()
+
+    def keys(self):
+        return self.data.keys()
+
+    def values(self):
+        return self.data.values()
+
+    def clear(self):
+        return self.data._headers.clear()
+
+    def __contains__(self, name):
+        return name in self.data
+
+    def __delitem__(self, name):
+        del self.data[name]
+
+    def __getitem__(self, name):
+        return self.get(name)
+
+    def __len__(self) -> int:
+        return len(self.data)
+
+    def __iter__(self):
+        return iter(self.data)
+
+    def __setitem__(self, name, val):
+        try:
+            return self.data.replace_header(name.title(), str(val))
+        except KeyError:
+            return self.data.add_header(name.title(), str(val))
+
+    # TODO: serialization
+    def __str__(self):
+        return str(dict(self))
+
+    def __repr__(self):
+        return str(self)
+
+
+class AnotherHTTPHeaderDict(UserDict):
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key.title(), str(value))
+
+    def __getitem__(self, key):
+        return super().__getitem__(key.title())
+
+    def __delitem__(self, key):
+        super().__delitem__(key.title())
+
+    def __eq__(self, other):
+        return dict(self) == dict(self.__class__(other).data)
+
+    if sys.version_info > (3, 9):
+        def __or__(self, other):
+            return super().__or__(self.__class__(other).data)
+
+        def __ror__(self, other):
+            return super().__ror__(self.__class__(other).data)
+
+        def __ior__(self, other):
+            return super().__ior__(self.__class__(other).data)
+
+    def __contains__(self, key):
+        return super().__contains__(key.title() if isinstance(key, str) else key)
+
+    def copy(self):
+        return self.__class__(self)
 
 
 def get_cookie_header(req: Request, cookiejar: CookieJar):
