@@ -912,6 +912,8 @@ def _ssl_load_windows_store_certs(ssl_context, storename):
         with contextlib.suppress(ssl.SSLError):
             ssl_context.load_verify_locations(cadata=cert)
 
+import aia
+aiasession = aia.AIASession()
 
 def make_HTTPS_handler(params, **kwargs):
     opts_check_certificate = not params.get('nocheckcertificate')
@@ -945,6 +947,15 @@ def make_HTTPS_handler(params, **kwargs):
                 password=params.get('client_certificate_password'))
         except ssl.SSLError:
             raise YoutubeDLError('Unable to load client certificate')
+
+    old_wrap_socket = context.wrap_socket
+
+    def wrap_socket_patch(*args, **kwargs):
+        cadata = aiasession.cadata_from_host(kwargs.get('server_hostname'))
+        context.load_verify_locations(cadata=cadata)
+        return old_wrap_socket(*args, **kwargs)
+    context.wrap_socket = wrap_socket_patch
+
     return YoutubeDLHTTPSHandler(params, context=context, **kwargs)
 
 
