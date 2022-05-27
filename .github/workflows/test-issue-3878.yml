@@ -12,7 +12,5 @@ jobs:
     - uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install yt-dlp
-      run: pip install yt-dlp
     - name: Run tests
-      run: python ./yt_dlp/__main__.py "https://t.co/PPJ8b8Eub4" --list-formats
+      run: ./devscripts/test-issue3878.sh
