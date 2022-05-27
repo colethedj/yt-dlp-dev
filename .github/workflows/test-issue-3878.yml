@@ -15,4 +15,4 @@ jobs:
     - name: Install yt-dlp
       run: pip install yt-dlp
     - name: Run tests
-      run: python ./yt-dlp/__main__.py "https://t.co/PPJ8b8Eub4" --list-formats
+      run: python ./yt_dlp/__main__.py "https://t.co/PPJ8b8Eub4" --list-formats
