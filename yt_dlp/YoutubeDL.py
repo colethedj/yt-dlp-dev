@@ -51,7 +51,7 @@ from .networking.common import (
     HEADRequest
 )
 
-from .networking.utils import has_certifi, HTTPHeaderDict, get_cookie_header
+from .networking.utils import has_certifi, get_cookie_header
 
 from .networking import REQUEST_HANDLERS, UrllibRH
 
@@ -128,7 +128,7 @@ from .utils import (
     variadic,
     version_tuple,
     write_json_file,
-    write_string,
+    write_string, infojson_decoder_hook, CaseInsensitiveDict, CaseInsensitiveDict
 )
 
 from .cache import Cache
@@ -662,7 +662,7 @@ class YoutubeDL(object):
             else self.build_format_selector(self.params['format']))
 
         # Set http_headers defaults according to std_headers
-        self.params['http_headers'] = HTTPHeaderDict(
+        self.params['http_headers'] = CaseInsensitiveDict(
             make_std_headers(), self.params.get('http_headers', {}))
 
         self.default_session = self.make_RHManager(REQUEST_HANDLERS)
@@ -2267,7 +2267,7 @@ class YoutubeDL(object):
         return _build_selector_function(parsed_selector)
 
     def _calc_headers(self, info_dict):
-        res = HTTPHeaderDict(self.params['http_headers'], info_dict.get('http_headers'))
+        res = CaseInsensitiveDict(self.params['http_headers'], info_dict.get('http_headers'))
         cookies = self._calc_cookies(info_dict)
         if cookies:
             res['Cookie'] = cookies
@@ -3272,7 +3272,7 @@ class YoutubeDL(object):
                 [info_filename], mode='r',
                 openhook=fileinput.hook_encoded('utf-8'))) as f:
             # FileInput doesn't have a read method, we can't call json.load
-            info = self.sanitize_info(json.loads('\n'.join(f)), self.params.get('clean_infojson', True))
+            info = self.sanitize_info(json.loads('\n'.join(f), object_hook=infojson_decoder_hook), self.params.get('clean_infojson', True))
         try:
             self.__download_wrapper(self.process_ie_result)(info, download=True)
         except (DownloadError, EntryNotInPlaylist, ReExtractInfo) as e:
@@ -3303,7 +3303,7 @@ class YoutubeDL(object):
             reject = lambda k, v: False
 
         def filter_fn(obj):
-            if isinstance(obj, dict):
+            if isinstance(obj, (dict, CaseInsensitiveDict)):
                 return {k: filter_fn(v) for k, v in obj.items() if not reject(k, v)}
             elif isinstance(obj, (list, tuple, set, LazyList)):
                 return list(map(filter_fn, obj))

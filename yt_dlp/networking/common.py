@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 from __future__ import annotations
 
 import collections
+import email.policy
 import http.cookiejar
 import inspect
 import io
@@ -10,6 +11,7 @@ import sys
 import time
 import typing
 import urllib.parse
+from email.message import Message
 from http import HTTPStatus
 import urllib.request
 import urllib.response
@@ -24,10 +26,10 @@ from ..utils import (
     write_string,
     std_headers,
     update_url_query,
-    bug_reports_message, TransportError, YoutubeDLError, RequestError
+    bug_reports_message, TransportError, YoutubeDLError, RequestError, CaseInsensitiveDict
 )
 
-from .utils import random_user_agent, HTTPHeaderDict, MultiHTTPHeaderDict
+from .utils import random_user_agent
 
 if typing.TYPE_CHECKING:
     from ..YoutubeDL import YoutubeDL
@@ -47,7 +49,7 @@ class Request:
         """
         url, basic_auth_header = extract_basic_auth(escape_url(sanitize_url(url)))
         self.__request_store = urllib.request.Request(url, data=data, method=method)
-        self._headers: HTTPHeaderDict = HTTPHeaderDict(headers)
+        self._headers: CaseInsensitiveDict = CaseInsensitiveDict(headers)
         self.timeout = timeout
 
         # TODO: add support for passing different types of auth into a YDlRequest, and don't add the headers.
@@ -79,8 +81,8 @@ class Request:
 
     @headers.setter
     def headers(self, new_headers):
-        if not isinstance(new_headers, HTTPHeaderDict):
-            raise TypeError('headers must be HTTPHeaderDict')
+        if not isinstance(new_headers, CaseInsensitiveDict):
+            raise TypeError('headers must be CaseInsensitiveDict')
         self._headers = new_headers
 
     @property
@@ -156,7 +158,9 @@ class HTTPResponse(io.IOBase):
         @reason: HTTP status reason
         """
         self.raw = raw
-        self.headers = MultiHTTPHeaderDict(headers)
+        self.headers: Message = Message(policy=email.policy.HTTP)
+        for name, value in (headers or {}).items():
+            self.headers.add_header(name, value)
         self.code = self.status = status
         self.reason = reason
         self.url = url
@@ -325,7 +329,7 @@ class RHManager:
         assert isinstance(req, Request)
 
         req = req.copy()
-        req.headers = HTTPHeaderDict(self.ydl.params.get('http_headers', {}), req.headers)
+        req.headers = CaseInsensitiveDict(self.ydl.params.get('http_headers', {}), req.headers)
 
         if req.headers.get('Youtubedl-no-compression'):
             req.compression = False
@@ -479,7 +483,7 @@ class YoutubeDLCookieJar(compat_cookiejar.MozillaCookieJar):
 
 
 # Use make_std_headers() to get a copy of these
-_std_headers = HTTPHeaderDict({
+_std_headers = CaseInsensitiveDict({
     'User-Agent': random_user_agent(),
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
     'Accept-Language': 'en-us,en;q=0.5',
@@ -489,4 +493,4 @@ _std_headers = HTTPHeaderDict({
 
 # Get a copy of std headers, while also retaining backwards compat with utils.std_headers
 def make_std_headers():
-    return HTTPHeaderDict(_std_headers, std_headers)
+    return CaseInsensitiveDict(_std_headers, std_headers)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # coding: utf-8
 
-from __future__ import unicode_literals
+from __future__ import unicode_literals, annotations
 
 import asyncio
 import atexit
@@ -41,6 +41,7 @@ import urllib.error
 import xml.etree.ElementTree
 import zlib
 import mimetypes
+from collections import UserDict
 
 from .compat import (
     compat_HTMLParseError,
@@ -4903,3 +4904,59 @@ class classproperty:
 
     def __get__(self, _, cls):
         return self.f(cls)
+
+
+class CaseInsensitiveDict(UserDict):
+    """
+    Store and get items case-insensitively.
+    All keys are assumed to be a string, and are converted to title case.
+    Latter headers are prioritized in constructor
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+        for dct in args:
+            if dct is None:
+                continue
+            self.update(dct)
+        self.update(kwargs)
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key.title(), str(value))
+
+    def __getitem__(self, key):
+        return super().__getitem__(key.title())
+
+    def __delitem__(self, key):
+        super().__delitem__(key.title())
+
+    def __eq__(self, other):
+        return dict(self) == dict(self.__class__(other).data)
+
+    if sys.version_info > (3, 9):
+        def __or__(self, other):
+            return super().__or__(self.__class__(other).data)
+
+        def __ror__(self, other):
+            return super().__ror__(self.__class__(other).data)
+
+        def __ior__(self, other):
+            return super().__ior__(self.__class__(other).data)
+
+    def __contains__(self, key):
+        return super().__contains__(key.title() if isinstance(key, str) else key)
+
+    def copy(self):
+        return self.__class__(self)
+
+    def add(self, key, value):
+        if key in self:
+            self[key] = ', '.join((self[key], value))
+        else:
+            self[key] = value
+
+
+def infojson_decoder_hook(data):
+    # HTTP Headers. Assuming user-agent is in infojson headers.
+    if isinstance(data, dict) and 'user-agent' in [k.lower() for k in data.keys()]:
+        return CaseInsensitiveDict(data)
+    return data

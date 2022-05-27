@@ -117,7 +117,7 @@ from yt_dlp.utils import (
     cli_bool_option,
     parse_codecs,
     iri_to_uri,
-    LazyList,
+    LazyList, CaseInsensitiveDict,
 )
 from yt_dlp.networking.common import Request
 from yt_dlp.compat import (
@@ -1791,6 +1791,37 @@ Line 1
                          ['-u', 'PRIVATE', '-u', 'PRIVATE'])
         self.assertEqual(Config.hide_login_info(['--username=foo']),
                          ['--username=PRIVATE'])
+
+    def test_case_insensitive_dict(self):
+        headers = CaseInsensitiveDict()
+        headers['ytdl-test'] = 1
+        self.assertEqual(list(headers.items()), [('Ytdl-Test', '1')])
+        headers['Ytdl-test'] = '2'
+        self.assertEqual(list(headers.items()), [('Ytdl-Test', '2')])
+        self.assertTrue('ytDl-Test' in headers)
+        self.assertEqual(str(headers), str(dict(headers)))
+        self.assertEqual(repr(headers), str(dict(headers)))
+
+        headers.update({'X-dlp': 'data'})
+        self.assertEqual(set(headers.items()), {('Ytdl-Test', '2'), ('X-Dlp', 'data')})
+        self.assertEqual(dict(headers), {'Ytdl-Test': '2', 'X-Dlp': 'data'})
+        self.assertEqual(len(headers), 2)
+        self.assertEqual(headers.copy(), headers)
+        headers2 = CaseInsensitiveDict({'X-dlp': 'data3'}, **headers, **{'X-dlp': 'data2'})
+        self.assertEqual(set(headers2.items()), {('Ytdl-Test', '2'), ('X-Dlp', 'data2')})
+        self.assertEqual(len(headers2), 2)
+        headers2.clear()
+        self.assertEqual(len(headers2), 0)
+        headers.add('Ytdl-TeSt', 'test1')
+        headers.add('Ytdl-test2', 'test2')
+        self.assertEqual(set(headers.items()), {('Ytdl-Test', '2, test1'), ('X-Dlp', 'data'), ('Ytdl-Test2', 'test2')})
+
+        # ensure we prefer latter headers
+        headers3 = CaseInsensitiveDict({'Ytdl-TeSt': 1}, {'Ytdl-test': 2})
+        self.assertEqual(set(headers3.items()), {('Ytdl-Test', '2')})
+
+        headers4 = CaseInsensitiveDict({'ytdl-test': 'data;'})
+        self.assertEqual(set(headers4.items()), {('Ytdl-Test', 'data;')})
 
 
 if __name__ == '__main__':

@@ -2,7 +2,7 @@
 import os
 import sys
 import unittest
-from yt_dlp.networking.utils import select_proxy, MultiHTTPHeaderDict, HTTPHeaderDict
+from yt_dlp.networking.utils import select_proxy
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -26,13 +26,6 @@ class TestNetworkingUtils(unittest.TestCase):
         headers.add_header('test', '1')
         headers.add_header('test', '2')
         self.assertEqual(list(headers.items()), [('test', '1'), ('test', '2')])
-
-    def test_unique_header_dict(self):
-        # TODO
-        headers = HTTPHeaderDict()
-        headers.add_header('test', '1')
-        headers.add_header('test', '2')
-        self.assertEqual(list(headers.items()), [('test', '2')])
 
 
 if __name__ == '__main__':

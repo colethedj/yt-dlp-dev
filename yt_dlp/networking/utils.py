@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-import email.policy
 import random
 import ssl
 import sys
 import typing
-from collections.abc import ItemsView, KeysView, ValuesView, MutableMapping
-from email.message import Message
 
 from ..compat import compat_urlparse, compat_urllib_parse_unquote_plus
 from .socksproxy import ProxyType
@@ -152,101 +149,6 @@ def select_proxy(url, proxies):
         'all'
     ]
     return next((proxies[key] for key in priority if key in proxies), None)
-
-
-class MultiHTTPHeaderDict(MutableMapping):
-    """
-    Wrapper for email.message.Message for only storing HTTP headers
-    Allows storing multiple headers of the same name
-    """
-    _MESSAGE_CLS = Message
-
-    def __init__(self, *data):
-        self._data = self._MESSAGE_CLS(policy=email.policy.HTTP)
-        for store in data:
-            if hasattr(store, 'items'):
-                self.add_headers(store)
-
-    def add_headers(self, data):
-        for k, v in data.items():
-            self.add_header(k, v)
-
-    def replace_headers(self, data):
-        for k, v in data.items():
-            self.replace_header(k, v)
-
-    def add_header(self, _name: str, _value: str, **kwargs):
-        return self._data.add_header(_name, _value, **kwargs)
-
-    def replace_header(self, _name: str, _value: str):
-        """
-        Similar to add_header, but will replace all existing headers of such name if exists.
-        Unlike email.Message, will add the header if it does not already exist.
-        """
-        try:
-            return self._data.replace_header(_name, str(_value))
-        except KeyError:
-            return self._data.add_header(_name, _value)
-
-    def get(self, name, default=None):
-        return self._data.get(name, default)
-
-    def copy(self):
-        return self.__class__(self)
-
-    def items(self):
-        return self._data.items()
-
-    def keys(self):
-        return self._data.keys()
-
-    def values(self):
-        return self._data.values()
-
-    def clear(self):
-        return self._data._headers.clear()
-
-    def __contains__(self, name):
-        return name in self._data
-
-    def __delitem__(self, name):
-        del self._data[name]
-
-    def __getitem__(self, name):
-        return self.get(name)
-
-    def __len__(self) -> int:
-        return len(self._data)
-
-    def __iter__(self):
-        return iter(self._data)
-
-    def __setitem__(self, name, val):
-        self._data[name] = val
-
-    def get_all(self, name, default=None):
-        return self._data.get_all(name, default)
-
-    def __str__(self):
-        return str(self._data)
-
-
-class HTTPHeaderDict(MultiHTTPHeaderDict):
-    """
-    Store and access headers case-insensitively.
-    Accepts multiple dict-like instances in constructor, for easy merging
-
-    Note: add_header and replace_header do the same thing
-    """
-    class _UniqueHeaderMessage(Message):
-        def __setitem__(self, name, val):
-            # __setitem__ in Message appends to the list of headers,
-            # so we need to clear any existing headers of this key
-            if name in self:
-                del self[name]
-            super().__setitem__(name, val)
-
-    _MESSAGE_CLS = _UniqueHeaderMessage
 
 
 def get_cookie_header(req: Request, cookiejar: CookieJar):
