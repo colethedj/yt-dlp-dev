@@ -11,8 +11,7 @@ from ..compat import (
 from .common import (
     HTTPResponse,
     BackendRH,
-    Request,
-    HTTPHeaderDict
+    Request
 )
 from .socksproxy import (
     sockssocket,
