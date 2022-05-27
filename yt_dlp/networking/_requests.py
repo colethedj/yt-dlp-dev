@@ -131,7 +131,7 @@ class RequestsRH(BackendRH):
         self.session = self._create_session()
         # TODO: could use requests hooks for additional logging
         if not self._is_force_disabled:
-            if self.params.get('debug_printtraffic'):
+            if self.ydl.params.get('debug_printtraffic'):
                 # Setting this globally is not ideal, but is easier than hacking with urllib3.
                 # It could technically be problematic for scripts embedding yt-dlp.
                 # However, it is unlikely debug traffic is used in that context in a way this will cause problems.
