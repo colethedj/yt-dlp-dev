@@ -36,6 +36,7 @@ import requests
 from urllib3.util.url import parse_url
 from urllib3.util.ssl_ import create_urllib3_context
 import urllib3.connection
+from http.client import HTTPConnection
 
 SUPPORTED_ENCODINGS = [
     'gzip', 'deflate'
@@ -130,8 +131,11 @@ class RequestsRH(BackendRH):
         self.session = self._create_session()
         # TODO: could use requests hooks for additional logging
         if not self._is_force_disabled:
-            if self.print_traffic:
-                urllib3.add_stderr_logger()
+            if self.params.get('debug_printtraffic'):
+                # While setting this globally might not be the best, especially for
+                # scripts embedding yt-dlp. But it is unlikely debug traffic is used in
+                # that case, and setting this is easier than hacking with urllib3.
+                HTTPConnection.debuglevel = 1
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     def _create_session(self):
