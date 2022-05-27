@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 import unittest
+from http.cookiejar import Cookie
 from random import random
 
 from yt_dlp.networking import UrllibRH, REQUEST_HANDLERS, UnsupportedRH
@@ -96,6 +97,13 @@ class HTTPTestRequestHandler(compat_http_server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(payload)
             self.finish()
+        elif self.path.startswith('/headers'):
+            payload = str(self.headers).encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
         else:
             assert False
 
@@ -235,6 +243,15 @@ class RequestHandlerCommonTestsBase(RequestHandlerTestBase):
         ydl = self.make_ydl({'socket_timeout': 2})
         with self.assertRaises(IncompleteRead):
             ydl.urlopen('http://127.0.0.1:%d/incompleteread' % self.http_port).read()
+
+    def test_cookiejar(self):
+        ydl = self.make_ydl()
+        ydl.cookiejar.set_cookie(
+            Cookie(
+                0, 'test', 'ytdlp', None, False, '127.0.0.1', True,
+                False, '/headers', True, False, None, False, None, None, {}))
+        data = ydl.urlopen('http://127.0.0.1:%d/headers' % self.http_port).read()
+        self.assertIn(b'Cookie: test=ytdlp', data)
 
 
 def with_request_handlers(handlers=TEST_BACKEND_HANDLERS):
