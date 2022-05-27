@@ -12,5 +12,8 @@ jobs:
     - uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
+    - uses: actions/checkout@v2
     - name: Install yt-dlp
       run: pip install .
+    - name: Run tests
+      run: yt-dlp -v "https://t.co/PPJ8b8Eub4" --list-formats
