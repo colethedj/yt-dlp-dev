@@ -132,9 +132,9 @@ class RequestsRH(BackendRH):
         # TODO: could use requests hooks for additional logging
         if not self._is_force_disabled:
             if self.params.get('debug_printtraffic'):
-                # While setting this globally might not be the best, especially for
-                # scripts embedding yt-dlp. But it is unlikely debug traffic is used in
-                # that case, and setting this is easier than hacking with urllib3.
+                # Setting this globally is not ideal, but is easier than hacking with urllib3.
+                # It could technically be problematic for scripts embedding yt-dlp.
+                # However, it is unlikely debug traffic is used in that context in a way this will cause problems.
                 HTTPConnection.debuglevel = 1
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
