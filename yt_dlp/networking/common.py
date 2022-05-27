@@ -94,7 +94,7 @@ class Request:
             self.url, self.data, self.headers.copy(), self.proxies.copy(), self.compression, self.method)
 
     def add_header(self, key, value):
-        self._headers.replace_header(key, value)
+        self._headers[key] = value
 
     def get_header(self, key, default=None):
         return self._headers.get(key, default)
@@ -134,7 +134,7 @@ def update_YDLRequest(req: Request, url=None, data=None, headers=None, query=Non
     """
     req = req.copy()
     req.data = data or req.data
-    req.headers.replace_headers(headers or {})
+    req.headers.update(headers or {})
     req.url = update_url_query(url or req.url, query or {})
     return req
 
