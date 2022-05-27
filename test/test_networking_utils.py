@@ -2,8 +2,7 @@
 import os
 import sys
 import unittest
-from yt_dlp.networking.utils import select_proxy, MultiHTTPHeaderDict, HTTPHeaderDict, NewHTTPHeaderDict, \
-    AnotherHTTPHeaderDict
+from yt_dlp.networking.utils import select_proxy
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -27,27 +26,6 @@ class TestNetworkingUtils(unittest.TestCase):
         headers.add_header('test', '1')
         headers.add_header('test', '2')
         self.assertEqual(list(headers.items()), [('test', '1'), ('test', '2')])
-
-    def test_unique_header_dict(self):
-        # TODO
-        headers = AnotherHTTPHeaderDict()
-        headers['test-again'] = 1
-        self.assertEqual(list(headers.items()), [('Test-Again', '1')])
-        headers['Test-again'] = '2'
-        self.assertEqual(list(headers.items()), [('Test-Again', '2')])
-        self.assertTrue('test-aGain' in headers)
-        self.assertEqual(str(headers), str(dict(headers)))
-        self.assertEqual(repr(headers), str(dict(headers)))
-        headers.update({'X-bob': 'again'})
-        self.assertEqual(list(headers.items()), [('Test-Again', '2'), ('X-Bob', 'again')])
-        self.assertEqual(dict(headers), {'Test-Again': '2', 'X-Bob': 'again'})
-        self.assertEqual(len(headers), 2)
-        self.assertEqual(headers.copy(), headers)
-        headers2 = AnotherHTTPHeaderDict(**headers, **{'X-bob': 'yes'})
-        self.assertEqual(list(headers2.items()), [('Test-Again', '2'), ('X-Bob', 'yes')])
-        self.assertEqual(len(headers2), 2)
-        headers2.clear()
-        self.assertEqual(len(headers2), 0)
 
 
 if __name__ == '__main__':
