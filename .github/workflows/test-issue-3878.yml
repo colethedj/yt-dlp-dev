@@ -16,4 +16,4 @@ jobs:
     - name: Install yt-dlp
       run: pip install .
     - name: Run tests
-      run: yt-dlp -v "https://zen.yandex.ru/video/watch/61afc4e1781cc81fb6c6321f" --list-formats
+      run: yt-dlp -v "https://www.youporn.com/watch/16516654/sego-lamico-di-mio-marito-al-ristorante-e-non-si-accorge-di-niente/" --list-formats
