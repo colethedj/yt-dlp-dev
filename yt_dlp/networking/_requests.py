@@ -1,6 +1,8 @@
 import http.client
+import logging
 import socket
 import ssl
+import sys
 
 import urllib3
 
@@ -131,6 +133,15 @@ class YDLRequestsSession(requests.sessions.Session):
         prepared_request.method = m
 
 
+class YDLUrllib3LoggingFilter(logging.Filter):
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        # Ignore HTTP request messages since http lib prints those
+        if record.msg == '%s://%s:%s "%s %s %s" %s %s':
+            return False
+        return True
+
+
 class RequestsRH(BackendRH):
     SUPPORTED_SCHEMES = ['http', 'https']
 
@@ -144,6 +155,15 @@ class RequestsRH(BackendRH):
                 # It could technically be problematic for scripts embedding yt-dlp.
                 # However, it is unlikely debug traffic is used in that context in a way this will cause problems.
                 HTTPConnection.debuglevel = 1
+
+                # Print urllib3 debug messages
+                logger = logging.getLogger('urllib3')
+                handler = logging.StreamHandler(stream=sys.stdout)
+                handler.setFormatter(logging.Formatter("%(message)s"))
+                handler.addFilter(YDLUrllib3LoggingFilter())
+                logger.addHandler(handler)
+                logger.setLevel(logging.DEBUG)
+
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     def _create_session(self):
