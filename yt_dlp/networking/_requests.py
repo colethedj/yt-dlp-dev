@@ -1,5 +1,5 @@
 import http.client
-import re
+import socket
 import ssl
 
 import urllib3
@@ -33,9 +33,9 @@ from ..utils import (
 
 import requests.adapters
 import requests
-from urllib3.util.url import parse_url
 from urllib3.util.ssl_ import create_urllib3_context
 import urllib3.connection
+import urllib3.exceptions
 from http.client import HTTPConnection
 
 SUPPORTED_ENCODINGS = [
@@ -65,10 +65,17 @@ class RequestsHTTPResponseAdapter(HTTPResponse):
             raise TransportError(cause=e) from e
 
 
+def find_original_error(e, err_types):
+    if not isinstance(e, Exception):
+        return
+    return next(
+        (err for err in (e, e.__cause__, *(e.args or [])) if
+         isinstance(err, err_types)), None)
+
+
 def handle_urllib3_read_exceptions(e):
     # Sometimes IncompleteRead is wrapped by urllib.exceptions.ProtocolError, so we have to check the args
-    ic_read_err = next(
-        (err for err in (e, e.__cause__, *(e.args or [])) if isinstance(err, (http.client.IncompleteRead, urllib3.exceptions.IncompleteRead))), None)
+    ic_read_err = find_original_error(e, (http.client.IncompleteRead, urllib3.exceptions.IncompleteRead))
     if ic_read_err is not None:
         raise IncompleteRead(partial=ic_read_err.partial, expected=ic_read_err.expected)
     if isinstance(e, urllib3.exceptions.SSLError):
@@ -77,8 +84,8 @@ def handle_urllib3_read_exceptions(e):
 
 class YDLRequestsHTTPAdapter(requests.adapters.HTTPAdapter):
     """
-    Need to pass our SSLContext and source address to the underlying
-    urllib3 PoolManager
+    Custom HTTP adapter to support passing SSLContext and other arguments to
+    the underlying urllib3 PoolManager.
     """
     def __init__(self, ydl, ssl_context):
         self.ydl = ydl
@@ -97,6 +104,7 @@ class YDLRequestsHTTPAdapter(requests.adapters.HTTPAdapter):
         return super().proxy_manager_for(*args, **kwargs, **self._pm_args)
 
     def cert_verify(*args, **kwargs):
+        # skip as using our SSLContext
         pass
 
 
@@ -195,6 +203,7 @@ class RequestsRH(BackendRH):
                 headers=headers,
                 timeout=request.timeout,
                 proxies=request.proxies,
+                allow_redirects=True,
                 stream=True
             )
 
@@ -206,8 +215,8 @@ class RequestsRH(BackendRH):
         except requests.exceptions.ProxyError as e:
             raise ProxyError(cause=e) from e
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
-            # TODO: can we process any urllib3 exceptions that may occur here?
-            # We could check the args for any relevant errors
+            # Some urllib3 exceptions such as IncompleteRead are wrapped by ConnectionError on request
+            handle_urllib3_read_exceptions(find_original_error(e, (urllib3.exceptions.HTTPError,)))
             raise TransportError(cause=e) from e
         except urllib3.exceptions.HTTPError as e:
             # Catch any urllib3 exceptions that may leak through
@@ -227,7 +236,7 @@ class RequestsRH(BackendRH):
                     res.raw._connection.close()
                     res.raw._connection = None
             res.raw.release_conn = release_conn_override
-            raise HTTPError(requests_res, redirect_loop=max_redirects_exceeded)  # TODO: redirect loop
+            raise HTTPError(requests_res, redirect_loop=max_redirects_exceeded)
         return requests_res
 
 
@@ -241,18 +250,16 @@ class SocksHTTPConnection(urllib3.connection.HTTPConnection):
     def _new_conn(self):
         sock = sockssocket()
         sock.setproxy(**self._proxy_args)
-        if type(self.timeout) in (int, float):
+        if isinstance(self.timeout, (int, float)):
             sock.settimeout(self.timeout)
         try:
             sock.connect((self.host, self.port))
-
-        # TODO
-        except TimeoutError as e:
-            raise urllib3.exceptions.ConnectTimeoutError(self, None) from e
+        except (socket.timeout, TimeoutError) as e:
+            raise urllib3.exceptions.ConnectTimeoutError(self, f'Connection to {self.host} timed out. (connect timeout={self.timeout})') from e
         except SocksProxyError as e:
-            raise urllib3.exceptions.ProxyError(self, None) from e
-        except OSError as e:
-            raise urllib3.exceptions.NewConnectionError(self, None) from e
+            raise urllib3.exceptions.ProxyError(str(e), e) from e
+        except (OSError, socket.error) as e:
+            raise urllib3.exceptions.NewConnectionError(self, f'Failed to establish a new connection: {e}') from e
 
         return sock
 
@@ -273,7 +280,7 @@ class SocksProxyManager(urllib3.PoolManager):
 
     def __init__(self, socks_proxy, username=None, password=None, num_pools=10, headers=None, **connection_pool_kw):
         connection_pool_kw['_socks_options'] = socks_create_proxy_args(socks_proxy)
-        super().__init__(**connection_pool_kw)
+        super().__init__(num_pools, headers, **connection_pool_kw)
         self.pool_classes_by_scheme = {
             'http': SocksHTTPConnectionPool,
             'https': SocksHTTPSConnectionPool
