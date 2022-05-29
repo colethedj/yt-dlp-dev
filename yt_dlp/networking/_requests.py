@@ -148,7 +148,6 @@ class RequestsRH(BackendRH):
     def __init__(self, ydl, params):
         super().__init__(ydl, params)
         self.session = self._create_session()
-        # TODO: could use requests hooks for additional logging
         if not self._is_force_disabled:
             if self.ydl.params.get('debug_printtraffic'):
                 # Setting this globally is not ideal, but is easier than hacking with urllib3.
@@ -163,7 +162,7 @@ class RequestsRH(BackendRH):
                 handler.addFilter(YDLUrllib3LoggingFilter())
                 logger.addHandler(handler)
                 logger.setLevel(logging.DEBUG)
-
+        # this is expected if we are using --no-check-certificate
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     def _create_session(self):
