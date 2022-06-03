@@ -229,21 +229,11 @@ class RequestHandler:
 class BackendRH(RequestHandler):
     """Network Backend adapter class
     Responsible for handling requests.
-
-    It receives a dictionary of options.
-
-    # TODO
-    Available options:
-    cookiejar:          A YoutubeDLCookieJar to store cookies in
-    verbose:            Print traffic for debugging to stdout
     """
-    params = None
 
-    def __init__(self, ydl: YoutubeDL, params):
+    def __init__(self, ydl: YoutubeDL):
         self.ydl = ydl
-        self.params = params or self.params or {}
-        self.cookiejar = params.get('cookiejar', http.cookiejar.CookieJar())
-        self.print_traffic = bool(self.params.get('verbose'))
+        self.cookiejar = self.ydl.cookiejar
 
     # TODO: rework
     def to_screen(self, *args, **kwargs):
@@ -322,9 +312,8 @@ class RHManager:
         elif isinstance(req, urllib.request.Request):
             # compat
             req = Request(
-                req.get_full_url(), data=req.data, headers=req.headers.copy(), method=req.get_method(),
-                unverifiable=req.unverifiable, unredirected_headers=req.unredirected_hdrs.copy(),
-                origin_req_host=req.origin_req_host)
+                req.get_full_url(), data=req.data, method=req.get_method(),
+                headers=CaseInsensitiveDict(req.headers, req.unredirected_hdrs))
 
         assert isinstance(req, Request)
 
@@ -350,17 +339,19 @@ class RHManager:
             if not handler.can_handle(req):
                 continue
             try:
+                if self.ydl.params.get('debug_printtraffic'):
+                    self.ydl.to_stdout(f'Forwarding request to {type(handler).__name__} request handler')
                 res = handler.handle(req)
             except Exception as e:
                 if not isinstance(e, YoutubeDLError):
-                    self.ydl.report_warning(f'Unexpected error from request handler: {e.__class__.__name__}: {e}' + bug_reports_message())
+                    self.ydl.report_warning(f'Unexpected error from request handler: {type(e).__name__}: {e}' + bug_reports_message())
 
                 if isinstance(e, RequestError):
                     e.handler = handler
                 raise
 
             if not res:
-                self.ydl.report_warning(f'{handler.__name__} request handler returned nothing for response' + bug_reports_message())
+                self.ydl.report_warning(f'{type(handler).__name__} request handler returned nothing for response' + bug_reports_message())
                 continue
             assert isinstance(res, HTTPResponse)
             return res

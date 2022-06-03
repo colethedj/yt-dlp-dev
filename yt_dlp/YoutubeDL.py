@@ -3723,15 +3723,11 @@ class YoutubeDL(object):
                 return handler.get_opener(self.default_session.get_default_proxy())
 
     def make_RHManager(self, handlers):
-        params = {
-            'cookiejar': self.cookiejar,
-            'verbose': self.params.get('debug_printtraffic'),
-        }
         manager = RHManager(self)
         for handler_class in handlers:
             if not handler_class:
                 continue
-            handler = handler_class(self, params)
+            handler = handler_class(self)
             manager.add_handler(handler)
         return manager
 

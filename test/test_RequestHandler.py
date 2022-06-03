@@ -1,10 +1,13 @@
 # Allow direct execution
 import functools
 import http.server
+import gzip
+import io
 import os
 import subprocess
 import sys
 import unittest
+import urllib.request
 from http.cookiejar import Cookie
 from random import random
 
@@ -105,6 +108,16 @@ class HTTPTestRequestHandler(compat_http_server.BaseHTTPRequestHandler):
             self.send_header('Content-Length', str(len(payload)))
             self.end_headers()
             self.wfile.write(payload)
+        elif self.path == '/trailing_garbage':
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.send_header('Content-Encoding', 'gzip')
+            self.end_headers()
+            buf = io.BytesIO()
+            with gzip.GzipFile(fileobj=buf, mode='wb') as f:
+                f.write(b'<html><video src="/vid.mp4" /></html>')
+            compressed = buf.getvalue()
+            self.wfile.write(compressed + b'trailing garbage')
         else:
             assert False
 
@@ -253,6 +266,36 @@ class RequestHandlerCommonTestsBase(RequestHandlerTestBase):
                 False, '/headers', True, False, None, False, None, None, {}))
         data = ydl.urlopen('http://127.0.0.1:%d/headers' % self.http_port).read()
         self.assertIn(b'Cookie: test=ytdlp', data)
+
+    def test_request_types(self):
+        ydl = self.make_ydl()
+        url = 'http://127.0.0.1:%d/headers' % self.http_port
+        test_header = {'X-ydl-test': '1'}
+        # by url
+        self.assertTrue(ydl.urlopen(url).read())
+
+        # urllib Request compat and ydl Request
+        for request in (urllib.request.Request(url, headers=test_header), Request(url, headers=test_header)):
+            data = ydl.urlopen(request).read()
+            self.assertIn(b'X-Ydl-Test: 1', data)
+
+        with self.assertRaises(AssertionError):
+            ydl.urlopen(None)
+
+    def test_no_compression(self):
+        ydl = self.make_ydl()
+        url = 'http://127.0.0.1:%d/headers' % self.http_port
+        for request in (Request(url, compression=False), Request(url, headers={'Youtubedl-no-compression': '1'})):
+            data = ydl.urlopen(request).read()
+            if b'Accept-Encoding' in data:
+                self.assertIn(b'Accept-Encoding: identity', data)
+
+    def test_gzip_trailing_garbage(self):
+        # https://github.com/ytdl-org/youtube-dl/commit/aa3e950764337ef9800c936f4de89b31c00dfcf5
+        # https://github.com/ytdl-org/youtube-dl/commit/6f2ec15cee79d35dba065677cad9da7491ec6e6f
+        ydl = self.make_ydl()
+        data = ydl.urlopen('http://localhost:%d/trailing_garbage' % self.http_port).read().decode('utf-8')
+        self.assertEqual(data, '<html><video src="/vid.mp4" /></html>')
 
 
 def with_request_handlers(handlers=TEST_BACKEND_HANDLERS):
