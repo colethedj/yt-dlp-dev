@@ -322,9 +322,8 @@ class RHManager:
         elif isinstance(req, urllib.request.Request):
             # compat
             req = Request(
-                req.get_full_url(), data=req.data, headers=req.headers.copy(), method=req.get_method(),
-                unverifiable=req.unverifiable, unredirected_headers=req.unredirected_hdrs.copy(),
-                origin_req_host=req.origin_req_host)
+                req.get_full_url(), data=req.data, method=req.get_method(),
+                headers=CaseInsensitiveDict(req.headers, req.unredirected_hdrs))
 
         assert isinstance(req, Request)
 
