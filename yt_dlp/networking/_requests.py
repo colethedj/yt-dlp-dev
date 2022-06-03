@@ -145,8 +145,8 @@ class YDLUrllib3LoggingFilter(logging.Filter):
 class RequestsRH(BackendRH):
     SUPPORTED_SCHEMES = ['http', 'https']
 
-    def __init__(self, ydl, params):
-        super().__init__(ydl, params)
+    def __init__(self, ydl):
+        super().__init__(ydl)
         self.session = self._create_session()
         if not self._is_force_disabled:
             if self.ydl.params.get('debug_printtraffic'):
