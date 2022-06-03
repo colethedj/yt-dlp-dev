@@ -109,14 +109,16 @@ class HTTPTestRequestHandler(compat_http_server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(payload)
         elif self.path == '/trailing_garbage':
+            payload = b'<html><video src="/vid.mp4" /></html>'
             self.send_response(200)
             self.send_header('Content-Type', 'text/html; charset=utf-8')
             self.send_header('Content-Encoding', 'gzip')
-            self.end_headers()
             buf = io.BytesIO()
             with gzip.GzipFile(fileobj=buf, mode='wb') as f:
-                f.write(b'<html><video src="/vid.mp4" /></html>')
+                f.write(payload)
             compressed = buf.getvalue()
+            self.send_header('Content-Length', str(len(compressed)+len(b'trailing garbage')))
+            self.end_headers()
             self.wfile.write(compressed + b'trailing garbage')
         else:
             assert False
