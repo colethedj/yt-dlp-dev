@@ -350,17 +350,19 @@ class RHManager:
             if not handler.can_handle(req):
                 continue
             try:
+                if self.ydl.params.get('debug_printtraffic'):
+                    self.ydl.to_stdout(f'Forwarding request to {type(handler).__name__} request handler')
                 res = handler.handle(req)
             except Exception as e:
                 if not isinstance(e, YoutubeDLError):
-                    self.ydl.report_warning(f'Unexpected error from request handler: {e.__class__.__name__}: {e}' + bug_reports_message())
+                    self.ydl.report_warning(f'Unexpected error from request handler: {type(e).__name__}: {e}' + bug_reports_message())
 
                 if isinstance(e, RequestError):
                     e.handler = handler
                 raise
 
             if not res:
-                self.ydl.report_warning(f'{handler.__name__} request handler returned nothing for response' + bug_reports_message())
+                self.ydl.report_warning(f'{type(handler).__name__} request handler returned nothing for response' + bug_reports_message())
                 continue
             assert isinstance(res, HTTPResponse)
             return res
