@@ -229,21 +229,11 @@ class RequestHandler:
 class BackendRH(RequestHandler):
     """Network Backend adapter class
     Responsible for handling requests.
-
-    It receives a dictionary of options.
-
-    # TODO
-    Available options:
-    cookiejar:          A YoutubeDLCookieJar to store cookies in
-    verbose:            Print traffic for debugging to stdout
     """
-    params = None
 
-    def __init__(self, ydl: YoutubeDL, params):
+    def __init__(self, ydl: YoutubeDL):
         self.ydl = ydl
-        self.params = params or self.params or {}
-        self.cookiejar = params.get('cookiejar', http.cookiejar.CookieJar())
-        self.print_traffic = bool(self.params.get('verbose'))
+        self.cookiejar = self.ydl.cookiejar
 
     # TODO: rework
     def to_screen(self, *args, **kwargs):

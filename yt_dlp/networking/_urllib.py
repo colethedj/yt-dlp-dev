@@ -444,16 +444,16 @@ def handle_response_read_exceptions(e):
 class UrllibRH(BackendRH):
     SUPPORTED_SCHEMES = ['http', 'https', 'data', 'ftp']
 
-    def __init__(self, ydl, params):
-        super().__init__(ydl, params)
+    def __init__(self, ydl):
+        super().__init__(ydl)
         self._openers = {}
 
     def _create_opener(self, proxies=None):
         cookie_processor = YoutubeDLCookieProcessor(self.cookiejar)
         proxy_handler = YDLProxyHandler(proxies)
-        debuglevel = int(self.print_traffic)
+        debuglevel = int(bool(self.ydl.params.get('debug_printtraffic')))
         https_handler = YoutubeDLHTTPSHandler(
-            self.params, context=self.make_sslcontext(), debuglevel=debuglevel)
+            self.ydl.params, context=self.make_sslcontext(), debuglevel=debuglevel)
 
         ydlh = YoutubeDLHandler(self.ydl.params, debuglevel=debuglevel)
         redirect_handler = YoutubeDLRedirectHandler()
