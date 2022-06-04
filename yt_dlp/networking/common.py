@@ -37,22 +37,41 @@ if typing.TYPE_CHECKING:
 
 class Request:
     """
-    Request class to define a request to be made.
-    A wrapper for urllib.request.Request with improvements for yt-dlp,
-    while retaining required backwards-compat functions used in yt-dlp.
+    Represents a request to be made.
+    Partially backwards-compatible with urllib.request.Request.
+
+    @param url: url to send. Will be sanitized and auth will be extracted as basic auth if present.
+    @param data: payload data to send.
+    @param headers: headers to send.
+    @param proxies: proxy dict mapping of proto:proxy to use for the request and any redirects.
+    @param query: URL query parameters to update the url with.
+    @param method: HTTP method to use. If no method specified, will use POST if payload data is present else GETl
+    @param compression: whether to include content-encoding header on request.
+    @param timeout: socket timeout value for this request.
     """
     def __init__(
-            self, url, data=None, headers=None, proxies=None, compression=True, method=None, timeout=None):
-        """
-        @param proxies: proxy dict mapping to use for the request and any redirects
-        @param compression: whether to include content-encoding header on request (i.e. disable/enable compression).
-        """
+            self,
+            url: str,
+            data=None,
+            headers: typing.Mapping = None,
+            proxies: dict = None,
+            query: dict = None,
+            method: str = None,
+            compression: bool = True,
+            timeout: Union[float, int] = None):
+
         url, basic_auth_header = extract_basic_auth(escape_url(sanitize_url(url)))
-        self.__request_store = urllib.request.Request(url, data=data, method=method)
-        self._headers: CaseInsensitiveDict = CaseInsensitiveDict(headers)
+
+        if query:
+            url = update_url_query(url, query)
+        # rely on urllib Request's url parsing
+        self.__request_store = urllib.request.Request(url)
+        self.__method = method
+        self._headers = CaseInsensitiveDict(headers)
+        self._data = None
+        self.data = data
         self.timeout = timeout
 
-        # TODO: add support for passing different types of auth into a YDlRequest, and don't add the headers.
         if basic_auth_header:
             self.headers['Authorization'] = basic_auth_header
 
@@ -69,29 +88,34 @@ class Request:
 
     @property
     def data(self):
-        return self.__request_store.data
+        return self._data
 
     @data.setter
     def data(self, data):
-        self.__request_store.data = data
+        # https://docs.python.org/3/library/urllib.request.html#urllib.request.Request.data
+        if data != self._data:
+            self._data = data
+            if 'content-length' in self.headers:
+                del self.headers['content-length']
 
     @property
-    def headers(self):
+    def headers(self) -> CaseInsensitiveDict:
         return self._headers
 
     @headers.setter
-    def headers(self, new_headers):
+    def headers(self, new_headers: CaseInsensitiveDict):
         if not isinstance(new_headers, CaseInsensitiveDict):
-            raise TypeError('headers must be CaseInsensitiveDict')
+            raise TypeError('headers must be a CaseInsensitiveDict')
         self._headers = new_headers
 
     @property
     def method(self):
-        return self.__request_store.get_method()
+        return self.__method or 'POST' if self.data is not None else 'GET'
 
     def copy(self):
-        return self.__class__(
-            self.url, self.data, self.headers.copy(), self.proxies.copy(), self.compression, self.method)
+        return type(self)(
+            url=self.url, data=self.data, headers=self.headers.copy(), timeout=self.timeout,
+            proxies=self.proxies.copy(), compression=self.compression, method=self.method)
 
     def add_header(self, key, value):
         self._headers[key] = value
@@ -99,11 +123,8 @@ class Request:
     def get_header(self, key, default=None):
         return self._headers.get(key, default)
 
-    def get_full_url(self):
-        return self.url
-
-    def get_method(self):
-        return self.method
+    def has_header(self, name):
+        return name in self.headers
 
     @property
     def type(self):
@@ -113,6 +134,25 @@ class Request:
     @property
     def host(self):
         return self.__request_store.host
+
+    # The following methods are for compatability reasons and are deprecated
+    @property
+    def fullurl(self):
+        """Deprecated, use Request.url"""
+        return self.url
+
+    @fullurl.setter
+    def fullurl(self, url):
+        """Deprecated, use Request.url"""
+        self.url = url
+
+    def get_full_url(self):
+        """Deprecated, use Request.url"""
+        return self.url
+
+    def get_method(self):
+        """Deprecated, use Request.method"""
+        return self.method
 
 
 class HEADRequest(Request):
@@ -127,10 +167,10 @@ class PUTRequest(Request):
         return 'PUT'
 
 
-def update_YDLRequest(req: Request, url=None, data=None, headers=None, query=None):
+def update_request(req: Request, url: str = None, data=None,
+                   headers: typing.Mapping = None, query: dict = None):
     """
-    Replaces the old update_Request.
-    TODO: do we want to replace this with a better method?
+    Creates a copy of the request and updates relevant fields
     """
     req = req.copy()
     req.data = data or req.data
