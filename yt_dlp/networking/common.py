@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import collections
 import email.policy
-import http.cookiejar
 import inspect
 import io
 import ssl
@@ -26,7 +25,10 @@ from ..utils import (
     write_string,
     std_headers,
     update_url_query,
-    bug_reports_message, TransportError, YoutubeDLError, RequestError, CaseInsensitiveDict
+    bug_reports_message,
+    YoutubeDLError,
+    RequestError,
+    CaseInsensitiveDict
 )
 
 from .utils import random_user_agent
@@ -45,7 +47,7 @@ class Request:
     @param headers: headers to send.
     @param proxies: proxy dict mapping of proto:proxy to use for the request and any redirects.
     @param query: URL query parameters to update the url with.
-    @param method: HTTP method to use. If no method specified, will use POST if payload data is present else GETl
+    @param method: HTTP method to use. If no method specified, will use POST if payload data is present else GET
     @param compression: whether to include content-encoding header on request.
     @param timeout: socket timeout value for this request.
     """
@@ -112,6 +114,10 @@ class Request:
     def method(self):
         return self.__method or 'POST' if self.data is not None else 'GET'
 
+    @method.setter
+    def method(self, method: str):
+        self.__method = method
+
     def copy(self):
         return type(self)(
             url=self.url, data=self.data, headers=self.headers.copy(), timeout=self.timeout,
@@ -122,9 +128,6 @@ class Request:
 
     def get_header(self, key, default=None):
         return self._headers.get(key, default)
-
-    def has_header(self, name):
-        return name in self.headers
 
     @property
     def type(self):
@@ -154,6 +157,10 @@ class Request:
         """Deprecated, use Request.method"""
         return self.method
 
+    def has_header(self, name):
+        """Deprecated, use `name in Request.headers`"""
+        return name in self.headers
+
 
 class HEADRequest(Request):
     @property
@@ -181,27 +188,30 @@ def update_request(req: Request, url: str = None, data=None,
 
 class HTTPResponse(io.IOBase):
     """
-    Adapter interface for HTTP responses
+    Abstract base class for HTTP response adapters.
+
+    Interface partially backwards-compatible with addinfourl and http.client.HTTPResponse.
+
+    @param raw: Original response.
+    @param url: URL that this is a response of.
+    @param headers: response headers.
+    @param status: Response HTTP status code. Default is 200 OK.
+    @param reason: HTTP status reason. Will use built-in reasons based on status code if not provided.
     """
     REDIRECT_STATUS_CODES = [301, 302, 303, 307, 308]
 
     def __init__(
             self, raw,
-            headers: typing.Mapping[str, str],
             url: str,
+            headers: typing.Mapping[str, str],
             status: int = 200,
             reason: typing.Optional[str] = None):
-        """
-        @param raw: Original response
-        @headers: response headers
-        @status: Response HTTP status code
-        @reason: HTTP status reason
-        """
+
         self.raw = raw
         self.headers: Message = Message(policy=email.policy.HTTP)
         for name, value in (headers or {}).items():
             self.headers.add_header(name, value)
-        self.code = self.status = status
+        self.status = status
         self.reason = reason
         self.url = url
         if not reason:
@@ -210,28 +220,8 @@ class HTTPResponse(io.IOBase):
             except ValueError:
                 pass
 
-    # compat
-    def getcode(self):
-        return self.status
-
-    # compat
-    def getstatus(self):
-        return self.status
-
-    def geturl(self):
-        return self.url
-
     def get_redirect_url(self):
-        return self.getheader('location') if self.status in self.REDIRECT_STATUS_CODES else None
-
-    def getheaders(self):
-        return self.headers
-
-    def getheader(self, name, default=None):
-        return self.headers.get(name, default)
-
-    def info(self):
-        return self.headers
+        return self.headers.get('location') if self.status in self.REDIRECT_STATUS_CODES else None
 
     def readable(self):
         return True
@@ -245,6 +235,24 @@ class HTTPResponse(io.IOBase):
     def close(self):
         self.raw.close()
         return super().close()
+
+    # The following methods are for compatability reasons and are deprecated
+    @property
+    def code(self):
+        """Deprecated, use HTTPResponse.status"""
+        return self.status
+
+    def getstatus(self):
+        """Deprecated, use HTTPResponse.status"""
+        return self.status
+
+    def geturl(self):
+        """Deprecated, use HTTPResponse.url"""
+        return self.url
+
+    def info(self):
+        """Deprecated, use HTTPResponse.headers"""
+        return self.headers
 
 
 class RequestHandler:
