@@ -67,7 +67,7 @@ class TestMultipleSocks(RequestHandlerTestBase, unittest.TestCase):
         if params is None:
             return
         ydl = self.make_ydl()
-        req = Request('http://yt-dl.org/ip', proxy=params['secondary_proxy'])
+        req = Request('http://yt-dl.org/ip', proxies={'all': params['secondary_proxy']})
         self.assertEqual(
             ydl.urlopen(req).read().decode('utf-8'),
             params['secondary_server_ip'])
@@ -78,7 +78,7 @@ class TestMultipleSocks(RequestHandlerTestBase, unittest.TestCase):
         if params is None:
             return
         ydl = self.make_ydl()
-        req = Request('http://yt-dl.org/ip', proxy=params['secondary_proxy'])
+        req = Request('http://yt-dl.org/ip', proxies={'all': params['secondary_proxy']})
         self.assertEqual(
             ydl.urlopen(req).read().decode('utf-8'),
             params['secondary_server_ip'])

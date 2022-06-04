@@ -33,7 +33,7 @@ from ..downloader.f4m import (
     get_base_url,
     remove_encrypted_media,
 )
-from ..networking.common import Request, update_YDLRequest
+from ..networking.common import Request, update_request
 from ..networking.utils import get_cookie_header
 from ..utils import (
     age_restricted,
@@ -755,7 +755,7 @@ class InfoExtractor(object):
                 headers['X-Forwarded-For'] = self._x_forwarded_for_ip
 
         if isinstance(url_or_request, Request):
-            url_or_request = update_YDLRequest(
+            url_or_request = update_request(
                 url_or_request, data=data, headers=headers, query=query)
         else:
             if query:

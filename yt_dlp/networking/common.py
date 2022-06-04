@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import collections
 import email.policy
-import http.cookiejar
 import inspect
 import io
 import ssl
@@ -26,7 +25,10 @@ from ..utils import (
     write_string,
     std_headers,
     update_url_query,
-    bug_reports_message, TransportError, YoutubeDLError, RequestError, CaseInsensitiveDict
+    bug_reports_message,
+    YoutubeDLError,
+    RequestError,
+    CaseInsensitiveDict
 )
 
 from .utils import random_user_agent
@@ -37,22 +39,41 @@ if typing.TYPE_CHECKING:
 
 class Request:
     """
-    Request class to define a request to be made.
-    A wrapper for urllib.request.Request with improvements for yt-dlp,
-    while retaining required backwards-compat functions used in yt-dlp.
+    Represents a request to be made.
+    Partially backwards-compatible with urllib.request.Request.
+
+    @param url: url to send. Will be sanitized and auth will be extracted as basic auth if present.
+    @param data: payload data to send.
+    @param headers: headers to send.
+    @param proxies: proxy dict mapping of proto:proxy to use for the request and any redirects.
+    @param query: URL query parameters to update the url with.
+    @param method: HTTP method to use. If no method specified, will use POST if payload data is present else GET
+    @param compression: whether to include content-encoding header on request.
+    @param timeout: socket timeout value for this request.
     """
     def __init__(
-            self, url, data=None, headers=None, proxies=None, compression=True, method=None, timeout=None):
-        """
-        @param proxies: proxy dict mapping to use for the request and any redirects
-        @param compression: whether to include content-encoding header on request (i.e. disable/enable compression).
-        """
+            self,
+            url: str,
+            data=None,
+            headers: typing.Mapping = None,
+            proxies: dict = None,
+            query: dict = None,
+            method: str = None,
+            compression: bool = True,
+            timeout: Union[float, int] = None):
+
         url, basic_auth_header = extract_basic_auth(escape_url(sanitize_url(url)))
-        self.__request_store = urllib.request.Request(url, data=data, method=method)
-        self._headers: CaseInsensitiveDict = CaseInsensitiveDict(headers)
+
+        if query:
+            url = update_url_query(url, query)
+        # rely on urllib Request's url parsing
+        self.__request_store = urllib.request.Request(url)
+        self.__method = method
+        self._headers = CaseInsensitiveDict(headers)
+        self._data = None
+        self.data = data
         self.timeout = timeout
 
-        # TODO: add support for passing different types of auth into a YDlRequest, and don't add the headers.
         if basic_auth_header:
             self.headers['Authorization'] = basic_auth_header
 
@@ -69,41 +90,44 @@ class Request:
 
     @property
     def data(self):
-        return self.__request_store.data
+        return self._data
 
     @data.setter
     def data(self, data):
-        self.__request_store.data = data
+        # https://docs.python.org/3/library/urllib.request.html#urllib.request.Request.data
+        if data != self._data:
+            self._data = data
+            if 'content-length' in self.headers:
+                del self.headers['content-length']
 
     @property
-    def headers(self):
+    def headers(self) -> CaseInsensitiveDict:
         return self._headers
 
     @headers.setter
-    def headers(self, new_headers):
+    def headers(self, new_headers: CaseInsensitiveDict):
         if not isinstance(new_headers, CaseInsensitiveDict):
-            raise TypeError('headers must be CaseInsensitiveDict')
+            raise TypeError('headers must be a CaseInsensitiveDict')
         self._headers = new_headers
 
     @property
     def method(self):
-        return self.__request_store.get_method()
+        return self.__method or 'POST' if self.data is not None else 'GET'
+
+    @method.setter
+    def method(self, method: str):
+        self.__method = method
 
     def copy(self):
-        return self.__class__(
-            self.url, self.data, self.headers.copy(), self.proxies.copy(), self.compression, self.method)
+        return type(self)(
+            url=self.url, data=self.data, headers=self.headers.copy(), timeout=self.timeout,
+            proxies=self.proxies.copy(), compression=self.compression, method=self.method)
 
     def add_header(self, key, value):
         self._headers[key] = value
 
     def get_header(self, key, default=None):
         return self._headers.get(key, default)
-
-    def get_full_url(self):
-        return self.url
-
-    def get_method(self):
-        return self.method
 
     @property
     def type(self):
@@ -113,6 +137,29 @@ class Request:
     @property
     def host(self):
         return self.__request_store.host
+
+    # The following methods are for compatability reasons and are deprecated
+    @property
+    def fullurl(self):
+        """Deprecated, use Request.url"""
+        return self.url
+
+    @fullurl.setter
+    def fullurl(self, url):
+        """Deprecated, use Request.url"""
+        self.url = url
+
+    def get_full_url(self):
+        """Deprecated, use Request.url"""
+        return self.url
+
+    def get_method(self):
+        """Deprecated, use Request.method"""
+        return self.method
+
+    def has_header(self, name):
+        """Deprecated, use `name in Request.headers`"""
+        return name in self.headers
 
 
 class HEADRequest(Request):
@@ -127,10 +174,10 @@ class PUTRequest(Request):
         return 'PUT'
 
 
-def update_YDLRequest(req: Request, url=None, data=None, headers=None, query=None):
+def update_request(req: Request, url: str = None, data=None,
+                   headers: typing.Mapping = None, query: dict = None):
     """
-    Replaces the old update_Request.
-    TODO: do we want to replace this with a better method?
+    Creates a copy of the request and updates relevant fields
     """
     req = req.copy()
     req.data = data or req.data
@@ -141,27 +188,30 @@ def update_YDLRequest(req: Request, url=None, data=None, headers=None, query=Non
 
 class HTTPResponse(io.IOBase):
     """
-    Adapter interface for HTTP responses
+    Abstract base class for HTTP response adapters.
+
+    Interface partially backwards-compatible with addinfourl and http.client.HTTPResponse.
+
+    @param raw: Original response.
+    @param url: URL that this is a response of.
+    @param headers: response headers.
+    @param status: Response HTTP status code. Default is 200 OK.
+    @param reason: HTTP status reason. Will use built-in reasons based on status code if not provided.
     """
     REDIRECT_STATUS_CODES = [301, 302, 303, 307, 308]
 
     def __init__(
             self, raw,
-            headers: typing.Mapping[str, str],
             url: str,
+            headers: typing.Mapping[str, str],
             status: int = 200,
             reason: typing.Optional[str] = None):
-        """
-        @param raw: Original response
-        @headers: response headers
-        @status: Response HTTP status code
-        @reason: HTTP status reason
-        """
+
         self.raw = raw
         self.headers: Message = Message(policy=email.policy.HTTP)
         for name, value in (headers or {}).items():
             self.headers.add_header(name, value)
-        self.code = self.status = status
+        self.status = status
         self.reason = reason
         self.url = url
         if not reason:
@@ -170,28 +220,8 @@ class HTTPResponse(io.IOBase):
             except ValueError:
                 pass
 
-    # compat
-    def getcode(self):
-        return self.status
-
-    # compat
-    def getstatus(self):
-        return self.status
-
-    def geturl(self):
-        return self.url
-
     def get_redirect_url(self):
-        return self.getheader('location') if self.status in self.REDIRECT_STATUS_CODES else None
-
-    def getheaders(self):
-        return self.headers
-
-    def getheader(self, name, default=None):
-        return self.headers.get(name, default)
-
-    def info(self):
-        return self.headers
+        return self.headers.get('location') if self.status in self.REDIRECT_STATUS_CODES else None
 
     def readable(self):
         return True
@@ -205,6 +235,24 @@ class HTTPResponse(io.IOBase):
     def close(self):
         self.raw.close()
         return super().close()
+
+    # The following methods are for compatability reasons and are deprecated
+    @property
+    def code(self):
+        """Deprecated, use HTTPResponse.status"""
+        return self.status
+
+    def getstatus(self):
+        """Deprecated, use HTTPResponse.status"""
+        return self.status
+
+    def geturl(self):
+        """Deprecated, use HTTPResponse.url"""
+        return self.url
+
+    def info(self):
+        """Deprecated, use HTTPResponse.headers"""
+        return self.headers
 
 
 class RequestHandler:
@@ -338,9 +386,9 @@ class RHManager:
         for handler in reversed(self.handlers):
             if not handler.can_handle(req):
                 continue
+            if self.ydl.params.get('debug_printtraffic'):
+                self.ydl.to_stdout(f'Forwarding request to {type(handler).__name__} request handler')
             try:
-                if self.ydl.params.get('debug_printtraffic'):
-                    self.ydl.to_stdout(f'Forwarding request to {type(handler).__name__} request handler')
                 res = handler.handle(req)
             except Exception as e:
                 if not isinstance(e, YoutubeDLError):
