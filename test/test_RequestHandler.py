@@ -24,7 +24,7 @@ import threading
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 
-TEST_BACKEND_HANDLERS = [UrllibRH]
+HTTP_TEST_BACKEND_HANDLERS = [UrllibRH]
 
 
 class FakeLogger(object):
@@ -211,6 +211,13 @@ class RequestHandlerCommonTestsBase(RequestHandlerTestBase):
         response2 = ydl.urlopen(Request(url, proxies={'http': geo_proxy})).read().decode('utf-8')
         self.assertEqual(response1, 'geo: {0}'.format(url))
         self.assertEqual(response2, 'geo: {0}'.format(url))
+        # test that __noproxy__ disables all proxies for that request
+        real_url = 'http://127.0.0.1:%d/headers' % self.http_port
+        response3 = ydl.urlopen(
+            Request(real_url, headers={'Ytdl-request-proxy': '__noproxy__'})).read().decode('utf-8')
+        self.assertNotEqual(response3, f'normal: {real_url}')
+        self.assertNotIn('Ytdl-request-proxy', response3)
+        self.assertIn('Accept', response3)
 
     def test_http_proxy_with_idn(self):
         ydl = self.make_ydl({
@@ -299,7 +306,7 @@ class RequestHandlerCommonTestsBase(RequestHandlerTestBase):
         self.assertEqual(data, '<html><video src="/vid.mp4" /></html>')
 
 
-def with_request_handlers(handlers=TEST_BACKEND_HANDLERS):
+def with_request_handlers(handlers=HTTP_TEST_BACKEND_HANDLERS):
     def inner_func(test):
         @functools.wraps(test)
         def wrapper(self, *args, **kwargs):

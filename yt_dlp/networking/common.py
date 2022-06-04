@@ -338,9 +338,9 @@ class RHManager:
         for handler in reversed(self.handlers):
             if not handler.can_handle(req):
                 continue
+            if self.ydl.params.get('debug_printtraffic'):
+                self.ydl.to_stdout(f'Forwarding request to {type(handler).__name__} request handler')
             try:
-                if self.ydl.params.get('debug_printtraffic'):
-                    self.ydl.to_stdout(f'Forwarding request to {type(handler).__name__} request handler')
                 res = handler.handle(req)
             except Exception as e:
                 if not isinstance(e, YoutubeDLError):
