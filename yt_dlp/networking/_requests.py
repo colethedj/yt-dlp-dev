@@ -3,9 +3,12 @@ import logging
 import socket
 import ssl
 import sys
+from urllib.parse import urljoin
 
 import urllib3
-
+import requests.utils
+from urllib3.util import parse_url
+from urllib.request import _parse_proxy
 from ..compat import (
     compat_brotli
 )
@@ -191,6 +194,22 @@ class RequestsRH(BackendRH):
             ssl_load_certs(context, self.ydl.params)
         return context
 
+    @staticmethod
+    def _sanitize_proxies(proxies: dict):
+        # TODO: improve this
+        proxies_new = proxies.copy()
+        for key, proxy in proxies.items():
+            try:
+                proxy_parsed = parse_url(requests.utils.prepend_scheme_if_needed(proxy, 'http'))
+                if not proxy_parsed.host and _parse_proxy(proxy)[0] is None:
+                    proxy_parsed = parse_url(requests.utils.prepend_scheme_if_needed(f'http://{proxy}', 'http'))
+            except urllib3.exceptions.LocationParseError:
+                proxy_parsed = None
+            if not proxy_parsed or not proxy_parsed.host:
+                raise RequestError('Malformed proxy')
+            proxies_new[key] = proxy_parsed.url
+        return proxies_new
+
     def can_handle(self, request: Request) -> bool:
         if self._is_force_disabled:
             self.write_debug('Not using requests backend as no-requests compat opt is set.', only_once=True)
@@ -200,6 +219,14 @@ class RequestsRH(BackendRH):
             # Disable the handler for now until it is fixed, or we implement a workaround
             # See https://github.com/psf/requests/issues/5000 and related issues
             return False
+        try:
+            self._sanitize_proxies(request.proxies)
+        except RequestError:
+            self.ydl.report_warning(
+                'Check your proxy url; it is malformed and requests will not accept it. '
+                'Proceeding to let another backend try to deal with it...', only_once=True)
+            return False
+
         return super().can_handle(request)
 
     def handle(self, request: Request) -> HTTPResponse:
@@ -221,7 +248,7 @@ class RequestsRH(BackendRH):
                 data=request.data,
                 headers=headers,
                 timeout=request.timeout,
-                proxies=request.proxies,
+                proxies=self._sanitize_proxies(request.proxies),
                 allow_redirects=True,
                 stream=True
             )
