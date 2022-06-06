@@ -89,6 +89,26 @@ def handle_urllib3_read_exceptions(e):
         raise SSLError(cause=e) from e
 
 
+def sanitize_proxies(proxies: dict):
+    # URLs such as localhost:port are not supported in requests but work in urllib. [1]
+    # We can use the urllib.request._parse_proxy to work around this, though is not ideal.
+    # 1. https://github.com/psf/requests/issues/6032
+    proxies_new = proxies.copy()
+    for key, proxy in proxies.items():
+        if proxy is None:
+            continue
+        try:
+            proxy_parsed = parse_url(requests.utils.prepend_scheme_if_needed(proxy, 'http'))
+            if not proxy_parsed.host and _parse_proxy is not None and _parse_proxy(proxy)[0] is None:
+                proxy_parsed = parse_url(requests.utils.prepend_scheme_if_needed(f'http://{proxy}', 'http'))
+        except urllib3.exceptions.LocationParseError:
+            proxy_parsed = None
+        if not proxy_parsed or not proxy_parsed.host:
+            raise RequestError('Malformed proxy')
+        proxies_new[key] = proxy_parsed.url
+    return proxies_new
+
+
 class YDLRequestsHTTPAdapter(requests.adapters.HTTPAdapter):
     """
     Custom HTTP adapter to support passing SSLContext and other arguments to
@@ -196,26 +216,6 @@ class RequestsRH(BackendRH):
             ssl_load_certs(context, self.ydl.params)
         return context
 
-    @staticmethod
-    def _sanitize_proxies(proxies: dict):
-        # URLs such as localhost:port are not supported in requests but work in urllib. [1]
-        # We can use the urllib.request._parse_proxy to work around this, though is not ideal.
-        # 1. https://github.com/psf/requests/issues/6032
-        proxies_new = proxies.copy()
-        for key, proxy in proxies.items():
-            if proxy is None:
-                continue
-            try:
-                proxy_parsed = parse_url(requests.utils.prepend_scheme_if_needed(proxy, 'http'))
-                if not proxy_parsed.host and _parse_proxy is not None and _parse_proxy(proxy)[0] is None:
-                    proxy_parsed = parse_url(requests.utils.prepend_scheme_if_needed(f'http://{proxy}', 'http'))
-            except urllib3.exceptions.LocationParseError:
-                proxy_parsed = None
-            if not proxy_parsed or not proxy_parsed.host:
-                raise RequestError('Malformed proxy')
-            proxies_new[key] = proxy_parsed.url
-        return proxies_new
-
     def can_handle(self, request: Request) -> bool:
         if self._is_force_disabled:
             self.write_debug('Not using requests backend as no-requests compat opt is set.', only_once=True)
@@ -226,7 +226,7 @@ class RequestsRH(BackendRH):
             # See https://github.com/psf/requests/issues/5000 and related issues
             return False
         try:
-            self._sanitize_proxies(request.proxies)
+            sanitize_proxies(request.proxies)
         except RequestError:
             self.ydl.report_warning(
                 'Check your proxy url; it is malformed and requests will not accept it. '
@@ -254,7 +254,7 @@ class RequestsRH(BackendRH):
                 data=request.data,
                 headers=headers,
                 timeout=request.timeout,
-                proxies=self._sanitize_proxies(request.proxies),
+                proxies=sanitize_proxies(request.proxies),
                 allow_redirects=True,
                 stream=True
             )
