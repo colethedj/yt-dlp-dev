@@ -3,7 +3,10 @@ import logging
 import socket
 import ssl
 import sys
-from urllib.request import _parse_proxy
+try:
+    from urllib.request import _parse_proxy
+except ImportError:
+    _parse_proxy = None
 
 import urllib3
 import requests.utils
@@ -200,9 +203,11 @@ class RequestsRH(BackendRH):
         # 1. https://github.com/psf/requests/issues/6032
         proxies_new = proxies.copy()
         for key, proxy in proxies.items():
+            if proxy is None:
+                continue
             try:
                 proxy_parsed = parse_url(requests.utils.prepend_scheme_if_needed(proxy, 'http'))
-                if not proxy_parsed.host and _parse_proxy(proxy)[0] is None:
+                if not proxy_parsed.host and _parse_proxy is not None and _parse_proxy(proxy)[0] is None:
                     proxy_parsed = parse_url(requests.utils.prepend_scheme_if_needed(f'http://{proxy}', 'http'))
             except urllib3.exceptions.LocationParseError:
                 proxy_parsed = None

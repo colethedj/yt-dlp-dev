@@ -199,6 +199,7 @@ class RequestHandlerCommonTestsBase(RequestHandlerTestBase):
 
     def test_http_proxy(self):
         geo_proxy = '127.0.0.1:{0}'.format(self.geo_port)
+        geo_proxy2 = 'localhost:{0}'.format(self.geo_port)  # ensure backend can support this format
         ydl = self.make_ydl({
             'proxy': '127.0.0.1:{0}'.format(self.proxy_port),
             'geo_verification_proxy': geo_proxy,
@@ -207,7 +208,7 @@ class RequestHandlerCommonTestsBase(RequestHandlerTestBase):
         response = ydl.urlopen(url).read().decode('utf-8')
         self.assertEqual(response, 'normal: {0}'.format(url))
         req = Request(url)
-        req.add_header('Ytdl-request-proxy', geo_proxy)
+        req.add_header('Ytdl-request-proxy', geo_proxy2)
         response1 = ydl.urlopen(req).read().decode('utf-8')
         response2 = ydl.urlopen(Request(url, proxies={'http': geo_proxy})).read().decode('utf-8')
         self.assertEqual(response1, 'geo: {0}'.format(url))
