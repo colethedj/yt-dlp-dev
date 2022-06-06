@@ -321,9 +321,9 @@ class RHManager:
     def __init__(self, ydl: YoutubeDL):
         self.handlers = []
         self.ydl: YoutubeDL = ydl
-        self.proxies: dict = self.get_default_proxies()
+        self.proxies: dict = self.get_global_proxies()
 
-    def get_default_proxies(self) -> dict:
+    def get_global_proxies(self) -> dict:
         proxies = urllib.request.getproxies() or {}
         # compat. Set HTTPS_PROXY to __noproxy__ to revert
         if 'http' in proxies and 'https' not in proxies:
