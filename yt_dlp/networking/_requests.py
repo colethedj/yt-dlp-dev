@@ -3,12 +3,11 @@ import logging
 import socket
 import ssl
 import sys
-from urllib.parse import urljoin
+from urllib.request import _parse_proxy
 
 import urllib3
 import requests.utils
 from urllib3.util import parse_url
-from urllib.request import _parse_proxy
 from ..compat import (
     compat_brotli
 )
@@ -196,7 +195,9 @@ class RequestsRH(BackendRH):
 
     @staticmethod
     def _sanitize_proxies(proxies: dict):
-        # TODO: improve this
+        # URLs such as localhost:port are not supported in requests but work in urllib. [1]
+        # We can use the urllib.request._parse_proxy to work around this, though is not ideal.
+        # 1. https://github.com/psf/requests/issues/6032
         proxies_new = proxies.copy()
         for key, proxy in proxies.items():
             try:
