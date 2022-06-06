@@ -385,6 +385,8 @@ class RHManager:
 
         for handler in reversed(self.handlers):
             if not handler.can_handle(req):
+                self.ydl.to_stdout(
+                    f'{type(handler).__name__} request handler cannot handle this request, trying next handler...')
                 continue
             if self.ydl.params.get('debug_printtraffic'):
                 self.ydl.to_stdout(f'Forwarding request to {type(handler).__name__} request handler')
