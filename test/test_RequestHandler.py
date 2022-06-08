@@ -12,7 +12,7 @@ from http.cookiejar import Cookie
 from random import random
 
 from yt_dlp.networking import UrllibRH, REQUEST_HANDLERS, UnsupportedRH, RequestsRH
-from yt_dlp.networking.common import Request, RHManager, HEADRequest
+from yt_dlp.networking.common import Request, RequestBroker, HEADRequest
 from yt_dlp.utils import HTTPError, SSLError, TransportError, IncompleteRead
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -147,7 +147,7 @@ class RequestHandlerTestBase:
 
     def make_ydl(self, params=None, fake=True):
         ydl = (FakeYDL if fake else YoutubeDL)(params)
-        ydl.default_session = ydl.make_RHManager([self.handler])
+        ydl.http = ydl.build_http([self.handler])
         return ydl
 
 

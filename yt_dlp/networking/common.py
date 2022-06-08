@@ -14,7 +14,7 @@ from email.message import Message
 from http import HTTPStatus
 import urllib.request
 import urllib.response
-from typing import Union, Type
+from typing import Union, Type, List
 
 from ..compat import compat_cookiejar, compat_str
 
@@ -270,8 +270,16 @@ class RequestHandler:
         """Validate if handler is suitable for given request. Can override in subclasses."""
         return self._is_supported_scheme(request)
 
+    def prepare_request(self, request: Request):
+        """Operations to perform on a Request before can_handle"""
+        pass
+
     def handle(self, request: Request):
         """Method to handle given request. Redefine in subclasses"""
+
+    @property
+    def name(self):
+        return type(self).__name__
 
 
 class BackendRH(RequestHandler):
@@ -315,83 +323,75 @@ class BackendRH(RequestHandler):
     def _make_sslcontext(self, verify: bool, **kwargs) -> ssl.SSLContext:
         """Generate a backend-specific SSLContext. Redefine in subclasses"""
 
+    def prepare_request(self, request: Request):
+        request.headers = CaseInsensitiveDict(self.ydl.params.get('http_headers', {}), request.headers)
+        if request.headers.get('Youtubedl-no-compression'):
+            request.compression = False
+            del request.headers['Youtubedl-no-compression']
 
-class RHManager:
+        # Proxy preference: header req proxy > req proxies > ydl opt proxies > env proxies
+        request.proxies = {**(self.ydl.proxies or {}), **(request.proxies or {})}
+        req_proxy = request.headers.get('Ytdl-request-proxy')
+        if req_proxy:
+            del request.headers['Ytdl-request-proxy']
+            request.proxies.update({'http': req_proxy, 'https': req_proxy})
+        for k, v in request.proxies.items():
+            if v == '__noproxy__':  # compat
+                request.proxies[k] = None
+        request.timeout = float(request.timeout or self.ydl.params.get('socket_timeout') or 20)  # do not accept 0
+
+
+class RequestBroker:
 
     def __init__(self, ydl: YoutubeDL):
-        self.handlers = []
+        self._handlers = []
         self.ydl: YoutubeDL = ydl
-        self.proxies: dict = self.get_default_proxies()
-
-    def get_default_proxies(self) -> dict:
-        proxies = urllib.request.getproxies() or {}
-        # compat. Set HTTPS_PROXY to __noproxy__ to revert
-        if 'http' in proxies and 'https' not in proxies:
-            proxies['https'] = proxies['http']
-        conf_proxy = self.ydl.params.get('proxy')
-        if conf_proxy:
-            # compat. We should ideally use all proxy here
-            proxies.update({'http': conf_proxy, 'https': conf_proxy})
-        return proxies
 
     def add_handler(self, handler: RequestHandler):
-        if handler not in self.handlers:
-            self.handlers.append(handler)
+        if handler not in self._handlers and isinstance(handler, RequestHandler):
+            self._handlers.append(handler)
 
     def remove_handler(self, handler: Union[RequestHandler, Type[RequestHandler]]):
-        """
-        Remove RequestHandler(s)
-        @param handler: Handler object or handler type. Specifying handler type will remove all handlers of that type.
-        """
-        if inspect.isclass(handler):
-            finder = lambda x: isinstance(x, handler)
-        else:
-            finder = lambda x: x is handler
-        self.handlers = [x for x in self.handlers if not finder(handler)]
+        self._handlers = [h for h in self._handlers if not (isinstance(h, handler) or h is handler)]
 
-    def urlopen(self, req: Union[Request, str, urllib.request.Request]) -> HTTPResponse:
+    def get_handlers(self, handler: Type[RequestHandler] = None) -> List[RequestHandler]:
+        return [h for h in self._handlers if isinstance(h, handler or RequestHandler)]
+
+    # TODO: we want this available for RequestHandlers too
+    # Ideally we would have some global logging object
+    def to_debugtraffic(self, msg):
+        if self.ydl.params.get('debug_printtraffic'):
+            self.ydl.to_stdout(msg)
+
+    def send(self, request: Union[Request, str, urllib.request.Request]) -> HTTPResponse:
         """
         Passes a request onto a suitable RequestHandler
         """
-        if len(self.handlers) == 0:
+        if len(self._handlers) == 0:
             raise YoutubeDLError('No request handlers configured')
-        if isinstance(req, str):
-            req = Request(req)
-        elif isinstance(req, urllib.request.Request):
+        if isinstance(request, str):
+            request = Request(request)
+        elif isinstance(request, urllib.request.Request):
             # compat
-            req = Request(
-                req.get_full_url(), data=req.data, method=req.get_method(),
-                headers=CaseInsensitiveDict(req.headers, req.unredirected_hdrs))
+            request = Request(
+                request.get_full_url(), data=request.data, method=request.get_method(),
+                headers=CaseInsensitiveDict(request.headers, request.unredirected_hdrs))
 
-        assert isinstance(req, Request)
+        assert isinstance(request, Request)
 
-        req = req.copy()
-        req.headers = CaseInsensitiveDict(self.ydl.params.get('http_headers', {}), req.headers)
+        for handler in reversed(self._handlers):
+            request = request.copy()
+            handler.prepare_request(request)
 
-        if req.headers.get('Youtubedl-no-compression'):
-            req.compression = False
-            del req.headers['Youtubedl-no-compression']
-
-        # Proxy preference: header req proxy > req proxies > ydl opt proxies > env proxies
-        req.proxies = {**(self.proxies or {}), **(req.proxies or {})}
-        req_proxy = req.headers.get('Ytdl-request-proxy')
-        if req_proxy:
-            del req.headers['Ytdl-request-proxy']
-            req.proxies.update({'http': req_proxy, 'https': req_proxy})
-        for k, v in req.proxies.items():
-            if v == '__noproxy__':  # compat
-                req.proxies[k] = None
-        req.timeout = float(req.timeout or self.ydl.params.get('socket_timeout') or 20)  # do not accept 0
-
-        for handler in reversed(self.handlers):
-            if not handler.can_handle(req):
-                self.ydl.to_stdout(
-                    f'{type(handler).__name__} request handler cannot handle this request, trying next handler...')
+            if not handler.can_handle(request):
+                self.to_debugtraffic(
+                    f'{handler.name} request handler cannot handle this request, trying next handler...')
                 continue
-            if self.ydl.params.get('debug_printtraffic'):
-                self.ydl.to_stdout(f'Forwarding request to {type(handler).__name__} request handler')
+
+            self.to_debugtraffic(f'Forwarding request to {handler.name} request handler')
+
             try:
-                res = handler.handle(req)
+                res = handler.handle(request)
             except Exception as e:
                 if not isinstance(e, YoutubeDLError):
                     self.ydl.report_warning(f'Unexpected error from request handler: {type(e).__name__}: {e}' + bug_reports_message())
@@ -401,7 +401,7 @@ class RHManager:
                 raise
 
             if not res:
-                self.ydl.report_warning(f'{type(handler).__name__} request handler returned nothing for response' + bug_reports_message())
+                self.ydl.report_warning(f'{handler.name} request handler returned nothing for response' + bug_reports_message())
                 continue
             assert isinstance(res, HTTPResponse)
             return res
