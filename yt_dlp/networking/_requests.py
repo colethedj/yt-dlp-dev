@@ -35,7 +35,7 @@ from ..utils import (
     SSLError,
     HTTPError,
     ProxyError,
-    RequestError
+    RequestError, YoutubeDLError
 )
 
 import requests.adapters
@@ -104,7 +104,7 @@ def sanitize_proxies(proxies: dict):
         except urllib3.exceptions.LocationParseError:
             proxy_parsed = None
         if not proxy_parsed or not proxy_parsed.host:
-            raise RequestError('Malformed proxy')
+            raise YoutubeDLError('Malformed proxy')
         proxies_new[key] = proxy_parsed.url
     return proxies_new
 
@@ -227,8 +227,8 @@ class RequestsRH(BackendRH):
             return False
         try:
             sanitize_proxies(request.proxies)
-        except RequestError:
-            self.ydl.report_warning(
+        except YoutubeDLError:
+            self.report_warning(
                 'Check your proxy url; it is malformed and requests will not accept it. '
                 'Proceeding to let another backend try to deal with it...', only_once=True)
             return False
