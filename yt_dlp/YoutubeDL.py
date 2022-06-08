@@ -46,7 +46,7 @@ from .compat import (
 from .cookies import load_cookies
 from .networking.common import (
     Request,
-    RequestBroker,
+    RequestHandlerBroker,
     make_std_headers,
     HEADRequest
 )
@@ -3744,7 +3744,7 @@ class YoutubeDL(object):
         return self.http.get_handlers(UrllibRH)[0].get_opener(self.proxies)
 
     def build_http(self, handlers):
-        broker = RequestBroker(self)
+        broker = RequestHandlerBroker(self)
         for klass in handlers:
             broker.add_handler(klass(self))
         return broker
