@@ -146,7 +146,7 @@ class RequestHandlerTestBase:
 
     def make_ydl(self, params=None, fake=True):
         ydl = (FakeYDL if fake else YoutubeDL)(params)
-        ydl.default_session = ydl.make_RHManager([self.handler])
+        ydl.http = ydl.build_http([self.handler])
         return ydl
 
 

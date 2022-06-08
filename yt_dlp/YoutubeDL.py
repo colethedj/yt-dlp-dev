@@ -538,6 +538,7 @@ class YoutubeDL(object):
             params = {}
         self.params = params
         self._cookiejar = None
+        self._proxies = None
         self._ies = {}
         self._ies_instances = {}
         self._pps = {k: [] for k in POSTPROCESS_WHEN}
@@ -664,7 +665,7 @@ class YoutubeDL(object):
         self.params['http_headers'] = CaseInsensitiveDict(
             make_std_headers(), self.params.get('http_headers', {}))
 
-        self.default_session = self.make_RHManager(REQUEST_HANDLERS)
+        self.http = self.build_http(REQUEST_HANDLERS)
 
         if auto_init:
             if auto_init != 'no_verbose_header':
@@ -3595,7 +3596,7 @@ class YoutubeDL(object):
         self.__list_table(video_id, name, self.render_subtitles_table, video_id, subtitles)
 
     def urlopen(self, req):
-        return self.default_session.send(req)
+        return self.http.send(req)
 
     def print_debug_header(self):
         if not self.params.get('verbose'):
@@ -3695,9 +3696,8 @@ class YoutubeDL(object):
             delim=', ') or 'none'
         write_debug('Optional libraries: %s' % lib_str)
 
-        proxies = self.default_session.proxies
-        if proxies:
-            write_debug(f'Proxy map: {proxies}')
+        if self.proxies:
+            write_debug(f'Proxy map: {self.proxies}')
 
         # Not implemented
         if False and self.params.get('call_home'):
@@ -3712,31 +3712,41 @@ class YoutubeDL(object):
                     latest_version)
 
     @property
-    def _opener(self):
-        """
-        Create an urllib opener lazily.
-        This is for backwards compatability only.
-        """
-        for handler in self.default_session.get_handlers():
-            if isinstance(handler, UrllibRH):
-                return handler.get_opener(self.default_session.get_global_proxies())
-
-    def make_RHManager(self, handlers):
-        manager = RequestBroker(self)
-        for handler_class in handlers:
-            if not handler_class:
-                continue
-            handler = handler_class(self)
-            manager.add_handler(handler)
-        return manager
+    def proxies(self) -> dict:
+        """Global proxy configuration"""
+        if not self._proxies:
+            self._proxies = urllib.request.getproxies() or {}
+            # compat. Set HTTPS_PROXY to __noproxy__ to revert
+            if 'http' in self._proxies and 'https' not in self._proxies:
+                self._proxies['https'] = self._proxies['http']
+            conf_proxy = self.params.get('proxy')
+            if conf_proxy:
+                # compat. We should ideally use `all` proxy here
+                self._proxies.update({'http': conf_proxy, 'https': conf_proxy})
+        return self._proxies
 
     @property
     def cookiejar(self):
+        """Global cookiejar instance"""
         if self._cookiejar is None:
             opts_cookiesfrombrowser = self.params.get('cookiesfrombrowser')
             opts_cookiefile = self.params.get('cookiefile')
             self._cookiejar = load_cookies(opts_cookiefile, opts_cookiesfrombrowser, self)
         return self._cookiejar
+
+    @property
+    def _opener(self):
+        """
+        Deprecated: use YoutubeDL.urlopen() instead.
+        Get an urllib OpenerDirector from the Urllib handler.
+        """
+        return self.http.get_handlers(UrllibRH)[0].get_opener(self.proxies)
+
+    def build_http(self, handlers):
+        broker = RequestBroker(self)
+        for klass in handlers:
+            broker.add_handler(klass(self))
+        return broker
 
     def encode(self, s):
         if isinstance(s, bytes):

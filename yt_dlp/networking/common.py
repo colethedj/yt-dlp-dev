@@ -270,8 +270,16 @@ class RequestHandler:
         """Validate if handler is suitable for given request. Can override in subclasses."""
         return self._is_supported_scheme(request)
 
+    def prepare_request(self, request: Request):
+        """Operations to perform on a Request before can_handle"""
+        pass
+
     def handle(self, request: Request):
         """Method to handle given request. Redefine in subclasses"""
+
+    @property
+    def name(self):
+        return type(self).__name__
 
 
 class BackendRH(RequestHandler):
@@ -315,24 +323,29 @@ class BackendRH(RequestHandler):
     def _make_sslcontext(self, verify: bool, **kwargs) -> ssl.SSLContext:
         """Generate a backend-specific SSLContext. Redefine in subclasses"""
 
+    def prepare_request(self, request: Request):
+        request.headers = CaseInsensitiveDict(self.ydl.params.get('http_headers', {}), request.headers)
+        if request.headers.get('Youtubedl-no-compression'):
+            request.compression = False
+            del request.headers['Youtubedl-no-compression']
+
+        # Proxy preference: header req proxy > req proxies > ydl opt proxies > env proxies
+        request.proxies = {**(self.ydl.proxies or {}), **(request.proxies or {})}
+        req_proxy = request.headers.get('Ytdl-request-proxy')
+        if req_proxy:
+            del request.headers['Ytdl-request-proxy']
+            request.proxies.update({'http': req_proxy, 'https': req_proxy})
+        for k, v in request.proxies.items():
+            if v == '__noproxy__':  # compat
+                request.proxies[k] = None
+        request.timeout = float(request.timeout or self.ydl.params.get('socket_timeout') or 20)  # do not accept 0
+
 
 class RequestBroker:
 
     def __init__(self, ydl: YoutubeDL):
         self._handlers = []
         self.ydl: YoutubeDL = ydl
-        self.proxies: dict = self.get_global_proxies()
-
-    def get_global_proxies(self) -> dict:
-        proxies = urllib.request.getproxies() or {}
-        # compat. Set HTTPS_PROXY to __noproxy__ to revert
-        if 'http' in proxies and 'https' not in proxies:
-            proxies['https'] = proxies['http']
-        conf_proxy = self.ydl.params.get('proxy')
-        if conf_proxy:
-            # compat. We should ideally use all proxy here
-            proxies.update({'http': conf_proxy, 'https': conf_proxy})
-        return proxies
 
     def add_handler(self, handler: RequestHandler):
         if handler not in self._handlers and isinstance(handler, RequestHandler):
@@ -343,6 +356,12 @@ class RequestBroker:
 
     def get_handlers(self, handler: Type[RequestHandler] = None) -> List[RequestHandler]:
         return [h for h in self._handlers if isinstance(h, handler or RequestHandler)]
+
+    # TODO: we want this available for RequestHandlers too
+    # Ideally we would have some global logging object
+    def to_debugtraffic(self, msg):
+        if self.ydl.params.get('debug_printtraffic'):
+            self.ydl.to_stdout(msg)
 
     def send(self, request: Union[Request, str, urllib.request.Request]) -> HTTPResponse:
         """
@@ -360,31 +379,17 @@ class RequestBroker:
 
         assert isinstance(request, Request)
 
-        request = request.copy()
-        request.headers = CaseInsensitiveDict(self.ydl.params.get('http_headers', {}), request.headers)
-
-        if request.headers.get('Youtubedl-no-compression'):
-            request.compression = False
-            del request.headers['Youtubedl-no-compression']
-
-        # Proxy preference: header req proxy > req proxies > ydl opt proxies > env proxies
-        request.proxies = {**(self.proxies or {}), **(request.proxies or {})}
-        req_proxy = request.headers.get('Ytdl-request-proxy')
-        if req_proxy:
-            del request.headers['Ytdl-request-proxy']
-            request.proxies.update({'http': req_proxy, 'https': req_proxy})
-        for k, v in request.proxies.items():
-            if v == '__noproxy__':  # compat
-                request.proxies[k] = None
-        request.timeout = float(request.timeout or self.ydl.params.get('socket_timeout') or 20)  # do not accept 0
-
         for handler in reversed(self._handlers):
+            request = request.copy()
+            handler.prepare_request(request)
+
             if not handler.can_handle(request):
-                self.ydl.to_stdout(
-                    f'{type(handler).__name__} request handler cannot handle this request, trying next handler...')
+                self.to_debugtraffic(
+                    f'{handler.name} request handler cannot handle this request, trying next handler...')
                 continue
-            if self.ydl.params.get('debug_printtraffic'):
-                self.ydl.to_stdout(f'Forwarding request to {type(handler).__name__} request handler')
+
+            self.to_debugtraffic(f'Forwarding request to {handler.name} request handler')
+
             try:
                 res = handler.handle(request)
             except Exception as e:
@@ -396,7 +401,7 @@ class RequestBroker:
                 raise
 
             if not res:
-                self.ydl.report_warning(f'{type(handler).__name__} request handler returned nothing for response' + bug_reports_message())
+                self.ydl.report_warning(f'{handler.name} request handler returned nothing for response' + bug_reports_message())
                 continue
             assert isinstance(res, HTTPResponse)
             return res
