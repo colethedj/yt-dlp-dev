@@ -11,7 +11,7 @@ from http.cookiejar import Cookie
 from random import random
 
 from yt_dlp.networking import UrllibRH, REQUEST_HANDLERS, UnsupportedRH
-from yt_dlp.networking.common import Request, RHManager, HEADRequest
+from yt_dlp.networking.common import Request, RequestBroker, HEADRequest
 from yt_dlp.utils import HTTPError, SSLError, TransportError, IncompleteRead
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

@@ -16,7 +16,7 @@ class UnsupportedRH(BackendRH):
     """
     def can_handle(self, request):
         scheme = urllib.parse.urlparse(request.url).scheme.lower()
-        for rh in self.ydl.default_session.handlers:
+        for rh in self.ydl.default_session.get_handlers():
             if rh.SUPPORTED_SCHEMES is not None and scheme in rh.SUPPORTED_SCHEMES:
                 break
         else:

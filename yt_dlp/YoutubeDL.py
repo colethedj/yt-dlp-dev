@@ -46,7 +46,7 @@ from .compat import (
 from .cookies import load_cookies
 from .networking.common import (
     Request,
-    RHManager,
+    RequestBroker,
     make_std_headers,
     HEADRequest
 )
@@ -3595,7 +3595,7 @@ class YoutubeDL(object):
         self.__list_table(video_id, name, self.render_subtitles_table, video_id, subtitles)
 
     def urlopen(self, req):
-        return self.default_session.urlopen(req)
+        return self.default_session.send(req)
 
     def print_debug_header(self):
         if not self.params.get('verbose'):
@@ -3717,12 +3717,12 @@ class YoutubeDL(object):
         Create an urllib opener lazily.
         This is for backwards compatability only.
         """
-        for handler in self.default_session.handlers:
+        for handler in self.default_session.get_handlers():
             if isinstance(handler, UrllibRH):
-                return handler.get_opener(self.default_session.get_default_proxy())
+                return handler.get_opener(self.default_session.get_global_proxies())
 
     def make_RHManager(self, handlers):
-        manager = RHManager(self)
+        manager = RequestBroker(self)
         for handler_class in handlers:
             if not handler_class:
                 continue
