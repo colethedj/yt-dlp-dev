@@ -341,7 +341,7 @@ class BackendRH(RequestHandler):
         request.timeout = float(request.timeout or self.ydl.params.get('socket_timeout') or 20)  # do not accept 0
 
 
-class RequestBroker:
+class RequestHandlerBroker:
 
     def __init__(self, ydl: YoutubeDL):
         self._handlers = []
