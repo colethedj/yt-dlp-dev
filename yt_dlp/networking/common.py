@@ -396,14 +396,15 @@ class RequestHandlerBroker:
                 except RequestError as e:
                     e.handler = handler
                     raise
+                except YoutubeDLError as e:
+                    self.ydl.report_warning(
+                        f'Unexpected error from request handler: {type(e).__name__}: {e}' + bug_reports_message())
+                    raise
             # Nested try-except since we want to catch RequestErrors with handler attached
             except UnsupportedRequest as e:
                 self.to_debugtraffic(
                     f'{handler.name} request handler cannot handle this request, trying next handler... (reason: {e})')
                 continue
-            except YoutubeDLError as e:
-                self.ydl.report_warning(f'Unexpected error from request handler: {type(e).__name__}: {e}' + bug_reports_message())
-                raise
 
             if not res:
                 self.ydl.report_warning(f'{handler.name} request handler returned nothing for response' + bug_reports_message())
