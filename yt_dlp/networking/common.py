@@ -28,7 +28,8 @@ from ..utils import (
     bug_reports_message,
     YoutubeDLError,
     RequestError,
-    CaseInsensitiveDict
+    CaseInsensitiveDict,
+    UnsupportedRequest
 )
 
 from .utils import random_user_agent
@@ -263,16 +264,17 @@ class RequestHandler:
     SUPPORTED_SCHEMES: list = None
 
     @classmethod
-    def _is_supported_scheme(cls, request: Request):
-        return urllib.parse.urlparse(request.url).scheme.lower() in cls.SUPPORTED_SCHEMES or []
-
-    def can_handle(self, request: Request) -> bool:
-        """Validate if handler is suitable for given request. Can override in subclasses."""
-        return self._is_supported_scheme(request)
+    def _check_scheme(cls, request: Request):
+        scheme = urllib.parse.urlparse(request.url).scheme.lower()
+        if scheme not in cls.SUPPORTED_SCHEMES:
+            raise UnsupportedRequest(f'{scheme} scheme is not supported')
 
     def prepare_request(self, request: Request):
-        """Operations to perform on a Request before can_handle"""
-        pass
+        """
+        Prepare a request for this handler.
+        If a request is unsupported, raises UnsupportedRequest
+        """
+        self._check_scheme(request)
 
     def handle(self, request: Request):
         """Method to handle given request. Redefine in subclasses"""
@@ -324,6 +326,7 @@ class BackendRH(RequestHandler):
         """Generate a backend-specific SSLContext. Redefine in subclasses"""
 
     def prepare_request(self, request: Request):
+        super().prepare_request(request)
         request.headers = CaseInsensitiveDict(self.ydl.params.get('http_headers', {}), request.headers)
         if request.headers.get('Youtubedl-no-compression'):
             request.compression = False
@@ -339,6 +342,10 @@ class BackendRH(RequestHandler):
             if v == '__noproxy__':  # compat
                 request.proxies[k] = None
         request.timeout = float(request.timeout or self.ydl.params.get('socket_timeout') or 20)  # do not accept 0
+        self._prepare_request(request)
+
+    def _prepare_request(self, request: Request):
+        """Prepare a backend request. Redefine in subclasses."""
 
 
 class RequestHandlerBroker:
@@ -380,24 +387,22 @@ class RequestHandlerBroker:
         assert isinstance(request, Request)
 
         for handler in reversed(self._handlers):
-            request = request.copy()
-            handler.prepare_request(request)
-
-            if not handler.can_handle(request):
-                self.to_debugtraffic(
-                    f'{handler.name} request handler cannot handle this request, trying next handler...')
-                continue
-
-            self.to_debugtraffic(f'Forwarding request to {handler.name} request handler')
-
+            handler_req = request.copy()
             try:
-                res = handler.handle(request)
-            except Exception as e:
-                if not isinstance(e, YoutubeDLError):
-                    self.ydl.report_warning(f'Unexpected error from request handler: {type(e).__name__}: {e}' + bug_reports_message())
-
-                if isinstance(e, RequestError):
+                try:
+                    handler.prepare_request(handler_req)
+                    self.to_debugtraffic(f'Forwarding request to {handler.name} request handler')
+                    res = handler.handle(handler_req)
+                except RequestError as e:
                     e.handler = handler
+                    raise
+            # Nested try-except since we want to catch RequestErrors with handler attached
+            except UnsupportedRequest as e:
+                self.to_debugtraffic(
+                    f'{handler.name} request handler cannot handle this request, trying next handler... (reason: {e})')
+                continue
+            except YoutubeDLError as e:
+                self.ydl.report_warning(f'Unexpected error from request handler: {type(e).__name__}: {e}' + bug_reports_message())
                 raise
 
             if not res:

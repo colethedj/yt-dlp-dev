@@ -1130,6 +1130,10 @@ class RequestError(YoutubeDLError):
         return f'<{self.__class__.__name__}{backend_msg}: {self.msg}{cause_msg}>'
 
 
+class UnsupportedRequest(RequestError):
+    pass
+
+
 class TransportError(RequestError):
     """Network related errors"""
 
