@@ -35,7 +35,7 @@ from ..utils import (
     SSLError,
     HTTPError,
     ProxyError,
-    RequestError, YoutubeDLError
+    RequestError, YoutubeDLError, UnsupportedRequest
 )
 
 import requests.adapters
@@ -87,26 +87,6 @@ def handle_urllib3_read_exceptions(e):
         raise IncompleteRead(partial=ic_read_err.partial, expected=ic_read_err.expected)
     if isinstance(e, urllib3.exceptions.SSLError):
         raise SSLError(cause=e) from e
-
-
-def sanitize_proxies(proxies: dict):
-    # URLs such as localhost:port are not supported in requests but work in urllib. [1]
-    # We can use the urllib.request._parse_proxy to work around this, though is not ideal.
-    # 1. https://github.com/psf/requests/issues/6032
-    proxies_new = proxies.copy()
-    for key, proxy in proxies.items():
-        if proxy is None:
-            continue
-        try:
-            proxy_parsed = parse_url(requests.utils.prepend_scheme_if_needed(proxy, 'http'))
-            if not proxy_parsed.host and _parse_proxy is not None and _parse_proxy(proxy)[0] is None:
-                proxy_parsed = parse_url(requests.utils.prepend_scheme_if_needed(f'http://{proxy}', 'http'))
-        except urllib3.exceptions.LocationParseError:
-            proxy_parsed = None
-        if not proxy_parsed or not proxy_parsed.host:
-            raise YoutubeDLError('Malformed proxy')
-        proxies_new[key] = proxy_parsed.url
-    return proxies_new
 
 
 class YDLRequestsHTTPAdapter(requests.adapters.HTTPAdapter):
@@ -216,24 +196,34 @@ class RequestsRH(BackendRH):
             ssl_load_certs(context, self.ydl.params)
         return context
 
-    def can_handle(self, request: Request) -> bool:
+    def _prepare_request(self, request: Request):
         if self._is_force_disabled:
             self.write_debug('Not using requests backend as no-requests compat opt is set.', only_once=True)
-            return False
+            raise UnsupportedRequest('requests backend disabled')
         if request.proxies and 'no' in request.proxies:
             # NO_PROXY is buggy in requests.
             # Disable the handler for now until it is fixed, or we implement a workaround
             # See https://github.com/psf/requests/issues/5000 and related issues
-            return False
-        try:
-            sanitize_proxies(request.proxies)
-        except YoutubeDLError:
-            self.report_warning(
-                'Check your proxy url; it is malformed and requests will not accept it. '
-                'Proceeding to let another backend try to deal with it...', only_once=True)
-            return False
+            raise UnsupportedRequest('NO_PROXY not supported by requests backend')
 
-        return super().can_handle(request)
+        # URLs such as localhost:port are not supported in requests but work in urllib. [1]
+        # We can use the urllib.request._parse_proxy to work around this, though is not ideal.
+        # 1. https://github.com/psf/requests/issues/6032
+        for key, proxy in request.proxies.items():
+            if proxy is None:
+                continue
+            try:
+                proxy_parsed = parse_url(requests.utils.prepend_scheme_if_needed(proxy, 'http'))
+                if not proxy_parsed.host and _parse_proxy is not None and _parse_proxy(proxy)[0] is None:
+                    proxy_parsed = parse_url(requests.utils.prepend_scheme_if_needed(f'http://{proxy}', 'http'))
+            except urllib3.exceptions.LocationParseError:
+                proxy_parsed = None
+            if not proxy_parsed or not proxy_parsed.host:
+                self.report_warning(
+                    'Check your proxy url; it is malformed and requests will not accept it. '
+                    'Proceeding to let another backend try to deal with it...', only_once=True)
+                raise UnsupportedRequest('Malformed proxy')
+            request.proxies[key] = proxy_parsed.url
 
     def handle(self, request: Request) -> HTTPResponse:
         headers = request.headers.copy()  # TODO: make a copy of request for each handler
@@ -254,7 +244,7 @@ class RequestsRH(BackendRH):
                 data=request.data,
                 headers=headers,
                 timeout=request.timeout,
-                proxies=sanitize_proxies(request.proxies),
+                proxies=request.proxies,
                 allow_redirects=True,
                 stream=True
             )
