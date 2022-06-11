@@ -19,7 +19,8 @@ from ..compat import (
     compat_urlparse, compat_HTTPError, compat_brotli
 )
 
-from .common import HTTPResponse, BackendRH, Request, make_std_headers
+from .common import Response, BackendRH, Request
+from .utils import make_std_headers
 from .socksproxy import sockssocket
 from .utils import handle_youtubedl_headers, socks_create_proxy_args, ssl_load_certs, select_proxy
 from ..utils import (
@@ -390,7 +391,7 @@ class YDLProxyHandler(urllib.request.BaseHandler):
             self, req, proxy, None)
 
 
-class UrllibHTTPResponseAdapter(HTTPResponse):
+class UrllibHTTPResponseAdapter(Response):
     """
     HTTP Response adapter class for urllib addinfourl and http.client.HTTPResponse
     """
@@ -498,7 +499,7 @@ class UrllibRH(BackendRH):
             ssl_load_certs(context, self.ydl.params)
         return context
 
-    def handle(self, request: Request) -> HTTPResponse:
+    def handle(self, request: Request) -> Response:
         urllib_req = urllib.request.Request(
             url=request.url, data=request.data, headers=dict(request.headers), method=request.method
         )

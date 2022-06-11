@@ -1140,7 +1140,7 @@ class TransportError(RequestError):
 
 # Backwards compatible with urllib.error.HTTPError
 class HTTPError(urllib.error.HTTPError, RequestError):
-    def __init__(self, response: "networking.common.HTTPResponse", redirect_loop=False):
+    def __init__(self, response: "networking.common.Response", redirect_loop=False):
         self.response = response
         msg = response.reason or ''
         if redirect_loop:
