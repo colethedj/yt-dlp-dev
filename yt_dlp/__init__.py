@@ -58,7 +58,7 @@ from .postprocessor import (
 )
 from .YoutubeDL import YoutubeDL
 
-from .networking.common import make_std_headers
+from .networking.utils import make_std_headers
 
 
 def get_urls(urls, batchfile, verbose):

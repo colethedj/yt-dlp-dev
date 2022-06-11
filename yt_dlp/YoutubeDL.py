@@ -47,9 +47,9 @@ from .cookies import load_cookies
 from .networking.common import (
     Request,
     RequestHandlerBroker,
-    make_std_headers,
     HEADRequest
 )
+from .networking.utils import make_std_headers
 
 from .networking.utils import has_certifi, get_cookie_header
 

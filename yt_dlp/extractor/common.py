@@ -33,7 +33,8 @@ from ..downloader.f4m import (
     get_base_url,
     remove_encrypted_media,
 )
-from ..networking.common import Request, update_request
+from ..networking.common import Request
+from ..networking.utils import update_request
 from ..networking.utils import get_cookie_header
 from ..utils import (
     age_restricted,

@@ -19,7 +19,8 @@ from ..compat import (
     compat_urlparse, compat_HTTPError, compat_brotli
 )
 
-from .common import Response, BackendRH, Request, make_std_headers
+from .common import Response, BackendRH, Request
+from .utils import make_std_headers
 from .socksproxy import sockssocket
 from .utils import handle_youtubedl_headers, socks_create_proxy_args, ssl_load_certs, select_proxy
 from ..utils import (

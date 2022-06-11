@@ -1,10 +1,12 @@
-from __future__ import annotations
+from __future__ import annotations, unicode_literals
 
 import random
 import ssl
 import sys
 import typing
 
+from ..utils import CaseInsensitiveDict, update_url_query
+from ..utils import std_headers
 from ..compat import compat_urlparse, compat_urllib_parse_unquote_plus
 from .socksproxy import ProxyType
 import urllib.parse
@@ -155,3 +157,29 @@ def get_cookie_header(req: Request, cookiejar: CookieJar):
     cookie_req = urllib.request.Request(url=req.url)
     cookiejar.add_cookie_header(cookie_req)
     return cookie_req.get_header('Cookie')
+
+
+# Use make_std_headers() to get a copy of these
+_std_headers = CaseInsensitiveDict({
+    'User-Agent': random_user_agent(),
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'en-us,en;q=0.5',
+    'Sec-Fetch-Mode': 'navigate',
+})
+
+
+# Get a copy of std headers, while also retaining backwards compat with utils.std_headers
+def make_std_headers():
+    return CaseInsensitiveDict(_std_headers, std_headers)
+
+
+def update_request(req: Request, url: str = None, data=None,
+                   headers: typing.Mapping = None, query: dict = None):
+    """
+    Creates a copy of the request and updates relevant fields
+    """
+    req = req.copy()
+    req.data = data or req.data
+    req.headers.update(headers or {})
+    req.url = update_url_query(url or req.url, query or {})
+    return req
