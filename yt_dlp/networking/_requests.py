@@ -16,7 +16,7 @@ from ..compat import (
 )
 
 from .common import (
-    HTTPResponse,
+    Response,
     BackendRH,
     Request
 )
@@ -56,7 +56,7 @@ if compat_brotli and not (compat_brotli.__name__ == 'brotlicffi' and urllib3.__v
     SUPPORTED_ENCODINGS.append('br')
 
 
-class RequestsHTTPResponseAdapter(HTTPResponse):
+class RequestsHTTPResponseAdapter(Response):
     def __init__(self, res: requests.models.Response):
         super().__init__(
             raw=res, headers=res.headers, url=res.url,
@@ -225,7 +225,7 @@ class RequestsRH(BackendRH):
                 raise UnsupportedRequest('Malformed proxy')
             request.proxies[key] = proxy_parsed.url
 
-    def handle(self, request: Request) -> HTTPResponse:
+    def handle(self, request: Request) -> Response:
         headers = request.headers.copy()  # TODO: make a copy of request for each handler
         if 'Accept-Encoding' not in headers:
             headers['Accept-Encoding'] = ', '.join(SUPPORTED_ENCODINGS)
