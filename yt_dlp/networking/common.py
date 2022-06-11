@@ -187,7 +187,7 @@ def update_request(req: Request, url: str = None, data=None,
     return req
 
 
-class HTTPResponse(io.IOBase):
+class Response(io.IOBase):
     """
     Abstract base class for HTTP response adapters.
 
@@ -324,6 +324,7 @@ class BackendRH(RequestHandler):
 
     def _make_sslcontext(self, verify: bool, **kwargs) -> ssl.SSLContext:
         """Generate a backend-specific SSLContext. Redefine in subclasses"""
+        raise NotImplementedError
 
     def prepare_request(self, request: Request):
         super().prepare_request(request)
@@ -350,18 +351,23 @@ class BackendRH(RequestHandler):
 
 class RequestHandlerBroker:
 
-    def __init__(self, ydl: YoutubeDL):
+    def __init__(self, ydl):
         self._handlers = []
-        self.ydl: YoutubeDL = ydl
+        self.ydl = ydl
 
-    def add_handler(self, handler: RequestHandler):
+    def add_handler(self, handler):
         if handler not in self._handlers and isinstance(handler, RequestHandler):
             self._handlers.append(handler)
 
-    def remove_handler(self, handler: Union[RequestHandler, Type[RequestHandler]]):
+    def remove_handler(self, handler):
+        """
+        Remove a RequestHandler from the broker.
+        If a class is provided, all handlers of that class type are removed.
+        """
         self._handlers = [h for h in self._handlers if not (isinstance(h, handler) or h is handler)]
 
-    def get_handlers(self, handler: Type[RequestHandler] = None) -> List[RequestHandler]:
+    def get_handlers(self, handler=None):
+        """Get all handlers for a particular class type"""
         return [h for h in self._handlers if isinstance(h, handler or RequestHandler)]
 
     # TODO: we want this available for RequestHandlers too
@@ -370,7 +376,7 @@ class RequestHandlerBroker:
         if self.ydl.params.get('debug_printtraffic'):
             self.ydl.to_stdout(msg)
 
-    def send(self, request: Union[Request, str, urllib.request.Request]) -> HTTPResponse:
+    def send(self, request: Union[Request, str, urllib.request.Request]) -> Response:
         """
         Passes a request onto a suitable RequestHandler
         """
@@ -409,7 +415,7 @@ class RequestHandlerBroker:
             if not res:
                 self.ydl.report_warning(f'{handler.name} request handler returned nothing for response' + bug_reports_message())
                 continue
-            assert isinstance(res, HTTPResponse)
+            assert isinstance(res, Response)
             return res
         raise YoutubeDLError('No request handlers configured that could handle this request.')
 
