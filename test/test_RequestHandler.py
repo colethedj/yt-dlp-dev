@@ -392,5 +392,6 @@ class TestRequestsRH(RequestHandlerCommonTestsBase, unittest.TestCase):
         content = str(ydl.urlopen(Request('http://127.0.0.1:%d/headers' % self.http_port, compression=False)).read())
         self.assertIn('Connection: close', content)
 
+
 if __name__ == '__main__':
     unittest.main()
