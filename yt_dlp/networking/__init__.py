@@ -12,6 +12,11 @@ from .common import (
 
 from ..utils import RequestError
 
+try:
+    from ._requests import RequestsRH
+except ImportError:
+    RequestsRH = None
+
 
 class UnsupportedRH(BackendRH):
     """
@@ -33,4 +38,7 @@ class UnsupportedRH(BackendRH):
 
 REQUEST_HANDLERS = [UnsupportedRH, UrllibRH]
 
-__all__ = ['UrllibRH', 'UnsupportedRH', 'REQUEST_HANDLERS', 'Request', 'HEADRequest', 'PUTRequest', 'RequestHandlerBroker']
+if RequestsRH is not None:
+    REQUEST_HANDLERS.append(RequestsRH)
+
+__all__ = ['UrllibRH', 'UnsupportedRH', 'REQUEST_HANDLERS', 'Request', 'HEADRequest', 'PUTRequest', 'RequestHandlerBroker', 'RequestsRH']

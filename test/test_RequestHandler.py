@@ -7,7 +7,8 @@ import unittest
 import urllib.request
 from http.cookiejar import Cookie
 
-from yt_dlp.networking import UrllibRH, UnsupportedRH, Request, HEADRequest
+
+from yt_dlp.networking import UrllibRH, UnsupportedRH, Request, HEADRequest, RequestsRH
 from yt_dlp.utils import HTTPError, SSLError, TransportError, IncompleteRead
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -20,7 +21,7 @@ import threading
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 
-HTTP_TEST_BACKEND_HANDLERS = [UrllibRH]
+HTTP_TEST_BACKEND_HANDLERS = [UrllibRH, RequestsRH]
 
 
 class FakeLogger(object):
@@ -363,6 +364,33 @@ class TestClientCert(RequestHandlerTestBase, unittest.TestCase):
 class TestUrllibRH(RequestHandlerCommonTestsBase, unittest.TestCase):
     handler = UrllibRH
 
+
+class TestRequestsRH(RequestHandlerCommonTestsBase, unittest.TestCase):
+    """
+    Notes
+    - test_redirect_loop: the error doesn't say we hit a loop
+    """
+    handler = RequestsRH
+
+    def test_close_conn_on_http_error(self):
+        from urllib3.util.connection import is_connection_dropped
+        ydl = self.make_ydl()
+        res = ydl.urlopen(Request('http://127.0.0.1:%d/gen_200' % self.http_port, compression=False))
+        # Get connection before we read, since it gets released back to pool after read
+        conn = res.raw.raw.connection
+        self.assertIsNotNone(conn)
+        a = res.read()
+        self.assertFalse(is_connection_dropped(conn))
+        with self.assertRaises(HTTPError) as e:
+            ydl.urlopen(Request('http://127.0.0.1:%d/gen_404' % self.http_port, compression=False))
+        self.assertIs(conn, e.exception.response.raw.raw.connection)
+        e.exception.response.read()
+        self.assertTrue(is_connection_dropped(conn))
+
+    def test_no_persistent_connections(self):
+        ydl = self.make_ydl({'no_persistent_connections': True})
+        content = str(ydl.urlopen(Request('http://127.0.0.1:%d/headers' % self.http_port, compression=False)).read())
+        self.assertIn('Connection: close', content)
 
 if __name__ == '__main__':
     unittest.main()
