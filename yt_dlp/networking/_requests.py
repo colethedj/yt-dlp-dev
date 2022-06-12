@@ -277,15 +277,6 @@ class RequestsRH(BackendRH):
             raise RequestError(cause=e) from e
         requests_res = RequestsHTTPResponseAdapter(res)
         if not 200 <= requests_res.status < 300:
-            """
-            Close the connection when finished instead of releasing it to the pool.
-            May help with recovering from temporary errors related to persistent connections (e.g. temp block)
-            """
-            def release_conn_override():
-                if hasattr(res.raw, '_connection') and res.raw._connection is not None:
-                    res.raw._connection.close()
-                    res.raw._connection = None
-            res.raw.release_conn = release_conn_override
             raise HTTPError(requests_res, redirect_loop=max_redirects_exceeded)
         return requests_res
 
