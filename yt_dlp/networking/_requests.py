@@ -196,6 +196,9 @@ class RequestsRH(BackendRH):
             return True
         return False
 
+    def close(self):
+        self.session.close()
+
     def _make_sslcontext(self, verify, **kwargs) -> ssl.SSLContext:
         context = create_urllib3_context(cert_reqs=ssl.CERT_REQUIRED if verify else ssl.CERT_NONE)
         if verify:
