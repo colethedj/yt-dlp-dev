@@ -795,6 +795,8 @@ You can also fork the project on github and run your fork's [build workflow](.gi
                                     be used along with --min-sleep-interval
     --sleep-subtitles SECONDS       Number of seconds to sleep before each
                                     subtitle download
+    --no-persistent-connections     Do not keep the connection open after a
+                                    request
 
 ## Video Format Options:
     -f, --format FORMAT             Video format code, see "FORMAT SELECTION"

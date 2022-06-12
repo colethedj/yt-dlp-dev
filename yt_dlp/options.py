@@ -1011,6 +1011,10 @@ def create_parser():
         '--sleep-subtitles', metavar='SECONDS',
         dest='sleep_interval_subtitles', default=0, type=int,
         help='Number of seconds to sleep before each subtitle download')
+    workarounds.add_option(
+        '--no-persistent-connections',
+        action='store_true', dest='no_persistent_connections', default=False,
+        help='Do not keep the connection open after a request')
 
     verbosity = optparse.OptionGroup(parser, 'Verbosity and Simulation Options')
     verbosity.add_option(

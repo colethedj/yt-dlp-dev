@@ -312,6 +312,7 @@ class YoutubeDL:
     legacyserverconnect: Explicitly allow HTTPS connection to servers that do not
                        support RFC 5746 secure renegotiation
     nocheckcertificate:  Do not verify SSL certificates
+    no_persistent_connections: Do not keep the connection open after a request
     client_certificate:  Path to client certificate file in PEM format. May include the private key
     client_certificate_key:  Path to private key file for client certificate
     client_certificate_password:  Password for client certificate private key, if encrypted.
