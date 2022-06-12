@@ -193,6 +193,12 @@ class RequestHandlerCommonTestsBase(RequestHandlerTestBase):
         self.geo_proxy_thread.daemon = True
         self.geo_proxy_thread.start()
 
+    def tearDown(self):
+        self.http_httpd.server_close()
+        self.proxy.server_close()
+        self.https_httpd.server_close()
+        self.geo_proxy.server_close()
+
     def test_nocheckcertificate(self):
         with self.make_ydl({'logger': FakeLogger()}) as ydl:
             self.assertRaises(
