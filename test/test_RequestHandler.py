@@ -193,12 +193,6 @@ class RequestHandlerCommonTestsBase(RequestHandlerTestBase):
         self.geo_proxy_thread.daemon = True
         self.geo_proxy_thread.start()
 
-    def tearDown(self):
-        self.http_httpd.server_close()
-        self.proxy.server_close()
-        self.https_httpd.server_close()
-        self.geo_proxy.server_close()
-
     def test_nocheckcertificate(self):
         with self.make_ydl({'logger': FakeLogger()}) as ydl:
             self.assertRaises(
@@ -345,9 +339,6 @@ class TestClientCert(RequestHandlerTestBase, unittest.TestCase):
         self.server_thread = threading.Thread(target=self.httpd.serve_forever)
         self.server_thread.daemon = True
         self.server_thread.start()
-
-    def tearDown(self):
-        self.httpd.server_close()
 
     @with_request_handlers()
     def _run_test(self, **params):
