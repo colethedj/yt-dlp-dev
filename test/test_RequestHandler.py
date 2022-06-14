@@ -384,10 +384,9 @@ class TestRequestsRH(RequestHandlerCommonTestsBase, unittest.TestCase):
     handler = RequestsRH
 
     def test_no_persistent_connections(self):
-        ydl = self.make_ydl({'no_persistent_connections': True})
-        content = str(ydl.urlopen(Request('http://127.0.0.1:%d/headers' % self.http_port, compression=False)).read().decode('utf-8'))
-        self.assertIn('Connection: close', content)
-        ydl.close()
+        with self.make_ydl({'no_persistent_connections': True}) as ydl:
+            content = str(ydl.urlopen(Request('http://127.0.0.1:%d/headers' % self.http_port, compression=False)).read().decode('utf-8'))
+            self.assertIn('Connection: close', content)
 
 
 if __name__ == '__main__':
