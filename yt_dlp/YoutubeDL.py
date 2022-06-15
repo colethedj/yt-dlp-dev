@@ -34,7 +34,7 @@ from .compat import (
     compat_shlex_quote,
     compat_str,
     compat_urllib_error,
-    compat_urllib_request
+    compat_urllib_request,
 )
 from .cookies import load_cookies
 from .downloader import FFmpegFD, get_suitable_downloader, shorten_protocol_name
