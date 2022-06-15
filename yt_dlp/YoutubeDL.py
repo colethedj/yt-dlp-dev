@@ -28,12 +28,13 @@ from string import ascii_letters
 from .cache import Cache
 from .compat import (
     HAS_LEGACY as compat_has_legacy,
+    compat_getproxies,
     compat_get_terminal_size,
     compat_os_name,
     compat_shlex_quote,
     compat_str,
     compat_urllib_error,
-    compat_urllib_request,
+    compat_urllib_request
 )
 from .cookies import load_cookies
 from .downloader import FFmpegFD, get_suitable_downloader, shorten_protocol_name
@@ -3784,7 +3785,7 @@ class YoutubeDL:
             else:
                 proxies = {'http': opts_proxy, 'https': opts_proxy}
         else:
-            proxies = compat_urllib_request.getproxies()
+            proxies = compat_getproxies()
             # Set HTTPS proxy to HTTP one if given (https://github.com/ytdl-org/youtube-dl/issues/805)
             if 'http' in proxies and 'https' not in proxies:
                 proxies['https'] = proxies['http']
