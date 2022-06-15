@@ -19,6 +19,8 @@ from yt_dlp.compat import compat_http_server
 import ssl
 import threading
 import http.server
+import http.client
+
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 
 HTTP_TEST_BACKEND_HANDLERS = [UrllibRH, RequestsRH]
@@ -147,11 +149,12 @@ def _build_proxy_handler(name):
 
 
 class RequestHandlerTestBase:
-    handler = UnsupportedRH
+    handler = None
 
     def make_ydl(self, params=None, fake=True):
         ydl = (FakeYDL if fake else YoutubeDL)(params)
-        ydl.http = ydl.build_http([self.handler])
+        if self.handler is not None:
+            ydl.http = ydl.build_http([self.handler])
         return ydl
 
 
@@ -317,6 +320,8 @@ def with_request_handlers(handlers=HTTP_TEST_BACKEND_HANDLERS):
         @functools.wraps(test)
         def wrapper(self, *args, **kwargs):
             for handler in handlers:
+                if handler is None:
+                    continue
                 with self.subTest(handler=handler.__name__):
                     self.handler = handler
                     test(self, *args, **kwargs)
@@ -371,6 +376,11 @@ class TestClientCert(RequestHandlerTestBase, unittest.TestCase):
 
 class TestUrllibRH(RequestHandlerCommonTestsBase, unittest.TestCase):
     handler = UrllibRH
+
+    def test_ydl_compat_opener(self):
+        ydl = self.make_ydl()
+        res = ydl._opener.open('http://127.0.0.1:%d/gen_200' % self.http_port)
+        self.assertIsInstance(res, http.client.HTTPResponse)
 
 
 class TestRequestsRH(RequestHandlerCommonTestsBase, unittest.TestCase):
