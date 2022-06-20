@@ -57,11 +57,50 @@ SUPPORTED_ENCODINGS = [
     'gzip', 'deflate'
 ]
 
-# TODO: fix this for requests
-# TODO: make it a requirement to have urllib3 >= 1.26.9
-# urllib3 does not support brotlicffi on versions < 1.26.9
-if brotli is not None and not (brotli.__name__ == 'brotlicffi' and urllib3.__version__ < '1.26.9'):
+# TODO: move some of this into dependencies.py
+# TODO: enforce a minimum version of requests and urllib3
+
+urllib3_version = urllib3.__version__.split('.')
+if len(urllib3_version) == 2:
+    urllib3_version.append('0')
+urllib3_version = tuple(map(int, urllib3_version[:3]))
+
+requests_version = tuple(map(int, requests.__version__.split('.')))
+
+# urllib3 does not support brotlicffi on versions < 1.26.9 [1], and brotli on < 1.25.1 [2]
+# 1: https://github.com/urllib3/urllib3/blob/1.26.x/CHANGES.rst#1269-2022-03-16
+# 2: https://github.com/urllib3/urllib3/blob/main/CHANGES.rst#1251-2019-04-24
+if (brotli is not None
+        and not (brotli.__name__ == 'brotlicffi' and urllib3_version < (1, 26, 9))
+        and not (brotli.__name__ == 'brotli' and urllib3_version < (1, 25, 1))):
     SUPPORTED_ENCODINGS.append('br')
+
+# requests < 2.24.0 always uses pyopenssl by default if installed.
+# We do not support pyopenssl's ssl context, so we need to revert this.
+# See: https://github.com/psf/requests/pull/5443
+if requests_version < (2, 24, 0):
+    try:
+        from urllib3.contrib import pyopenssl
+        pyopenssl.extract_from_urllib3()
+    except:
+        pass
+
+"""
+Workaround for issue in urllib.util.ssl_.py. ssl_wrap_context does not pass
+server_hostname to SSLContext.wrap_socket if server_hostname is an IP,
+however this is an issue because we set check_hostname to True in our SSLContext.
+
+Monkey-patching IS_SECURETRANSPORT forces ssl_wrap_context to pass server_hostname regardless.
+
+This has been fixed in urllib3 2.0, which is still in development.
+See: https://github.com/urllib3/urllib3/issues/517
+"""
+
+if urllib3_version < (2, 0, 0):
+    try:
+        urllib3.util.IS_SECURETRANSPORT = urllib3.util.ssl_.IS_SECURETRANSPORT = True
+    except AttributeError:
+        pass
 
 
 class RequestsHTTPResponseAdapter(Response):
@@ -160,7 +199,7 @@ class RequestsRH(BackendRH):
 
     def __init__(self, ydl):
         super().__init__(ydl)
-        self.session = self._create_session()
+        self._session = None
         if not self._is_force_disabled:
             if self.ydl.params.get('debug_printtraffic'):
                 # Setting this globally is not ideal, but is easier than hacking with urllib3.
@@ -177,6 +216,12 @@ class RequestsRH(BackendRH):
                 logger.setLevel(logging.DEBUG)
         # this is expected if we are using --no-check-certificate
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+    @property
+    def session(self):
+        if self._session is None:
+            self._session = self._create_session()
+        return self._session
 
     def _create_session(self):
         session = YDLRequestsSession()
@@ -197,7 +242,8 @@ class RequestsRH(BackendRH):
         return False
 
     def close(self):
-        self.session.close()
+        if self._session:
+            self.session.close()
 
     def _make_sslcontext(self, verify, **kwargs) -> ssl.SSLContext:
         context = create_urllib3_context(cert_reqs=ssl.CERT_REQUIRED if verify else ssl.CERT_NONE)
@@ -330,23 +376,5 @@ class SocksProxyManager(urllib3.PoolManager):
             'https': SocksHTTPSConnectionPool
         }
 
-
 requests.adapters.SOCKSProxyManager = SocksProxyManager
 requests.adapters.select_proxy = select_proxy
-
-"""
-Workaround for issue in urllib.util.ssl_.py. ssl_wrap_context does not pass
-server_hostname to SSLContext.wrap_socket if server_hostname is an IP,
-however this is an issue because we set check_hostname to True in our SSLContext.
-
-Monkey-patching IS_SECURETRANSPORT forces ssl_wrap_context to pass server_hostname regardless.
-
-This has been fixed in urllib3 2.0, which is still in development.
-See https://github.com/urllib3/urllib3/issues/517 for more details
-"""
-
-if urllib3.__version__ < '2.0':
-    try:
-        urllib3.util.IS_SECURETRANSPORT = urllib3.util.ssl_.IS_SECURETRANSPORT = True
-    except AttributeError:
-        pass
