@@ -57,7 +57,6 @@ SUPPORTED_ENCODINGS = [
     'gzip', 'deflate'
 ]
 
-# TODO: move some of this into dependencies.py
 # TODO: enforce a minimum version of requests and urllib3
 
 urllib3_version = urllib3.__version__.split('.')
