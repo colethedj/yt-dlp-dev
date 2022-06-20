@@ -30,8 +30,7 @@ import requests.adapters
 
 from .common import (
     Response,
-    BackendRH,
-    Request
+    BackendRH
 )
 from ..socks import (
     sockssocket,
@@ -171,7 +170,7 @@ class YDLRequestsSession(requests.sessions.Session):
 
 class YDLUrllib3LoggingFilter(logging.Filter):
 
-    def filter(self, record: logging.LogRecord) -> bool:
+    def filter(self, record):
         # Ignore HTTP request messages since http lib prints those
         if record.msg == '%s://%s:%s "%s %s %s" %s %s':
             return False
@@ -184,28 +183,38 @@ class RequestsRH(BackendRH):
     def __init__(self, ydl):
         super().__init__(ydl)
         self._session = None
-        if not self._is_force_disabled:
-            if self.ydl.params.get('debug_printtraffic'):
-                # Setting this globally is not ideal, but is easier than hacking with urllib3.
-                # It could technically be problematic for scripts embedding yt-dlp.
-                # However, it is unlikely debug traffic is used in that context in a way this will cause problems.
-                HTTPConnection.debuglevel = 1
+        if self._is_disabled:
+            return
 
-                # Print urllib3 debug messages
-                logger = logging.getLogger('urllib3')
-                handler = logging.StreamHandler(stream=sys.stdout)
-                handler.setFormatter(logging.Formatter("%(message)s"))
-                handler.addFilter(YDLUrllib3LoggingFilter())
-                logger.addHandler(handler)
-                logger.setLevel(logging.DEBUG)
+        if self.ydl.params.get('debug_printtraffic'):
+            # Setting this globally is not ideal, but is easier than hacking with urllib3.
+            # It could technically be problematic for scripts embedding yt-dlp.
+            # However, it is unlikely debug traffic is used in that context in a way this will cause problems.
+            HTTPConnection.debuglevel = 1
+
+            # Print urllib3 debug messages
+            logger = logging.getLogger('urllib3')
+            handler = logging.StreamHandler(stream=sys.stdout)
+            handler.setFormatter(logging.Formatter("%(message)s"))
+            handler.addFilter(YDLUrllib3LoggingFilter())
+            logger.addHandler(handler)
+            logger.setLevel(logging.DEBUG)
         # this is expected if we are using --no-check-certificate
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+    @property
+    def _is_disabled(self):
+        return 'no-requests' in self.ydl.params.get('compat_opts', [])
 
     @property
     def session(self):
         if self._session is None:
             self._session = self._create_session()
         return self._session
+
+    def close(self):
+        if self._session:
+            self.session.close()
 
     def _create_session(self):
         session = YDLRequestsSession()
@@ -218,18 +227,7 @@ class RequestsRH(BackendRH):
         session.trust_env = False  # no need, we already load proxies from env
         return session
 
-    @property
-    def _is_force_disabled(self):
-        # TODO: improve implementation and purpose
-        if 'no-requests' in self.ydl.params.get('compat_opts', []):
-            return True
-        return False
-
-    def close(self):
-        if self._session:
-            self.session.close()
-
-    def _make_sslcontext(self, verify, **kwargs) -> ssl.SSLContext:
+    def _make_sslcontext(self, verify, **kwargs):
         context = create_urllib3_context(cert_reqs=ssl.CERT_REQUIRED if verify else ssl.CERT_NONE)
         if verify:
             # urllib3 < 2.0 always sets this to false, but we want it to be true when ssl.CERT_REQUIRED
@@ -237,10 +235,10 @@ class RequestsRH(BackendRH):
             ssl_load_certs(context, self.ydl.params)
         return context
 
-    def _prepare_request(self, request: Request):
-        if self._is_force_disabled:
-            self.write_debug('Not using requests backend as no-requests compat opt is set.', only_once=True)
-            raise UnsupportedRequest('requests backend disabled')
+    def _prepare_request(self, request):
+        if self._is_disabled:
+            raise UnsupportedRequest('Not using requests backend as no-requests compat opt is set.')
+
         if request.proxies and 'no' in request.proxies:
             # NO_PROXY is buggy in requests.
             # Disable the handler for now until it is fixed, or we implement a workaround
@@ -263,11 +261,11 @@ class RequestsRH(BackendRH):
                 self.report_warning(
                     'Check your proxy url; it is malformed and requests will not accept it. '
                     'Proceeding to let another backend try to deal with it...', only_once=True)
-                raise UnsupportedRequest('Malformed proxy')
+                raise UnsupportedRequest('Malformed proxy url, will not be accepted by requests.')
             request.proxies[key] = proxy_parsed.url
 
-    def handle(self, request: Request) -> Response:
-        headers = request.headers.copy()  # TODO: make a copy of request for each handler
+    def handle(self, request):
+        headers = request.headers.copy()
         if 'Accept-Encoding' not in headers:
             headers['Accept-Encoding'] = ', '.join(SUPPORTED_ENCODINGS)
 
