@@ -39,7 +39,7 @@ from ..socks import (
 )
 from .utils import (
     ssl_load_certs,
-    socks_create_proxy_args, select_proxy
+    socks_create_proxy_args, select_proxy, get_redirect_method
 )
 
 from ..utils import (
@@ -164,23 +164,9 @@ class YDLRequestsSession(requests.sessions.Session):
 
     def rebuild_method(self, prepared_request, response):
         """
-        Make redirect method handling the same as YoutubeDLRedirectHandler.
-        (requests by default turns all 302s, regardless of method, into GET)
-        TODO: make a method used by this and YoutubeDLRedirectHandler
+        Ensure unified redirect method handling with our urllib redirect handler.
         """
-        m = prepared_request.method
-        # A 303 must either use GET or HEAD for subsequent request
-        # https://datatracker.ietf.org/doc/html/rfc7231#section-6.4.4
-        if response.status_code == 303 and m != 'HEAD':
-            m = 'GET'
-        # 301 and 302 redirects are commonly turned into a GET from a POST
-        # for subsequent requests by browsers, so we'll do the same.
-        # https://datatracker.ietf.org/doc/html/rfc7231#section-6.4.2
-        # https://datatracker.ietf.org/doc/html/rfc7231#section-6.4.3
-        if response.status_code in (301, 302) and m == 'POST':
-            m = 'GET'
-
-        prepared_request.method = m
+        prepared_request.method = get_redirect_method(prepared_request.method, response.status_code)
 
 
 class YDLUrllib3LoggingFilter(logging.Filter):
