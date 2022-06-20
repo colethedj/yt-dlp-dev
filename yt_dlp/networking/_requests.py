@@ -1,3 +1,4 @@
+import contextlib
 import http.client
 import logging
 import socket
@@ -78,11 +79,9 @@ if (brotli is not None
 # We do not support pyopenssl's ssl context, so we need to revert this.
 # See: https://github.com/psf/requests/pull/5443
 if requests_version < (2, 24, 0):
-    try:
+    with contextlib.suppress(ImportError, AttributeError):
         from urllib3.contrib import pyopenssl
         pyopenssl.extract_from_urllib3()
-    except:
-        pass
 
 """
 Workaround for issue in urllib.util.ssl_.py. ssl_wrap_context does not pass
@@ -374,6 +373,7 @@ class SocksProxyManager(urllib3.PoolManager):
             'http': SocksHTTPConnectionPool,
             'https': SocksHTTPSConnectionPool
         }
+
 
 requests.adapters.SOCKSProxyManager = SocksProxyManager
 requests.adapters.select_proxy = select_proxy
