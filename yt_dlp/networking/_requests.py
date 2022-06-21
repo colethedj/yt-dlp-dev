@@ -264,6 +264,12 @@ class RequestsRH(BackendRH):
                 raise UnsupportedRequest('Malformed proxy url, will not be accepted by requests.')
             request.proxies[key] = proxy_parsed.url
 
+        # Requests doesn't set content-type if we have already encoded the data, while urllib does.
+        # We need to manually set it in this case as many extractors do not.
+        if 'content-type' not in request.headers:
+            if isinstance(request.data, (str, bytes)) or hasattr(request.data, 'read'):
+                request.headers['content-type'] = 'application/x-www-form-urlencoded'
+
     def handle(self, request):
         headers = request.headers.copy()
         if 'Accept-Encoding' not in headers:
