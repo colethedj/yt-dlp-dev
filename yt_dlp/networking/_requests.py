@@ -270,24 +270,24 @@ class RequestsRH(BackendRH):
             if isinstance(request.data, (str, bytes)) or hasattr(request.data, 'read'):
                 request.headers['content-type'] = 'application/x-www-form-urlencoded'
 
-    def handle(self, request):
-        headers = request.headers.copy()
-        if 'Accept-Encoding' not in headers:
-            headers['Accept-Encoding'] = ', '.join(SUPPORTED_ENCODINGS)
+        if 'Accept-Encoding' not in request.headers:
+            request.headers['Accept-Encoding'] = ', '.join(SUPPORTED_ENCODINGS)
 
         if not request.compression:
-            del headers['accept-encoding']
+            del request.headers['accept-encoding']
 
         if self.ydl.params.get('no_persistent_connections', False) is True:
-            headers['Connection'] = 'close'
+            request.headers['Connection'] = 'close'
 
+    def handle(self, request):
         max_redirects_exceeded = False
+        
         try:
             res = self.session.request(
                 method=request.method,
                 url=request.url,
                 data=request.data,
-                headers=headers,
+                headers=request.headers,
                 timeout=request.timeout,
                 proxies=request.proxies,
                 allow_redirects=True,
