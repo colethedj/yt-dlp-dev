@@ -45,6 +45,12 @@ from ..utils import (
     HTTPError,
     RequestError
 )
+
+try:
+    from urllib.request import _parse_proxy
+except ImportError:
+    _parse_proxy = None
+
 CONTENT_DECODE_ERRORS = [zlib.error, OSError]
 
 SUPPORTED_ENCODINGS = [
@@ -498,6 +504,16 @@ class UrllibRH(BackendRH):
         if verify:
             ssl_load_certs(context, self.ydl.params)
         return context
+
+    def _prepare_request(self, request):
+        if _parse_proxy:
+            for proxy_key, proxy in request.proxies.items():
+                proxy_type = _parse_proxy(proxy)[0]
+                if proxy_type == 'https':
+                    self.report_warning(
+                        'A HTTPS proxy was passed but urllib does not support HTTPS proxies, '
+                        'and will instead treat it as an HTTP proxy.Please install requests for proper HTTPS proxy support.',
+                        only_once=True)
 
     def handle(self, request):
         urllib_req = urllib.request.Request(
