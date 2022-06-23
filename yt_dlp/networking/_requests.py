@@ -124,12 +124,12 @@ if urllib3_version >= (1, 25, 4):
     import urllib3.util.url
     urllib3.util.url.PERCENT_RE = _Urllib3PercentREOverride(urllib3.util.url.PERCENT_RE)
 
-elif (1, 25, 2) <= urllib3_version < (1, 25, 4):
-    # 1.25.2 <= urllib3 < 1.25.4 uses rfc3986 normalizers package:
+elif (1, 25, 0) <= urllib3_version < (1, 25, 4):
+    # 1.25.0 <= urllib3 < 1.25.4 uses rfc3986 normalizers package:
     # https://github.com/urllib3/urllib3/commit/a74c9cfbaed9f811e7563cfc3dce894928e0221a
-    from urllib3.util.url import normalizers
+    # https://github.com/urllib3/urllib3/commit/0aa3e24fcd75f1bb59ab159e9f8adb44055b2271
+    import urllib3.packages.rfc3986.normalizers as normalizers
     normalizers.PERCENT_MATCHER = _Urllib3PercentREOverride(normalizers.PERCENT_MATCHER)
-
 
 """
 Workaround for issue in urllib.util.ssl_.py. ssl_wrap_context does not pass
