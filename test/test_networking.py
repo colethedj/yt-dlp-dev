@@ -357,6 +357,7 @@ class RequestHandlerCommonTestsBase(RequestHandlerTestBase):
             self.assertEqual(do_req(302, 'HEAD'), ('', 'HEAD'))
 
             # FIXME: urllib redirect handler does not handle methods other than GET, POST, HEAD
+            # FIXME: requests strips data for any method on non-307/308 redirect
             # self.assertEqual(do_req(301, 'PUT'), ('testdata', 'PUT'))
             # self.assertEqual(do_req(302, 'PUT'), ('testdata', 'PUT'))
 
