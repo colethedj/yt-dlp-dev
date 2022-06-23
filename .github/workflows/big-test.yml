@@ -2,7 +2,7 @@ name: Core Tests
 on: [push, pull_request]
 jobs:
   tests:
-    name: Core Tests
+    name: Core Tests More
     if: "!contains(github.event.head_commit.message, 'ci skip')"
     runs-on: ${{ matrix.os }}
     strategy:
@@ -14,8 +14,8 @@ jobs:
         requests-version: ['2.27.1', '2.25.1', '2.23.0', '2.22.0']
         urllib3-version: ['1.26.8', '1.26.7',  '1.26.4', '1.26.0', '1.25.11','1.25.4', '1.25.1', '1.24.2', '1.24.1', '1.23.0', '1.22.0',  '1.21.1']
         run-tests-ext: [sh]
-        include:
-        # atleast one of each CPython/PyPy tests must be in windows
+    #    include:
+# atleast one of each CPython/PyPy tests must be in windows
 #        - os: windows-latest
 #          python-version: '3.8'
 #          run-tests-ext: bat
