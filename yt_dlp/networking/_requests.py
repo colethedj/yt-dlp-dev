@@ -209,7 +209,22 @@ class YDLRequestsSession(requests.sessions.Session):
         """
         Ensure unified redirect method handling with our urllib redirect handler.
         """
-        prepared_request.method = get_redirect_method(prepared_request.method, response.status_code)
+        new_method = get_redirect_method(prepared_request.method, response.status_code)
+
+        # HACK: requests removes headers/body on redirect unless code was a 307/308.
+        if not (new_method != prepared_request.method and new_method == 'GET'):
+            response._real_status_code = response.status_code
+            response.status_code = 308
+
+        prepared_request.method = new_method
+
+    def rebuild_auth(self, prepared_request, response):
+        # HACK: undo status code change from rebuild_method, if applicable.
+        # rebuild_auth runs after requests would remove headers/body
+        if hasattr(response, '_real_status_code'):
+            response.status_code = response._real_status_code
+            del response._real_status_code
+        return super().rebuild_auth(prepared_request, response)
 
 
 class YDLUrllib3LoggingFilter(logging.Filter):
