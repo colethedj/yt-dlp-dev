@@ -3745,7 +3745,8 @@ class YoutubeDL:
     def build_http(self, handlers):
         broker = RequestHandlerBroker(self)
         for klass in handlers:
-            broker.add_handler(klass(self))
+            if klass is not None:
+                broker.add_handler(klass(self))
         return broker
 
     def encode(self, s):
