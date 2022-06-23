@@ -507,10 +507,10 @@ class UrllibRH(BackendRH):
 
     def _prepare_request(self, request):
         if _parse_proxy:
-            for proxy_key, proxy in request.proxies.items():
-                if proxy is None:
+            for proxy_key, proxy_url in request.proxies.items():
+                if proxy_url is None:
                     continue
-                proxy_type = _parse_proxy(proxy)[0]
+                proxy_type = _parse_proxy(proxy_url)[0]
                 if proxy_type == 'https':
                     self.report_warning(
                         'A HTTPS proxy was passed but urllib does not support HTTPS proxies, '
@@ -532,8 +532,10 @@ class UrllibRH(BackendRH):
             raise  # unexpected
         except urllib.error.URLError as e:
             cause = e.reason
-            handle_sslerror(cause)
-            handle_response_read_exceptions(cause)
+            # e.reason may be a string
+            if isinstance(cause, Exception):
+                handle_sslerror(cause)
+                handle_response_read_exceptions(cause)
             raise TransportError(cause=e)
 
         except Exception as e:
