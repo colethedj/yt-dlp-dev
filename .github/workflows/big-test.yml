@@ -1,0 +1,35 @@
+name: Core Tests
+on: [push, pull_request]
+jobs:
+  tests:
+    name: Core Tests
+    if: "!contains(github.event.head_commit.message, 'ci skip')"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        # CPython 3.9 is in quick-test
+        python-version: ['3.7', '3.10', pypy-3.7, pypy-3.8]
+        requests-version: ['2.28.0', '2.27.1', '2.26.0', '2.25.1', '2.25.0', '2.24.0', '2.23.0', '2.22.0']
+        run-tests-ext: [sh]
+        include:
+        # atleast one of each CPython/PyPy tests must be in windows
+        - os: windows-latest
+          python-version: '3.8'
+          run-tests-ext: bat
+        - os: windows-latest
+          python-version: pypy-3.9
+          run-tests-ext: bat
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install test requirements
+      run: pip install pytest "requests==${{ matrix.requests-version }}"
+    - name: Run tests
+      continue-on-error: False
+      run: ./devscripts/run_tests.${{ matrix.run-tests-ext }} core
+  # Linter is in quick-test
