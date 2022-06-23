@@ -5,11 +5,6 @@ import re
 import socket
 import ssl
 import sys
-try:
-    from urllib.request import _parse_proxy
-except ImportError:
-    _parse_proxy = None
-
 
 from ..dependencies import (
     urllib3,
@@ -297,25 +292,6 @@ class RequestsRH(BackendRH):
             # Disable the handler for now until it is fixed, or we implement a workaround
             # See https://github.com/psf/requests/issues/5000 and related issues
             raise UnsupportedRequest('NO_PROXY not supported by requests backend')
-
-        # URLs such as localhost:port are not supported in requests but work in urllib. [1]
-        # We can use the urllib.request._parse_proxy to work around this, though is not ideal.
-        # 1. https://github.com/psf/requests/issues/6032
-        for key, proxy in request.proxies.items():
-            if proxy is None:
-                continue
-            try:
-                proxy_parsed = parse_url(requests.utils.prepend_scheme_if_needed(proxy, 'http'))
-                if not proxy_parsed.host and _parse_proxy is not None and _parse_proxy(proxy)[0] is None:
-                    proxy_parsed = parse_url(requests.utils.prepend_scheme_if_needed(f'http://{proxy}', 'http'))
-            except urllib3.exceptions.LocationParseError:
-                proxy_parsed = None
-            if not proxy_parsed or not proxy_parsed.host:
-                self.report_warning(
-                    'Check your proxy url; it is malformed and requests will not accept it. '
-                    'Proceeding to let another backend try to deal with it...', only_once=True)
-                raise UnsupportedRequest('Malformed proxy url, will not be accepted by requests.')
-            request.proxies[key] = proxy_parsed.url
 
         # Requests doesn't set content-type if we have already encoded the data, while urllib does.
         # We need to manually set it in this case as many extractors do not.
