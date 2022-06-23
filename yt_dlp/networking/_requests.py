@@ -1,6 +1,7 @@
 import contextlib
 import http.client
 import logging
+import re
 import socket
 import ssl
 import sys
@@ -81,6 +82,54 @@ if requests_version < (2, 24, 0):
     with contextlib.suppress(ImportError, AttributeError):
         from urllib3.contrib import pyopenssl
         pyopenssl.extract_from_urllib3()
+
+"""
+Override urllib3's behavior to not convert lower-case percent-encoded characters
+to upper-case during url normalization process.
+
+RFC3986 defines that the lower or upper case percent-encoded hexidecimal characters are equivalent
+and normalizers should convert them to uppercase for consistency [1].
+
+However, some sites may have an incorrect implementation where they provide
+a percent-encoded url that is then compared case-sensitively.[2]
+
+While this is a very rare case, since urllib does not do this normalization step, it
+is best to avoid it here too for compatability reasons.
+
+1: https://tools.ietf.org/html/rfc3986#section-2.1
+2: https://github.com/streamlink/streamlink/pull/4003
+"""
+
+
+class _Urllib3PercentREOverride:
+    def __init__(self, r: re.Pattern):
+        self.re = r
+
+    # pass through all other attribute calls to the original re
+    def __getattr__(self, item):
+        return self.RE.__getattribute__(item)
+
+    def subn(self, repl, string, *args, **kwargs):
+        return string, self.re.subn(repl, string, *args, **kwargs)[1]
+
+    def findall(self, component, *args, **kwargs):
+        return [c.upper() for c in self.re.findall(component, *args, **kwargs)]
+
+
+if urllib3_version >= (1, 25, 4):
+    # urllib3 >= 1.25.8 uses subn:
+    # https://github.com/urllib3/urllib3/commit/a2697e7c6b275f05879b60f593c5854a816489f0
+    # 1.25.4 <= urllib3 < 1.25.8 uses findall:
+    # https://github.com/urllib3/urllib3/commit/5b047b645f5f93900d5e2fc31230848c25eb1f5f
+    import urllib3.util.url
+    urllib3.util.url.PERCENT_RE = _Urllib3PercentREOverride(urllib3.util.url.PERCENT_RE)
+
+elif (1, 25, 2) <= urllib3_version < (1, 25, 4):
+    # 1.25.2 <= urllib3 < 1.25.4 uses rfc3986 normalizers package:
+    # https://github.com/urllib3/urllib3/commit/a74c9cfbaed9f811e7563cfc3dce894928e0221a
+    from urllib3.util.url import normalizers
+    normalizers.PERCENT_MATCHER = _Urllib3PercentREOverride(normalizers.PERCENT_MATCHER)
+
 
 """
 Workaround for issue in urllib.util.ssl_.py. ssl_wrap_context does not pass
