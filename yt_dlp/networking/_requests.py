@@ -107,7 +107,7 @@ class _Urllib3PercentREOverride:
 
     # pass through all other attribute calls to the original re
     def __getattr__(self, item):
-        return self.RE.__getattribute__(item)
+        return self.re.__getattribute__(item)
 
     def subn(self, repl, string, *args, **kwargs):
         return string, self.re.subn(repl, string, *args, **kwargs)[1]
@@ -330,7 +330,7 @@ class RequestsRH(BackendRH):
 
     def handle(self, request):
         max_redirects_exceeded = False
-        
+
         try:
             res = self.session.request(
                 method=request.method,
