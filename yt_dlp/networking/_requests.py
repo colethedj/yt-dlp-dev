@@ -282,6 +282,10 @@ class RequestsRH(BackendRH):
             # urllib3 < 2.0 always sets this to false, but we want it to be true when ssl.CERT_REQUIRED
             context.check_hostname = True
             ssl_load_certs(context, self.ydl.params)
+        if urllib3_version < (1, 26, 0):
+            # urllib3 <1.26.0 does not set ALPN, which is required by some sites (see urllib handler)
+            with contextlib.suppress(NotImplementedError):
+                context.set_alpn_protocols(['http/1.1'])
         return context
 
     def _prepare_request(self, request):
