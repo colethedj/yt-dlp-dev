@@ -212,7 +212,7 @@ class YDLRequestsSession(requests.sessions.Session):
         new_method = get_redirect_method(prepared_request.method, response.status_code)
 
         # HACK: requests removes headers/body on redirect unless code was a 307/308.
-        if not (new_method != prepared_request.method and new_method == 'GET'):
+        if not new_method != prepared_request.method:
             response._real_status_code = response.status_code
             response.status_code = 308
 
