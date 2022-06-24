@@ -74,6 +74,10 @@ except (ImportError, SyntaxError):
     # See https://github.com/yt-dlp/yt-dlp/issues/2633
     websockets = None
 
+try:
+    import truststore
+except ImportError:
+    truststore = None
 
 try:
     import xattr  # xattr or pyxattr

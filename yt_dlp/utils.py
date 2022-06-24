@@ -64,7 +64,7 @@ from .compat import (
     compat_urllib_request,
     compat_urlparse,
 )
-from .dependencies import brotli, certifi, websockets
+from .dependencies import brotli, certifi, websockets, truststore
 from .socks import ProxyType, sockssocket
 
 
@@ -949,7 +949,7 @@ def _ssl_load_windows_store_certs(ssl_context, storename):
 
 def make_HTTPS_handler(params, **kwargs):
     opts_check_certificate = not params.get('nocheckcertificate')
-    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    context = (truststore or ssl).SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     context.check_hostname = opts_check_certificate
     if params.get('legacyserverconnect'):
         context.options |= 4  # SSL_OP_LEGACY_SERVER_CONNECT
@@ -957,7 +957,8 @@ def make_HTTPS_handler(params, **kwargs):
         context.set_ciphers('DEFAULT')
 
     context.verify_mode = ssl.CERT_REQUIRED if opts_check_certificate else ssl.CERT_NONE
-    if opts_check_certificate:
+    if opts_check_certificate and not truststore:
+        print('not using truststore - loading certs')
         if has_certifi and 'no-certifi' not in params.get('compat_opts', []):
             context.load_verify_locations(cafile=certifi.where())
         try:
