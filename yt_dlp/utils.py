@@ -36,6 +36,7 @@ import time
 import traceback
 import types
 import urllib.parse
+import urllib.request
 import xml.etree.ElementTree
 import zlib
 
@@ -1468,6 +1469,8 @@ class YoutubeDLHTTPSHandler(compat_urllib_request.HTTPSHandler):
                     and getattr(e.reason, 'reason', None) == 'SSLV3_ALERT_HANDSHAKE_FAILURE'):
                 raise YoutubeDLError('SSLV3_ALERT_HANDSHAKE_FAILURE: Try using --legacy-server-connect')
             raise
+
+    https_request = http_request = urllib.request.AbstractHTTPHandler.do_request_
 
 
 class YoutubeDLCookieJar(compat_cookiejar.MozillaCookieJar):
