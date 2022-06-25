@@ -1,52 +1,48 @@
 from __future__ import annotations
+
 import contextlib
 import errno
 import functools
 import gzip
+import http.client
 import io
-import ssl
-import zlib
 import socket
-from typing import Union
-
-from ..dependencies import brotli
-import urllib.request
-import urllib.response
+import ssl
 import urllib.error
 import urllib.parse
-
+import urllib.request
+import urllib.response
+import zlib
+from typing import Union
 from urllib.request import (
-    UnknownHandler, HTTPDefaultErrorHandler, HTTPErrorProcessor, FTPHandler
-)
-import http.client
-
-from .common import (
-    Response,
-    BackendRH
+    FTPHandler,
+    HTTPDefaultErrorHandler,
+    HTTPErrorProcessor,
+    UnknownHandler,
 )
 
+from .common import BackendRH, Response
 from .utils import (
+    get_redirect_method,
     handle_youtubedl_headers,
     make_std_headers,
-    socks_create_proxy_args,
     select_proxy,
+    socks_create_proxy_args,
     ssl_load_certs,
-    get_redirect_method
 )
-
+from ..dependencies import brotli
 from ..socks import sockssocket
-
 from ..utils import (
-    escape_url,
-    update_url_query,
-    extract_basic_auth,
-    sanitize_url,
-    TransportError,
-    SSLError,
+    HTTPError,
     IncompleteRead,
     ProxyError,
-    HTTPError,
-    RequestError
+    RequestError,
+    SSLError,
+    TransportError,
+    escape_url,
+    extract_basic_auth,
+    sanitize_url,
+    update_url_query,
 )
 
 try:
@@ -400,6 +396,7 @@ class UrllibHTTPResponseAdapter(Response):
     """
     HTTP Response adapter class for urllib addinfourl and http.client.HTTPResponse
     """
+
     def __init__(self, res: Union[http.client.HTTPResponse, urllib.response.addinfourl]):
         # addinfourl: In Python 3.9+, .status was introduced and .getcode() was deprecated [1]
         # HTTPResponse: .getcode() was deprecated, .status always existed [2]
@@ -478,7 +475,7 @@ class UrllibRH(BackendRH):
         opener = urllib.request.OpenerDirector()
 
         handlers = [proxy_handler, cookie_processor, ydlh, redirect_handler, data_handler, file_handler,
-                        UnknownHandler(), HTTPDefaultErrorHandler(), FTPHandler(), HTTPErrorProcessor()]
+                    UnknownHandler(), HTTPDefaultErrorHandler(), FTPHandler(), HTTPErrorProcessor()]
 
         for handler in handlers:
             opener.add_handler(handler)

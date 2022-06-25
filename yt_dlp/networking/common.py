@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-import email.policy
 import io
 import ssl
 import typing
 import urllib.parse
-from email.message import Message
-from http import HTTPStatus
 import urllib.request
 import urllib.response
+from email.message import Message
+from http import HTTPStatus
 from typing import Union
 
 try:
@@ -17,17 +16,17 @@ except ImportError:
     _parse_proxy = None
 
 from ..utils import (
-    extract_basic_auth,
+    CaseInsensitiveDict,
+    RequestError,
+    SSLError,
+    UnsupportedRequest,
+    YoutubeDLError,
+    bug_reports_message,
     escape_url,
+    extract_basic_auth,
+    remove_start,
     sanitize_url,
     update_url_query,
-    bug_reports_message,
-    YoutubeDLError,
-    RequestError,
-    CaseInsensitiveDict,
-    UnsupportedRequest,
-    SSLError,
-    remove_start
 )
 
 if typing.TYPE_CHECKING:
@@ -48,6 +47,7 @@ class Request:
     @param compression: whether to include content-encoding header on request.
     @param timeout: socket timeout value for this request.
     """
+
     def __init__(
             self,
             url: str,
@@ -407,7 +407,7 @@ class RequestHandlerBroker:
                 except Exception as e:
                     # something went very wrong, try fallback to next handler
                     self.ydl.report_error(
-                        f'Unexpected error from "{handler.name}" request handler' + bug_reports_message(),
+                        f'Unexpected error from "{handler.name}" request handler: {e}' + bug_reports_message(),
                         is_error=False)
                     continue
             except UnsupportedRequest as e:
