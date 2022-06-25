@@ -21,7 +21,7 @@ from urllib.request import (
     UnknownHandler,
 )
 
-from .common import BackendRH, Response
+from .common import Response, RequestHandler
 from .utils import (
     get_redirect_method,
     handle_youtubedl_headers,
@@ -446,7 +446,7 @@ def handle_response_read_exceptions(e):
         raise TransportError(cause=e)
 
 
-class UrllibRH(BackendRH):
+class UrllibRH(RequestHandler):
     SUPPORTED_SCHEMES = ['http', 'https', 'data', 'ftp']
 
     def __init__(self, ydl):
@@ -513,8 +513,9 @@ class UrllibRH(BackendRH):
                         'A HTTPS proxy was passed but urllib does not support HTTPS proxies, '
                         'and will instead treat it as an HTTP proxy.Please install requests for proper HTTPS proxy support.',
                         only_once=True)
+        return request
 
-    def handle(self, request):
+    def _real_handle(self, request: Request):
         urllib_req = urllib.request.Request(
             url=request.url, data=request.data, headers=dict(request.headers), method=request.method)
 
