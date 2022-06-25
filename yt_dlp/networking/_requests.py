@@ -15,7 +15,6 @@ from ..dependencies import (
 if urllib3 is None or requests is None:
     raise ImportError
 
-from urllib3.util import parse_url
 import urllib3.connection
 import urllib3.exceptions
 from urllib3.util.ssl_ import create_urllib3_context
@@ -26,7 +25,7 @@ import requests.adapters
 
 from .common import (
     Response,
-    BackendRH
+    RequestHandler
 )
 from ..socks import (
     sockssocket,
@@ -236,15 +235,13 @@ class YDLUrllib3LoggingFilter(logging.Filter):
         return True
 
 
-class RequestsRH(BackendRH):
+class RequestsRH(RequestHandler):
     SUPPORTED_SCHEMES = ['http', 'https']
+    NAME = 'requests'
 
     def __init__(self, ydl):
         super().__init__(ydl)
         self._session = None
-        if self._is_disabled:
-            return
-
         if self.ydl.params.get('debug_printtraffic'):
             # Setting this globally is not ideal, but is easier than hacking with urllib3.
             # It could technically be problematic for scripts embedding yt-dlp.
@@ -260,10 +257,6 @@ class RequestsRH(BackendRH):
             logger.setLevel(logging.DEBUG)
         # this is expected if we are using --no-check-certificate
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-    @property
-    def _is_disabled(self):
-        return 'no-requests' in self.ydl.params.get('compat_opts', [])
 
     @property
     def session(self):
@@ -299,14 +292,11 @@ class RequestsRH(BackendRH):
         return context
 
     def _prepare_request(self, request):
-        if self._is_disabled:
-            raise UnsupportedRequest('Not using requests backend as no-requests compat opt is set.')
-
         if request.proxies and 'no' in request.proxies:
             # NO_PROXY is buggy in requests.
             # Disable the handler for now until it is fixed, or we implement a workaround
             # See https://github.com/psf/requests/issues/5000 and related issues
-            raise UnsupportedRequest('NO_PROXY not supported by requests backend')
+            raise UnsupportedRequest('NO_PROXY is not supported')
 
         # Requests doesn't set content-type if we have already encoded the data, while urllib does.
         # We need to manually set it in this case as many extractors do not.
@@ -322,8 +312,9 @@ class RequestsRH(BackendRH):
 
         if self.ydl.params.get('no_persistent_connections', False) is True:
             request.headers['Connection'] = 'close'
+        return request
 
-    def handle(self, request):
+    def _real_handle(self, request):
         max_redirects_exceeded = False
 
         try:
