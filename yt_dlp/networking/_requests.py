@@ -325,7 +325,7 @@ class RequestsRH(RequestHandler):
                 headers=request.headers,
                 timeout=request.timeout,
                 proxies=request.proxies,
-                allow_redirects=True,
+                allow_redirects=request.redirect,
                 stream=True
             )
 
@@ -348,8 +348,13 @@ class RequestsRH(RequestHandler):
         except requests.exceptions.RequestException as e:
             raise RequestError(cause=e) from e
         requests_res = RequestsHTTPResponseAdapter(res)
+
+        if requests_res.get_redirect_url() and not request.redirect:
+            return requests_res
+
         if not 200 <= requests_res.status < 300:
             raise HTTPError(requests_res, redirect_loop=max_redirects_exceeded)
+
         return requests_res
 
 

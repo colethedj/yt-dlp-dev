@@ -3736,8 +3736,9 @@ class YoutubeDL:
     def build_request_director(self, handlers):
         director = RequestDirector(self)
         for klass in handlers:
-            if klass is not None or (klass.NAME == 'requests' and 'no-requests' in self.params.get('compat_opts', [])):
-                director.add_handler(klass(self))
+            if klass is None or (klass.NAME == 'requests' and 'no-requests' in self.params.get('compat_opts', [])):
+                continue
+            director.add_handler(klass(self))
         return director
 
     def encode(self, s):
