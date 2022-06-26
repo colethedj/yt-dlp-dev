@@ -222,7 +222,7 @@ class RequestHandlerTestBase:
     def make_ydl(self, params=None, fake=True):
         ydl = (FakeYDL if fake else YoutubeDL)(params)
 
-        ydl.http = ydl.build_http([self.handler])
+        ydl._request_director = ydl.build_request_director([self.handler])
         return ydl
 
 
@@ -431,6 +431,11 @@ class RequestHandlerCommonTestsBase(RequestHandlerTestBase):
         with self.make_ydl() as ydl:
             data = ydl.urlopen('http://localhost:%d/trailing_garbage' % self.http_port).read().decode('utf-8')
             self.assertEqual(data, '<html><video src="/vid.mp4" /></html>')
+
+    def test_no_redirects(self):
+        with self.make_ydl() as ydl:
+            res = ydl.urlopen(Request('http://localhost:%d/redirect_302' % self.http_port, redirect=False))
+            self.assertEqual(res.status, 302)
 
 
 def with_request_handlers(handlers=HTTP_TEST_BACKEND_HANDLERS):
