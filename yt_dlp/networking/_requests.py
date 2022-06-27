@@ -36,7 +36,7 @@ from .utils import (
     socks_create_proxy_args, select_proxy, get_redirect_method
 )
 
-from ..utils import (
+from .exceptions import (
     IncompleteRead,
     TransportError,
     SSLError,
