@@ -3,7 +3,6 @@ import contextlib
 import datetime
 import errno
 import fileinput
-import functools
 import io
 import itertools
 import json
@@ -26,7 +25,7 @@ from string import ascii_letters
 
 from .cache import Cache
 from .compat import HAS_LEGACY as compat_has_legacy
-from .compat import compat_os_name, compat_shlex_quote
+from .compat import compat_os_name, compat_shlex_quote, functools
 from .cookies import load_cookies
 from .downloader import FFmpegFD, get_suitable_downloader, shorten_protocol_name
 from .downloader.rtmp import rtmpdump_version
@@ -40,7 +39,7 @@ from .networking import (
     RequestDirector,
     UrllibRH,
 )
-from .networking.utils import get_cookie_header, make_std_headers
+from .networking.utils import make_std_headers
 from .postprocessor import _PLUGIN_CLASSES as plugin_postprocessors
 from .postprocessor import (
     EmbedThumbnailPP,
@@ -109,7 +108,6 @@ from .utils import (
     join_nonempty,
     locked_file,
     make_dir,
-    network_exceptions,
     number_of_digits,
     orderedSet,
     parse_filesize,
@@ -137,6 +135,7 @@ from .utils import (
     write_json_file,
     write_string,
 )
+from .networking.exceptions import network_exceptions
 from .version import RELEASE_GIT_HEAD, __version__
 
 if compat_os_name == 'nt':
@@ -561,9 +560,6 @@ class YoutubeDL:
         self._playlist_urls = set()
         self.cache = Cache(self)
 
-        self._cookiejar = None
-        self._proxies = None
-
         windows_enable_vt_mode()
         stdout = sys.stderr if self.params.get('logtostderr') else sys.stdout
         self._out_files = Namespace(
@@ -873,8 +869,7 @@ class YoutubeDL:
 
     def __exit__(self, *args):
         self.restore_console_title()
-        self.save_cookies()
-        self._request_director.close()
+        self.close()
 
     def close(self):
         self.save_cookies()
@@ -2250,7 +2245,7 @@ class YoutubeDL:
         return res
 
     def _calc_cookies(self, url):
-        return get_cookie_header(Request(url), self.cookiejar)
+        return self.cookiejar.get_cookie_header(Request(url).url)  # wrap in Request for sanitization
 
     def _sort_thumbnails(self, thumbnails):
         thumbnails.sort(key=lambda t: (
@@ -2386,6 +2381,15 @@ class YoutubeDL:
             info_dict['duration'] = round(info_dict['section_end'] - info_dict['section_start'], 3)
         if (info_dict.get('duration') or 0) <= 0 and info_dict.pop('duration', None):
             self.report_warning('"duration" field is negative, there is an error in extractor')
+
+        chapters = info_dict.get('chapters') or []
+        dummy_chapter = {'end_time': 0, 'start_time': info_dict.get('duration')}
+        for prev, current, next_ in zip(
+                (dummy_chapter, *chapters), chapters, (*chapters[1:], dummy_chapter)):
+            if current.get('start_time') is None:
+                current['start_time'] = prev.get('end_time')
+            if not current.get('end_time'):
+                current['end_time'] = next_.get('start_time')
 
         if 'playlist' not in info_dict:
             # It isn't part of a playlist
@@ -3702,28 +3706,25 @@ class YoutubeDL:
                     'See https://yt-dl.org/update if you need help updating.' %
                     latest_version)
 
-    @property
+    @functools.cached_property
     def proxies(self) -> dict:
         """Global proxy configuration"""
-        if not self._proxies:
-            self._proxies = urllib.request.getproxies() or {}
-            # compat. Set HTTPS_PROXY to __noproxy__ to revert
-            if 'http' in self._proxies and 'https' not in self._proxies:
-                self._proxies['https'] = self._proxies['http']
-            conf_proxy = self.params.get('proxy')
-            if conf_proxy:
-                # compat. We should ideally use `all` proxy here
-                self._proxies.update({'http': conf_proxy, 'https': conf_proxy})
-        return self._proxies
+        proxies = urllib.request.getproxies() or {}
+        # compat. Set HTTPS_PROXY to __noproxy__ to revert
+        if 'http' in proxies and 'https' not in proxies:
+            proxies['https'] = proxies['http']
+        conf_proxy = self.params.get('proxy')
+        if conf_proxy:
+            # compat. We should ideally use `all` proxy here
+            proxies.update({'http': conf_proxy, 'https': conf_proxy})
+        return proxies
 
-    @property
+    @functools.cached_property
     def cookiejar(self):
         """Global cookiejar instance"""
-        if self._cookiejar is None:
-            opts_cookiesfrombrowser = self.params.get('cookiesfrombrowser')
-            opts_cookiefile = self.params.get('cookiefile')
-            self._cookiejar = load_cookies(opts_cookiefile, opts_cookiesfrombrowser, self)
-        return self._cookiejar
+        opts_cookiesfrombrowser = self.params.get('cookiesfrombrowser')
+        opts_cookiefile = self.params.get('cookiefile')
+        return load_cookies(opts_cookiefile, opts_cookiesfrombrowser, self)
 
     @property
     def _opener(self):

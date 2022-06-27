@@ -11,7 +11,6 @@ from .common import (
     RequestDirector,
     RequestHandler,
 )
-from ..utils import RequestError
 
 try:
     from ._requests import RequestsRH
@@ -24,4 +23,4 @@ REQUEST_HANDLERS = [UrllibRH]
 if RequestsRH is not None:
     REQUEST_HANDLERS.append(RequestsRH)
 
-__all__ = ['UrllibRH', 'REQUEST_HANDLERS', 'Request', 'HEADRequest', 'PUTRequest', 'RequestDirector', 'RequestHandler', RequestsRH]
+__all__ = ['UrllibRH', 'REQUEST_HANDLERS', 'Request', 'HEADRequest', 'PUTRequest', 'RequestDirector', 'RequestHandler', 'RequestsRH']

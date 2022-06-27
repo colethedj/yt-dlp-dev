@@ -20,8 +20,8 @@ from http.cookiejar import Cookie
 from test.helper import FakeYDL, http_server_port
 from yt_dlp import YoutubeDL
 from yt_dlp.networking import Request, UrllibRH, RequestsRH
-from yt_dlp.networking.utils import update_request
-from yt_dlp.utils import HTTPError, IncompleteRead, SSLError, urlencode_postdata
+from yt_dlp.utils import urlencode_postdata
+from yt_dlp.networking.exceptions import HTTPError, IncompleteRead, SSLError
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -384,8 +384,8 @@ class RequestHandlerCommonTestsBase(RequestHandlerTestBase):
             self.assertIn('Content-Type: application/x-www-form-urlencoded', headers)
 
             # test http
-            r2 = update_request(r, url='http://localhost:%d/headers' % self.http_port)
-            headers = ydl.urlopen(r2).read().decode('utf-8')
+            r.update(url='http://localhost:%d/headers' % self.http_port)
+            headers = ydl.urlopen(r).read().decode('utf-8')
             self.assertIn('Content-Type: application/x-www-form-urlencoded', headers)
 
     def test_incompleteread(self):

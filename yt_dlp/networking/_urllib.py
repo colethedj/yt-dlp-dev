@@ -19,6 +19,8 @@ from urllib.request import (
     HTTPDefaultErrorHandler,
     HTTPErrorProcessor,
     UnknownHandler,
+    HTTPCookieProcessor,
+    DataHandler,
 )
 
 from .common import Response, RequestHandler
@@ -33,17 +35,12 @@ from .utils import (
 from ..dependencies import brotli
 from ..socks import sockssocket
 from ..utils import (
-    HTTPError,
-    IncompleteRead,
-    ProxyError,
-    RequestError,
-    SSLError,
-    TransportError,
     escape_url,
     extract_basic_auth,
     sanitize_url,
     update_url_query,
 )
+from .exceptions import TransportError, HTTPError, IncompleteRead, SSLError, ProxyError, RequestError
 
 try:
     from urllib.request import _parse_proxy
@@ -270,18 +267,7 @@ def make_socks_conn_class(base_class, socks_proxy):
     return SocksConnection
 
 
-class YoutubeDLCookieProcessor(urllib.request.HTTPCookieProcessor):
-    def __init__(self, cookiejar=None):
-        urllib.request.HTTPCookieProcessor.__init__(self, cookiejar)
-
-    def http_response(self, request, response):
-        return urllib.request.HTTPCookieProcessor.http_response(self, request, response)
-
-    https_request = urllib.request.HTTPCookieProcessor.http_request
-    https_response = http_response
-
-
-class YoutubeDLRedirectHandler(urllib.request.HTTPRedirectHandler):
+class YDLRedirectHandler(urllib.request.HTTPRedirectHandler):
     """YoutubeDL redirect handler
 
     The code is based on HTTPRedirectHandler implementation from CPython [1].
@@ -341,7 +327,7 @@ class YoutubeDLRedirectHandler(urllib.request.HTTPRedirectHandler):
             unverifiable=True, method=new_method, data=new_data)
 
 
-class YoutubeDLNoRedirectHandler(urllib.request.BaseHandler):
+class YDLNoRedirectHandler(urllib.request.BaseHandler):
 
     def http_error_302(self, req, fp, code, msg, headers):
         return fp
@@ -359,9 +345,9 @@ class HEADRequest(urllib.request.Request):
         return 'HEAD'
 
 
-def update_Request(req, url=None, data=None, headers={}, query={}):
+def update_Request(req, url=None, data=None, headers=None, query=None):
     req_headers = req.headers.copy()
-    req_headers.update(headers)
+    req_headers.update(headers or {})
     req_data = data or req.data
     req_url = update_url_query(url or req.get_full_url(), query)
     req_get_method = req.get_method()
@@ -463,28 +449,19 @@ class UrllibRH(RequestHandler):
         self._openers = {}
 
     def _create_opener(self, proxies=None, allow_redirects=True):
-        cookie_processor = YoutubeDLCookieProcessor(self.cookiejar)
-        proxy_handler = YDLProxyHandler(proxies)
-        debuglevel = int(bool(self.ydl.params.get('debug_printtraffic')))
-
-        ydlh = YoutubeDLHandler(self.ydl.params, debuglevel=debuglevel, context=self.make_sslcontext())
-        data_handler = urllib.request.DataHandler()
-
-        # When passing our own FileHandler instance, build_opener won't add the
-        # default FileHandler and allows us to disable the file protocol, which
-        # can be used for malicious purposes (see
-        # https://github.com/ytdl-org/youtube-dl/issues/8227)
-        file_handler = urllib.request.FileHandler()
-
-        def file_open(*args, **kwargs):
-            raise RequestError('file:// scheme is explicitly disabled in yt-dlp for security reasons')
-
-        file_handler.file_open = file_open
         opener = urllib.request.OpenerDirector()
-
-        handlers = [proxy_handler, cookie_processor, ydlh, data_handler, file_handler,
-                    UnknownHandler(), HTTPDefaultErrorHandler(), FTPHandler(), HTTPErrorProcessor(),
-                    YoutubeDLRedirectHandler() if allow_redirects else YoutubeDLNoRedirectHandler()]
+        handlers = [
+            YDLProxyHandler(proxies),
+            HTTPCookieProcessor(self.cookiejar),
+            YoutubeDLHandler(
+                self.ydl.params, debuglevel=int(bool(self.ydl.params.get('debug_printtraffic'))),
+                context=self.make_sslcontext()),
+            DataHandler(),
+            UnknownHandler(),
+            HTTPDefaultErrorHandler(),
+            FTPHandler(),
+            HTTPErrorProcessor(),
+            YDLRedirectHandler() if allow_redirects else YDLNoRedirectHandler()]
 
         for handler in handlers:
             opener.add_handler(handler)

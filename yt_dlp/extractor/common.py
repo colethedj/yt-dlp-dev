@@ -22,18 +22,16 @@ from ..compat import compat_etree_fromstring, compat_expanduser, compat_os_name
 from ..downloader import FileDownloader
 from ..downloader.f4m import get_base_url, remove_encrypted_media
 from ..networking import Request
-from ..networking.utils import update_request
 from ..utils import (
     JSON_LD_RE,
     NO_DEFAULT,
     ExtractorError,
     GeoRestrictedError,
     GeoUtils,
-    HTTPError,
-    IncompleteRead,
     LenientJSONDecoder,
     RegexNotFoundError,
     UnsupportedError,
+    update_Request,
     age_restricted,
     base_url,
     bug_reports_message,
@@ -53,7 +51,6 @@ from ..utils import (
     join_nonempty,
     js_to_json,
     mimetype2ext,
-    network_exceptions,
     orderedSet,
     parse_bitrate,
     parse_codecs,
@@ -78,6 +75,7 @@ from ..utils import (
     xpath_text,
     xpath_with_ns,
 )
+from ..networking.exceptions import HTTPError, IncompleteRead, network_exceptions
 
 
 class InfoExtractor:
@@ -392,7 +390,7 @@ class InfoExtractor:
     There must be a key "entries", which is a list, an iterable, or a PagedList
     object, each element of which is a valid dictionary by this specification.
 
-    Additionally, playlists can have "id", "title", and any other relevent
+    Additionally, playlists can have "id", "title", and any other relevant
     attributes with the same semantics as videos (see above).
 
     It can also have the following optional fields:
@@ -697,7 +695,7 @@ class InfoExtractor:
         return self._downloader.cookiejar
 
     def _initialize_pre_login(self):
-        """ Intialization before login. Redefine in subclasses."""
+        """ Initialization before login. Redefine in subclasses."""
         pass
 
     def _perform_login(self, username, password):
@@ -731,17 +729,15 @@ class InfoExtractor:
         else:
             return err.code in variadic(expected_status)
 
-    def _create_request(self, url_or_request, data=None, headers={}, query={}):
+    def _create_request(self, url_or_request, data=None, headers=None, query=None):
         if isinstance(url_or_request, urllib.request.Request):
-            return Request(
-                url_or_request.get_full_url(), data=data or url_or_request.data, query=query,
-                headers=headers or url_or_request.headers, method=url_or_request.get_method())
+            return update_Request(url_or_request, data=data, headers=headers, query=query)
         elif isinstance(url_or_request, Request):
-            return update_request(url_or_request, data, headers, query)
-
+            url_or_request.update(data=data, headers=headers, query=query)
+            return url_or_request
         return Request(url_or_request, data, headers, query=query)
 
-    def _request_webpage(self, url_or_request, video_id, note=None, errnote=None, fatal=True, data=None, headers={}, query={}, expected_status=None):
+    def _request_webpage(self, url_or_request, video_id, note=None, errnote=None, fatal=True, data=None, headers=None, query=None, expected_status=None):
         """
         Return the response handle.
 
@@ -769,8 +765,8 @@ class InfoExtractor:
         # geo unrestricted country. We will do so once we encounter any
         # geo restriction error.
         if self._x_forwarded_for_ip:
-            if 'X-Forwarded-For' not in headers:
-                headers['X-Forwarded-For'] = self._x_forwarded_for_ip
+            headers = (headers or {}).copy()
+            headers.setdefault('X-Forwarded-For', self._x_forwarded_for_ip)
 
         try:
             return self._downloader.urlopen(self._create_request(url_or_request, data, headers, query))
@@ -3211,7 +3207,7 @@ class InfoExtractor:
 
         entries = []
         # amp-video and amp-audio are very similar to their HTML5 counterparts
-        # so we wll include them right here (see
+        # so we will include them right here (see
         # https://www.ampproject.org/docs/reference/components/amp-video)
         # For dl8-* tags see https://delight-vr.com/documentation/dl8-video/
         _MEDIA_TAG_NAME_RE = r'(?:(?:amp|dl8(?:-live)?)-)?(video|audio)'

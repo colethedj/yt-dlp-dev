@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import functools
 import io
-import itertools
 import ssl
 import typing
 import urllib.parse
 import urllib.request
 import urllib.response
+from collections.abc import Mapping
 from email.message import Message
 from http import HTTPStatus
 from typing import Union
@@ -20,9 +21,6 @@ except ImportError:
 
 from ..utils import (
     CaseInsensitiveDict,
-    RequestError,
-    SSLError,
-    UnsupportedRequest,
     YoutubeDLError,
     bug_reports_message,
     escape_url,
@@ -31,6 +29,7 @@ from ..utils import (
     sanitize_url,
     update_url_query,
 )
+from .exceptions import UnsupportedRequest, RequestError
 
 if typing.TYPE_CHECKING:
     from ..YoutubeDL import YoutubeDL
@@ -108,10 +107,14 @@ class Request:
         return self._headers
 
     @headers.setter
-    def headers(self, new_headers: CaseInsensitiveDict):
-        if not isinstance(new_headers, CaseInsensitiveDict):
-            raise TypeError('headers must be a CaseInsensitiveDict')
-        self._headers = new_headers
+    def headers(self, new_headers: Mapping):
+        """Replaces headers of the request. If not a CaseInsensitiveDict, it will be converted to one."""
+        if isinstance(new_headers, CaseInsensitiveDict):
+            self._headers = new_headers
+        elif isinstance(new_headers, Mapping):
+            self._headers = CaseInsensitiveDict(new_headers)
+        else:
+            raise TypeError('headers must be a mapping')
 
     @property
     def method(self):
@@ -121,17 +124,16 @@ class Request:
     def method(self, method: str):
         self.__method = method
 
+    def update(self, url=None, data=None, headers=None, query=None):
+        self.data = data or self.data
+        self.headers.update(headers or {})
+        self.url = update_url_query(url or self.url, query or {})
+
     def copy(self):
         return type(self)(
             url=self.url, data=self.data, headers=self.headers.copy(), timeout=self.timeout,
-            proxies=self.proxies.copy(), compression=self.compression, method=self.method,
+            proxies=self.proxies.copy(), compression=self.compression, method=self.__method,
             allow_redirects=self.allow_redirects)
-
-    def add_header(self, key, value):
-        self._headers[key] = value
-
-    def get_header(self, key, default=None):
-        return self._headers.get(key, default)
 
     @property
     def type(self):
@@ -165,17 +167,17 @@ class Request:
         """Deprecated, use `name in Request.headers`"""
         return name in self.headers
 
+    def add_header(self, key, value):
+        """Deprecated, use Request.headers[key] = value"""
+        self._headers[key] = value
 
-class HEADRequest(Request):
-    @property
-    def method(self):
-        return 'HEAD'
+    def get_header(self, key, default=None):
+        """Deprecated, use Request.headers.get(key, default)"""
+        return self._headers.get(key, default)
 
 
-class PUTRequest(Request):
-    @property
-    def method(self):
-        return 'PUT'
+HEADRequest = functools.partial(Request, method='HEAD')
+PUTRequest = functools.partial(Request, method='PUT')
 
 
 class Response(io.IOBase):

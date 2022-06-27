@@ -63,11 +63,6 @@ def random_user_agent():
     return _USER_AGENT_TPL % random.choice(_CHROME_VERSIONS)
 
 
-USER_AGENTS = {
-    'Safari': 'Mozilla/5.0 (X11; Linux x86_64; rv:10.0) AppleWebKit/533.20.25 (KHTML, like Gecko) Version/5.0.4 Safari/533.20.27',
-}
-
-
 # Use make_std_headers() to get a copy of these
 _std_headers = CaseInsensitiveDict({
     'User-Agent': random_user_agent(),
@@ -155,24 +150,6 @@ def select_proxy(url, proxies):
 # TODO: just make std_headers backwards compat with this
 def make_std_headers():
     return CaseInsensitiveDict(_std_headers, std_headers)
-
-
-def update_request(req: Request, url: str = None, data=None,
-                   headers: typing.Mapping = None, query: dict = None):
-    """
-    Creates a copy of the request and updates relevant fields
-    """
-    req = req.copy()
-    req.data = data or req.data
-    req.headers.update(headers or {})
-    req.url = update_url_query(url or req.url, query or {})
-    return req
-
-
-def get_cookie_header(req: Request, cookiejar: CookieJar):
-    cookie_req = urllib.request.Request(url=req.url)
-    cookiejar.add_cookie_header(cookie_req)
-    return cookie_req.get_header('Cookie')
 
 
 def get_redirect_method(method, status):
