@@ -1844,13 +1844,12 @@ Line 1
         self.assertEqual(len(headers2), 2)
         headers2.clear()
         self.assertEqual(len(headers2), 0)
-        headers.add('Ytdl-TeSt', 'test1')
-        headers.add('Ytdl-test2', 'test2')
-        self.assertEqual(set(headers.items()), {('Ytdl-Test', '2, test1'), ('X-Dlp', 'data'), ('Ytdl-Test2', 'test2')})
 
         # ensure we prefer latter headers
         headers3 = CaseInsensitiveDict({'Ytdl-TeSt': 1}, {'Ytdl-test': 2})
         self.assertEqual(set(headers3.items()), {('Ytdl-Test', '2')})
+        del headers3['ytdl-tesT']
+        self.assertEqual(dict(headers3), {})
 
         headers4 = CaseInsensitiveDict({'ytdl-test': 'data;'})
         self.assertEqual(set(headers4.items()), {('Ytdl-Test', 'data;')})
