@@ -237,6 +237,7 @@ class YDLUrllib3LoggingFilter(logging.Filter):
 
 class RequestsRH(RequestHandler):
     SUPPORTED_SCHEMES = ['http', 'https']
+    _SUPPORTED_ENCODINGS = SUPPORTED_ENCODINGS
     NAME = 'requests'
 
     def __init__(self, ydl):
@@ -303,12 +304,6 @@ class RequestsRH(RequestHandler):
         if 'content-type' not in request.headers:
             if isinstance(request.data, (str, bytes)) or hasattr(request.data, 'read'):
                 request.headers['content-type'] = 'application/x-www-form-urlencoded'
-
-        if 'Accept-Encoding' not in request.headers:
-            request.headers['Accept-Encoding'] = ', '.join(SUPPORTED_ENCODINGS)
-
-        if not request.compression:
-            del request.headers['accept-encoding']
 
         if self.ydl.params.get('no_persistent_connections', False) is True:
             request.headers['Connection'] = 'close'
