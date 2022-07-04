@@ -42,11 +42,6 @@ from ..utils import (
 )
 from .exceptions import TransportError, HTTPError, IncompleteRead, SSLError, ProxyError, RequestError
 
-try:
-    from urllib.request import _parse_proxy
-except ImportError:
-    _parse_proxy = None
-
 CONTENT_DECODE_ERRORS = [zlib.error, OSError]
 
 SUPPORTED_ENCODINGS = [
@@ -481,16 +476,15 @@ class UrllibRH(RequestHandler):
         return context
 
     def _prepare_request(self, request):
-        if _parse_proxy:
-            for proxy_key, proxy_url in request.proxies.items():
-                if proxy_url is None:
-                    continue
-                proxy_type = _parse_proxy(proxy_url)[0]
-                if proxy_type == 'https':
-                    self.report_warning(
-                        'A HTTPS proxy was passed but urllib does not support HTTPS proxies, '
-                        'and will instead treat it as an HTTP proxy.Please install requests for proper HTTPS proxy support.',
-                        only_once=True)
+        for proxy_key, proxy_url in request.proxies.items():
+            if proxy_url is None:
+                continue
+            scheme = urllib.parse.urlparse(proxy_url).scheme
+            if scheme == 'https':
+                self.report_warning(
+                    'A HTTPS proxy was passed but urllib does not support HTTPS proxies, '
+                    'and will instead treat it as an HTTP proxy. Please install requests for HTTPS proxy support.',
+                    only_once=True)
         return request
 
     def _real_handle(self, request):
