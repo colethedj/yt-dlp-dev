@@ -4809,12 +4809,12 @@ class WebSocketsWrapper():
     """Wraps websockets module to use in non-async scopes"""
     pool = None
 
-    def __init__(self, url, headers=None, connect=True):
+    def __init__(self, url, headers=None, connect=True, **ws_kwargs):
         self.loop = asyncio.new_event_loop()
         # XXX: "loop" is deprecated
         self.conn = websockets.connect(
             url, extra_headers=headers, ping_interval=None,
-            close_timeout=float('inf'), loop=self.loop, ping_timeout=float('inf'))
+            close_timeout=float('inf'), loop=self.loop, ping_timeout=float('inf'), **ws_kwargs)
         if connect:
             self.__enter__()
         atexit.register(self.__exit__, None, None, None)

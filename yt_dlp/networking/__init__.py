@@ -4,6 +4,7 @@ import itertools
 import urllib.parse
 
 from ._urllib import UrllibRH
+from ._websocket import WebSocketsRequestHandler
 from .common import (
     HEADRequest,
     PUTRequest,
@@ -12,6 +13,6 @@ from .common import (
     RequestHandler,
 )
 
-REQUEST_HANDLERS = [UrllibRH]
+REQUEST_HANDLERS = [UrllibRH, WebSocketsRequestHandler]
 
 __all__ = ['UrllibRH', 'REQUEST_HANDLERS', 'Request', 'HEADRequest', 'PUTRequest', 'RequestDirector', 'RequestHandler']
