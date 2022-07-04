@@ -33,7 +33,9 @@ from ..socks import (
 )
 from .utils import (
     ssl_load_certs,
-    socks_create_proxy_args, select_proxy, get_redirect_method
+    make_socks_proxy_opts,
+    select_proxy,
+    get_redirect_method
 )
 
 from .exceptions import (
@@ -392,7 +394,7 @@ class SocksHTTPSConnectionPool(urllib3.HTTPSConnectionPool):
 class SocksProxyManager(urllib3.PoolManager):
 
     def __init__(self, socks_proxy, username=None, password=None, num_pools=10, headers=None, **connection_pool_kw):
-        connection_pool_kw['_socks_options'] = socks_create_proxy_args(socks_proxy)
+        connection_pool_kw['_socks_options'] = make_socks_proxy_opts(socks_proxy)
         super().__init__(num_pools, headers, **connection_pool_kw)
         self.pool_classes_by_scheme = {
             'http': SocksHTTPConnectionPool,
