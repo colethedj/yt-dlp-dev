@@ -99,6 +99,10 @@ all_dependencies = {k: v for k, v in globals().items() if not k.startswith('_')}
 available_dependencies = {k: v for k, v in all_dependencies.items() if v}
 
 
+class OptionalDependencyWarning(Warning):
+    pass
+
+
 __all__ = [
     'all_dependencies',
     'available_dependencies',

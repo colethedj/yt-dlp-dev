@@ -231,7 +231,7 @@ class YDLRequestsSession(requests.sessions.Session):
 class YDLUrllib3LoggingFilter(logging.Filter):
 
     def filter(self, record):
-        # Ignore HTTP request messages since http lib prints those
+        # Ignore HTTP request messages since HTTPConnection prints those
         if record.msg == '%s://%s:%s "%s %s %s" %s %s':
             return False
         return True
@@ -305,7 +305,7 @@ class RequestsRH(RequestHandler):
         # We need to manually set it in this case as many extractors do not.
         if 'content-type' not in request.headers:
             if isinstance(request.data, (str, bytes)) or hasattr(request.data, 'read'):
-                request.headers['content-type'] = 'application/x-www-form-urlencoded'
+                request.headers['Content-Type'] = 'application/x-www-form-urlencoded'
 
         if self.ydl.params.get('no_persistent_connections', False) is True:
             request.headers['Connection'] = 'close'
