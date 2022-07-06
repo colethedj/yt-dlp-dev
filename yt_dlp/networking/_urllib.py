@@ -480,18 +480,6 @@ class UrllibRH(RequestHandler):
             ssl_load_certs(context, self.ydl.params)
         return context
 
-    def _prepare_request(self, request):
-        for proxy_key, proxy_url in request.proxies.items():
-            if proxy_url is None:
-                continue
-            scheme = urllib.parse.urlparse(proxy_url).scheme
-            if scheme == 'https':
-                self.report_warning(
-                    'A HTTPS proxy was passed but urllib does not support HTTPS proxies, '
-                    'and will instead treat it as an HTTP proxy. Please install requests for HTTPS proxy support.',
-                    only_once=True)
-        return request
-
     def _real_handle(self, request):
         urllib_req = urllib.request.Request(
             url=request.url, data=request.data, headers=dict(request.headers), method=request.method)

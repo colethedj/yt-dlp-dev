@@ -238,8 +238,9 @@ class YDLUrllib3LoggingFilter(logging.Filter):
 
 
 class RequestsRH(RequestHandler):
-    SUPPORTED_SCHEMES = ['http', 'https']
+    _SUPPORTED_SCHEMES = ['http', 'https']
     _SUPPORTED_ENCODINGS = SUPPORTED_ENCODINGS
+    _SUPPORTED_PROXY_SCHEMES = ['http', 'https', 'socks4', 'socks5', 'socks4a', 'socks']
     NAME = 'requests'
 
     def __init__(self, ydl):
