@@ -2807,24 +2807,6 @@ class GenericIE(InfoExtractor):
         else:
             video_id = self._generic_id(url)
 
-        self.to_screen('%s: Requesting header' % video_id)
-
-        head_req = HEADRequest(url)
-        head_response = self._request_webpage(
-            head_req, video_id,
-            note=False, errnote='Could not send HEAD request to %s' % url,
-            fatal=False)
-
-        if head_response is not False:
-            # Check for redirect
-            new_url = head_response.geturl()
-            if url != new_url:
-                self.report_following_redirect(new_url)
-                if force_videoid:
-                    new_url = smuggle_url(
-                        new_url, {'force_videoid': force_videoid})
-                return self.url_result(new_url)
-
         def request_webpage():
             request = sanitized_Request(url)
             # Some webservers may serve compressed content of rather big size (e.g. gzipped flac)
@@ -2838,9 +2820,21 @@ class GenericIE(InfoExtractor):
             request.add_header('Accept-Encoding', '*')
             return self._request_webpage(request, video_id)
 
+        head_response = self._request_webpage(HEADRequest(url), video_id, fatal=False, note='Requesting header',
+                                              errnote=f'Could not send HEAD request to {url}')
         full_response = None
         if head_response is False:
             head_response = full_response = request_webpage()
+
+        if head_response is not False:
+            # Check for redirect
+            new_url = head_response.geturl()
+            if url != new_url:
+                self.report_following_redirect(new_url)
+                if force_videoid:
+                    new_url = smuggle_url(
+                        new_url, {'force_videoid': force_videoid})
+                return self.url_result(new_url)
 
         info_dict = {
             'id': video_id,
