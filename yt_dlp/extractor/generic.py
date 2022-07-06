@@ -3071,12 +3071,13 @@ class GenericIE(InfoExtractor):
 
         embeds = []
         self._downloader.write_debug('Looking for embeds')
-        for ie in gen_extractor_classes():
+        for ie in sorted(gen_extractor_classes(), key=lambda i: -i.EMBED_PRIORITY):
             gen = ie.extract_from_webpage(self._downloader, url, webpage)
             current_embeds = []
             try:
                 while True:
                     current_embeds.append(next(gen))
+                    self._downloader.write_debug(f'Extracted embeds from {ie.IE_NAME}')
             except self.StopExtraction:
                 self._downloader.write_debug(f'{ie.IE_NAME} cancelled embed extraction')
                 embeds = current_embeds

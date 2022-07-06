@@ -1,5 +1,6 @@
 import base64
 import collections
+import enum
 import getpass
 import hashlib
 import http.client
@@ -473,6 +474,13 @@ class InfoExtractor:
     IE_DESC = None
     SEARCH_KEY = None
     _EMBED_REGEX = None
+
+    class EmbedPriority(enum.IntEnum):
+        DEFAULT = 500
+        EXCLUSIVE = 750
+        LOW = 250
+
+    EMBED_PRIORITY: int = EmbedPriority.DEFAULT.value
 
     def _login_hint(self, method=NO_DEFAULT, netrc=None):
         password_hint = f'--username and --password, or --netrc ({netrc or self._NETRC_MACHINE}) to provide account credentials'
