@@ -66,6 +66,7 @@ class VKBaseIE(InfoExtractor):
 class VKIE(VKBaseIE):
     IE_NAME = 'vk'
     IE_DESC = 'VK'
+    _EMBED_REGEX = r'<iframe[^>]+?src=(["\'])(?P<url>https?://vk\.com/video_ext\.php.+?)\1'
     _VALID_URL = r'''(?x)
                     https?://
                         (?:
@@ -410,7 +411,7 @@ class VKIE(VKBaseIE):
                 m_rutube.group(1).replace('\\', ''))
             return self.url_result(rutube_url)
 
-        dailymotion_urls = DailymotionIE._extract_urls(info_page)
+        dailymotion_urls = DailymotionIE._extract_embed_urls(url, info_page)
         if dailymotion_urls:
             return self.url_result(dailymotion_urls[0], DailymotionIE.ie_key())
 

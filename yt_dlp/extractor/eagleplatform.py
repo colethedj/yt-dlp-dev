@@ -18,6 +18,7 @@ class EaglePlatformIE(InfoExtractor):
                     )
                     (?P<id>\d+)
                 '''
+    _EMBED_REGEX = r'<iframe[^>]+src=(["\'])(?P<url>(?:https?:)?//.+?\.media\.eagleplatform\.com/index/player\?.+?)\1'
     _TESTS = [{
         # http://lenta.ru/news/2015/03/06/navalny/
         'url': 'http://lentaru.media.eagleplatform.com/index/player?player=new&record_id=227304&player_template_id=5201',
@@ -52,14 +53,12 @@ class EaglePlatformIE(InfoExtractor):
         'only_matching': True,
     }]
 
-    @staticmethod
-    def _extract_url(webpage):
-        # Regular iframe embedding
-        mobj = re.search(
-            r'<iframe[^>]+src=(["\'])(?P<url>(?:https?:)?//.+?\.media\.eagleplatform\.com/index/player\?.+?)\1',
-            webpage)
-        if mobj is not None:
-            return mobj.group('url')
+    @classmethod
+    def _extract_embed_urls(cls, url, webpage):
+        res = tuple(super()._extract_embed_urls(url, webpage))
+        if res:
+            return res
+
         PLAYER_JS_RE = r'''
                         <script[^>]+
                             src=(?P<qjs>["\'])(?:https?:)?//(?P<host>(?:(?!(?P=qjs)).)+\.media\.eagleplatform\.com)/player/player\.js(?P=qjs)
@@ -74,7 +73,7 @@ class EaglePlatformIE(InfoExtractor):
                         data-id=["\'](?P<id>\d+)
             ''' % PLAYER_JS_RE, webpage)
         if mobj is not None:
-            return 'eagleplatform:%(host)s:%(id)s' % mobj.groupdict()
+            return ['eagleplatform:%(host)s:%(id)s' % mobj.groupdict()]
         # Generalization of "Javascript code usage", "Combined usage" and
         # "Usage without attaching to DOM" embeddings (see
         # http://dultonmedia.github.io/eplayer/)
@@ -95,7 +94,7 @@ class EaglePlatformIE(InfoExtractor):
                     </script>
             ''' % PLAYER_JS_RE, webpage)
         if mobj is not None:
-            return 'eagleplatform:%(host)s:%(id)s' % mobj.groupdict()
+            return ['eagleplatform:%(host)s:%(id)s' % mobj.groupdict()]
 
     @staticmethod
     def _handle_error(response):

@@ -57,6 +57,7 @@ class FacebookIE(InfoExtractor):
                 )
                 (?P<id>[0-9]+)
                 '''
+    _EMBED_REGEX = r'<iframe[^>]+?src=(["\'])(?P<url>https?://www\.facebook\.com/(?:video/embed|plugins/video\.php).+?)\1'
     _LOGIN_URL = 'https://www.facebook.com/login.php?next=http%3A%2F%2Ffacebook.com%2Fhome.php&login_attempt=1'
     _CHECKPOINT_URL = 'https://www.facebook.com/checkpoint/?next=http%3A%2F%2Ffacebook.com%2Fhome.php&_fb_noscript=1'
     _NETRC_MACHINE = 'facebook'
@@ -311,20 +312,15 @@ class FacebookIE(InfoExtractor):
         'graphURI': '/api/graphql/'
     }
 
-    @staticmethod
-    def _extract_urls(webpage):
-        urls = []
-        for mobj in re.finditer(
-                r'<iframe[^>]+?src=(["\'])(?P<url>https?://www\.facebook\.com/(?:video/embed|plugins/video\.php).+?)\1',
-                webpage):
-            urls.append(mobj.group('url'))
+    @classmethod
+    def _extract_embed_urls(cls, url, webpage):
+        yield from super()._extract_embed_urls(url, webpage)
         # Facebook API embed
         # see https://developers.facebook.com/docs/plugins/embedded-video-player
         for mobj in re.finditer(r'''(?x)<div[^>]+
                 class=(?P<q1>[\'"])[^\'"]*\bfb-(?:video|post)\b[^\'"]*(?P=q1)[^>]+
                 data-href=(?P<q2>[\'"])(?P<url>(?:https?:)?//(?:www\.)?facebook.com/.+?)(?P=q2)''', webpage):
-            urls.append(mobj.group('url'))
-        return urls
+            yield mobj.group('url')
 
     def _perform_login(self, username, password):
         login_page_req = sanitized_Request(self._LOGIN_URL)
