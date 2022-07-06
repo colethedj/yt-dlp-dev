@@ -13,6 +13,7 @@ import os
 import random
 import sys
 import time
+import types
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree
@@ -58,6 +59,7 @@ from ..utils import (
     parse_m3u8_attributes,
     parse_resolution,
     sanitize_filename,
+    sanitize_url,
     sanitized_Request,
     str_or_none,
     str_to_int,
@@ -470,6 +472,7 @@ class InfoExtractor:
     _NETRC_MACHINE = None
     IE_DESC = None
     SEARCH_KEY = None
+    _EMBED_REGEX = None
 
     def _login_hint(self, method=NO_DEFAULT, netrc=None):
         password_hint = f'--username and --password, or --netrc ({netrc or self._NETRC_MACHINE}) to provide account credentials'
@@ -1139,10 +1142,11 @@ class InfoExtractor:
             'url': url,
         }
 
-    def playlist_from_matches(self, matches, playlist_id=None, playlist_title=None, getter=None, ie=None, video_kwargs=None, **kwargs):
-        urls = (self.url_result(self._proto_relative_url(m), ie, **(video_kwargs or {}))
+    @classmethod
+    def playlist_from_matches(cls, matches, playlist_id=None, playlist_title=None, getter=None, ie=None, video_kwargs=None, **kwargs):
+        urls = (cls.url_result(m, ie, **(video_kwargs or {}))
                 for m in orderedSet(map(getter, matches) if getter else matches))
-        return self.playlist_result(urls, playlist_id, playlist_title, **kwargs)
+        return cls.playlist_result(urls, playlist_id, playlist_title, **kwargs)
 
     @staticmethod
     def playlist_result(entries, playlist_id=None, playlist_title=None, playlist_description=None, *, multi_video=False, **kwargs):
@@ -1349,11 +1353,19 @@ class InfoExtractor:
     def _dc_search_uploader(self, html):
         return self._html_search_meta('dc.creator', html, 'uploader')
 
-    def _rta_search(self, html):
+    @staticmethod
+    def _rta_search(html):
         # See http://www.rtalabel.org/index.php?content=howtofaq#single
         if re.search(r'(?ix)<meta\s+name="rating"\s+'
                      r'     content="RTA-5042-1996-1400-1577-RTA"',
                      html):
+            return 18
+
+        # And then there are the jokers who advertise that they use RTA, but actually don't.
+        AGE_LIMIT_MARKERS = [
+            r'Proudly Labeled <a href="http://www\.rtalabel\.org/" title="Restricted to Adults">RTA</a>',
+        ]
+        if any(re.search(marker, html) for marker in AGE_LIMIT_MARKERS):
             return 18
         return 0
 
@@ -1961,14 +1973,9 @@ class InfoExtractor:
             else 'https:')
 
     def _proto_relative_url(self, url, scheme=None):
-        if url is None:
-            return url
-        if url.startswith('//'):
-            if scheme is None:
-                scheme = self.http_scheme()
-            return scheme + url
-        else:
-            return url
+        scheme = scheme or self.http_scheme()
+        assert scheme.endswith(':')
+        return sanitize_url(url, scheme=scheme[:-1])
 
     def _sleep(self, timeout, video_id, msg_template=None):
         if msg_template is None:
@@ -3763,10 +3770,12 @@ class InfoExtractor:
             headers['Ytdl-request-proxy'] = geo_verification_proxy
         return headers
 
-    def _generic_id(self, url):
+    @staticmethod
+    def _generic_id(url):
         return urllib.parse.unquote(os.path.splitext(url.rstrip('/').split('/')[-1])[0])
 
-    def _generic_title(self, url):
+    @staticmethod
+    def _generic_title(url):
         return urllib.parse.unquote(os.path.splitext(url_basename(url))[0])
 
     @staticmethod
@@ -3811,6 +3820,35 @@ class InfoExtractor:
             return False
         self.to_screen(f'Downloading {playlist_label}{playlist_id} - add --no-playlist to download just the {video_label}{video_id}')
         return True
+
+    @classmethod
+    def extract_from_webpage(cls, ydl, url, webpage):
+        ie = (cls if isinstance(cls._extract_from_webpage, types.MethodType)
+              else ydl.get_info_extractor(cls.ie_key()))
+        yield from ie._extract_from_webpage(url, webpage) or []
+
+    @classmethod
+    def _extract_from_webpage(cls, url, webpage):
+        for embed_url in cls._extract_embed_urls(url, webpage) or []:
+            yield cls.url_result(embed_url, cls)
+
+    @classmethod
+    def _extract_embed_urls(cls, url, webpage):
+        return filter(cls.suitable, (urllib.parse.urljoin(url, unescapeHTML(mobj.group('url')))
+                                     for mobj in cls._match_embed_urls(webpage)))
+
+    @classmethod
+    def _match_embed_urls(cls, webpage):
+        """@returns all the embed urls on the webpage"""
+        if not cls._EMBED_REGEX:
+            return []
+        if '_EMBED_URL_RE' not in cls.__dict__:
+            assert cls._EMBED_REGEX.count('(?P<url>') == 1, f'{cls.__name__}._EMBED_REGEX must have exactly 1 url group'
+            cls._EMBED_URL_RE = re.compile(cls._EMBED_REGEX)
+        return cls._EMBED_URL_RE.finditer(webpage)
+
+    class StopExtraction(Exception):
+        pass
 
 
 class SearchInfoExtractor(InfoExtractor):
