@@ -7,6 +7,7 @@ from .common import FileDownloader
 from .external import FFmpegFD
 from ..compat import asyncio
 from ..dependencies import websockets
+from ..networking import Request
 
 
 class FFmpegSinkFD(FileDownloader):

@@ -11,7 +11,6 @@ from .exceptions import UnsupportedRequest
 class WebSocketsResponse(Response):
 
     def __init__(self, wsw: WebSocketsWrapper, url):
-        # TODO: raw should be the original http response, if possible
         super().__init__(wsw, url=url, headers=wsw.conn.protocol.response_headers, status=101)
 
     def read(self, amt: int = None):
