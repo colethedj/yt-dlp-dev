@@ -94,7 +94,9 @@ def gettestcases(include_onlymatching=False):
 
 def getwebpagetestcases():
     for ie in yt_dlp.extractor.gen_extractors():
-        yield from ie.get_webpage_testcases()
+        for t in ie.get_webpage_testcases():
+            t.setdefault('add_ie', []).append('Generic')
+            yield t
 
 
 md5 = lambda s: hashlib.md5(s.encode()).hexdigest()
