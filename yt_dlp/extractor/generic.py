@@ -2642,8 +2642,15 @@ class GenericIE(InfoExtractor):
         """Report information extraction."""
         self._downloader.to_screen('[redirect] Following redirect to %s' % new_url)
 
-    def report_detected(self, name):
-        self._downloader.write_debug(f'Identified a {name}')
+    def report_detected(self, name, num=1):
+        if num > 1:
+            name += 's'
+        elif not num:
+            return
+        else:
+            num = 'a'
+
+        self._downloader.write_debug(f'Identified {num} {name}')
 
     def _extract_rss(self, url, video_id, doc):
         NS_MAP = {
@@ -2761,6 +2768,20 @@ class GenericIE(InfoExtractor):
             for i in range(1, 5):
                 retval += str((int(license[o + i]) + int(modlicense[o])) % 10)
         return retval
+
+    def _extract_html5_media(self, url, webpage, video_id, title):
+        entries = self._parse_html5_media_entries(url, webpage, video_id, m3u8_id='hls') or []
+        is_single = len(entries) == 1
+        for num, entry in enumerate(entries, start=1):
+            entry.update({
+                'id': video_id,
+                'title': title,
+            } if is_single else {
+                'id': f'{video_id}-{num}',
+                'title': f'{title} ({num})',
+            })
+            self._sort_formats(entry['formats'])
+        return entries
 
     def _real_extract(self, url):
         if url.startswith('//'):
@@ -3836,35 +3857,22 @@ class GenericIE(InfoExtractor):
                 while True:
                     current_embeds.append(next(gen))
             except self.StopExtraction:
-                self._downloader.write_debug(f'{ie.IE_NAME} cancelled embed extraction')
+                self.report_detected(f'{ie.IE_NAME} exclusive embed', len(current_embeds))
                 embeds = current_embeds
                 break
             except StopIteration:
+                self.report_detected(f'{ie.IE_NAME} embed', len(current_embeds))
                 embeds.extend(current_embeds)
+        else:
+            current_embeds = self._extract_html5_media(url, webpage, video_id, info_dict['title'])
+            self.report_detected('HTML5 media', len(current_embeds))
+            embeds.extend(current_embeds)
 
+        del current_embeds
         if len(embeds) == 1:
             return {**info_dict, **embeds[0]}
         elif embeds:
             return self.playlist_result(embeds, **info_dict)
-
-        # Look for HTML5 media
-        entries = self._parse_html5_media_entries(url, webpage, video_id, m3u8_id='hls')
-        if entries:
-            self.report_detected('HTML5 media')
-            if len(entries) == 1:
-                entries[0].update({
-                    'id': video_id,
-                    'title': video_title,
-                })
-            else:
-                for num, entry in enumerate(entries, start=1):
-                    entry.update({
-                        'id': f'{video_id}-{num}',
-                        'title': '%s (%d)' % (video_title, num),
-                    })
-            for entry in entries:
-                self._sort_formats(entry['formats'])
-            return self.playlist_result(entries, video_id, video_title)
 
         jwplayer_data = self._find_jwplayer_data(
             webpage, video_id, transform_source=js_to_json)
