@@ -3661,11 +3661,19 @@ class InfoExtractor:
             t['name'] = cls.ie_key()
             yield t
 
+    @classmethod
+    def get_webpage_testcases(cls):
+        tests = getattr(cls, '_WEBPAGE_TESTS', [])
+        for t in tests:
+            t['name'] = cls.ie_key()
+            t.setdefault('add_ie', []).append('Generic')
+        return tests
+
     @classproperty
     def age_limit(cls):
         """Get age limit from the testcases"""
         return max(traverse_obj(
-            tuple(cls.get_testcases(include_onlymatching=False)),
+            (*cls.get_testcases(include_onlymatching=False), *cls.get_webpage_testcases()),
             (..., (('playlist', 0), None), 'info_dict', 'age_limit')) or [0])
 
     @classmethod
