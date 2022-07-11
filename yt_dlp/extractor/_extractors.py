@@ -770,6 +770,7 @@ from .kuwo import (
     KuwoCategoryIE,
     KuwoMvIE,
 )
+from .kvs import KVSPlayerEmbedIE
 from .la7 import (
     LA7IE,
     LA7PodcastEpisodeIE,
