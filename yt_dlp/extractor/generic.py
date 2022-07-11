@@ -2593,20 +2593,6 @@ class GenericIE(InfoExtractor):
                 retval += str((int(license[o + i]) + int(modlicense[o])) % 10)
         return retval
 
-    def _extract_html5_media(self, url, webpage, video_id, title):
-        entries = self._parse_html5_media_entries(url, webpage, video_id, m3u8_id='hls') or []
-        is_single = len(entries) == 1
-        for num, entry in enumerate(entries, start=1):
-            entry.update({
-                'id': video_id,
-                'title': title,
-            } if is_single else {
-                'id': f'{video_id}-{num}',
-                'title': f'{title} ({num})',
-            })
-            self._sort_formats(entry['formats'])
-        return entries
-
     def _real_extract(self, url):
         if url.startswith('//'):
             return self.url_result(self.http_scheme() + url)
@@ -2839,10 +2825,6 @@ class GenericIE(InfoExtractor):
             except StopIteration:
                 self.report_detected(f'{ie.IE_NAME} embed', len(current_embeds))
                 embeds.extend(current_embeds)
-        else:
-            current_embeds = self._extract_html5_media(url, webpage, video_id, info_dict['title'])
-            self.report_detected('HTML5 media', len(current_embeds))
-            embeds.extend(current_embeds)
 
         del current_embeds
         if len(embeds) == 1:
@@ -3179,3 +3161,34 @@ class GenericIE(InfoExtractor):
                 '_type': 'playlist',
                 'entries': entries,
             }
+
+
+class HTML5MediaEmbedIE(InfoExtractor):
+    _VALID_URL = False
+    IE_DESC = False
+
+    _WEBPAGE_TESTS = [
+        {
+            'url': 'https://html.com/media/',
+            'info_dict': {
+                'title': 'HTML5 Media',
+                'description': 'md5:933b2d02ceffe7a7a0f3c8326d91cc2a',
+            },
+            'playlist_count': 2
+        }
+    ]
+
+    def _extract_from_webpage(self, url, webpage):
+        video_id, title = self._generic_id(url), self._generic_title(url)
+        entries = self._parse_html5_media_entries(url, webpage, video_id, m3u8_id='hls') or []
+        is_single = len(entries) == 1
+        for num, entry in enumerate(entries, start=1):
+            entry.update({
+             'id': video_id,
+             'title': title,
+            } if is_single else {
+                'id': f'{video_id}-{num}',
+                'title': f'{title} ({num})',
+            })
+            self._sort_formats(entry['formats'])
+            yield entry

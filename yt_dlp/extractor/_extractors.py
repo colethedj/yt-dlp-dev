@@ -585,7 +585,10 @@ from .gaskrank import GaskrankIE
 from .gazeta import GazetaIE
 from .gdcvault import GDCVaultIE
 from .gedidigital import GediDigitalIE
-from .generic import GenericIE
+from .generic import (
+    GenericIE,
+    HTML5MediaEmbedIE
+)
 from .gettr import (
     GettrIE,
     GettrStreamingIE,
