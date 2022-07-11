@@ -1,7 +1,8 @@
+import os
+import urllib.parse
+
 from .common import InfoExtractor
 from ..utils import float_or_none
-import urllib.parse
-import os
 
 
 class CamtasiaEmbedIE(InfoExtractor):
@@ -68,4 +69,3 @@ class CamtasiaEmbedIE(InfoExtractor):
             'entries': entries,
             'title': title,
         }
-

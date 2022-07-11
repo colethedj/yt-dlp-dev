@@ -15,7 +15,6 @@ from ..utils import (
     UnsupportedError,
     determine_ext,
     dict_get,
-    float_or_none,
     int_or_none,
     is_html,
     js_to_json,

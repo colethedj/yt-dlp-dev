@@ -3666,7 +3666,6 @@ class InfoExtractor:
         tests = getattr(cls, '_WEBPAGE_TESTS', [])
         for t in tests:
             t['name'] = cls.ie_key()
-            t.setdefault('add_ie', []).append('Generic')
         return tests
 
     @classproperty
