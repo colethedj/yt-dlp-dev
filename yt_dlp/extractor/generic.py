@@ -1631,7 +1631,7 @@ class GenericIE(InfoExtractor):
             'params': {
                 'skip_download': True,
             },
-            'add_ie': 'Arkena',
+            'add_ie': ['Arkena'],
         },
         {
             'url': 'http://nova.bg/news/view/2016/08/16/156543/%D0%BD%D0%B0-%D0%BA%D0%BE%D1%81%D1%8A%D0%BC-%D0%BE%D1%82-%D0%B2%D0%B7%D1%80%D0%B8%D0%B2-%D0%BE%D1%82%D1%86%D0%B5%D0%BF%D0%B8%D1%85%D0%B0-%D1%86%D1%8F%D0%BB-%D0%BA%D0%B2%D0%B0%D1%80%D1%82%D0%B0%D0%BB-%D0%B7%D0%B0%D1%80%D0%B0%D0%B4%D0%B8-%D0%B8%D0%B7%D1%82%D0%B8%D1%87%D0%B0%D0%BD%D0%B5-%D0%BD%D0%B0-%D0%B3%D0%B0%D0%B7-%D0%B2-%D0%BF%D0%BB%D0%BE%D0%B2%D0%B4%D0%B8%D0%B2/',
@@ -1937,7 +1937,7 @@ class GenericIE(InfoExtractor):
                 'ext': 'mp4',
                 'title': '31c9291ab41fac05471db4e73aa11717',
             },
-            'add_ie': 'CloudflareStream',
+            'add_ie': ['CloudflareStream'],
             'params': {
                 'skip_download': True,
             },
@@ -2246,10 +2246,10 @@ class GenericIE(InfoExtractor):
             # Panopto embeds
             'url': 'https://www.monash.edu/learning-teaching/teachhq/learning-technologies/panopto/how-to/insert-a-quiz-into-a-panopto-video',
             'info_dict': {
-                'title': 'Insert a quiz into a Panopto video',
-                'id': 'insert-a-quiz-into-a-panopto-video'
+                'ext': 'mp4',
+                'id': '0bd3f16c-824a-436a-8486-ac5900693aef',
+                'title': 'Quizzes in Panopto',
             },
-            'playlist_count': 1
         },
         {
             # Ruutu embed
@@ -2334,24 +2334,17 @@ class GenericIE(InfoExtractor):
         },
         {
             'url': 'https://www.skimag.com/video/ski-people-1980/',
+            'md5': '022a7e31c70620ebec18deeab376ee03',
             'info_dict': {
-                'id': 'ski-people-1980',
-                'title': 'Ski People (1980)',
-            },
-            'playlist_count': 1,
-            'playlist': [{
-                'md5': '022a7e31c70620ebec18deeab376ee03',
-                'info_dict': {
-                    'id': 'YTmgRiNU',
-                    'ext': 'mp4',
-                    'title': '1980 Ski People',
-                    'timestamp': 1610407738,
-                    'description': 'md5:cf9c3d101452c91e141f292b19fe4843',
-                    'thumbnail': 'https://cdn.jwplayer.com/v2/media/YTmgRiNU/poster.jpg?width=720',
-                    'duration': 5688.0,
-                    'upload_date': '20210111',
-                }
-            }]
+                'id': 'YTmgRiNU',
+                'ext': 'mp4',
+                'title': '1980 Ski People',
+                'timestamp': 1610407738,
+                'description': 'md5:cf9c3d101452c91e141f292b19fe4843',
+                'thumbnail': 'https://cdn.jwplayer.com/v2/media/YTmgRiNU/poster.jpg?width=720',
+                'duration': 5688.0,
+                'upload_date': '20210111',
+            }
         },
         {
             'note': 'Rumble embed',

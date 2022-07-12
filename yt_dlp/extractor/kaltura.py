@@ -161,7 +161,7 @@ class KalturaIE(InfoExtractor):
                 webpage)
             if service_mobj:
                 embed_url = smuggle_url(embed_url, {'service_url': service_mobj.group('id')})
-            urls.append(url)
+            urls.append(embed_url)
         return urls
 
     def _kaltura_api_call(self, video_id, actions, service_url=None, *args, **kwargs):
