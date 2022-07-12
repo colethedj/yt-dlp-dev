@@ -240,7 +240,7 @@ def expect_info_dict(self, got_dict, expected_dict):
 
     test_info_dict = sanitize_got_info_dict(got_dict)
 
-    missing_keys = False  # set(test_info_dict.keys()) - set(expected_dict.keys())
+    missing_keys = set(test_info_dict.keys()) - set(expected_dict.keys())
     if missing_keys:
         def _repr(v):
             if isinstance(v, str):
