@@ -22,7 +22,6 @@ from ..utils import (
     mimetype2ext,
     orderedSet,
     parse_duration,
-    parse_resolution,
     smuggle_url,
     str_or_none,
     try_call,
@@ -2997,8 +2996,8 @@ class HTML5MediaEmbedIE(InfoExtractor):
         is_single = len(entries) == 1
         for num, entry in enumerate(entries, start=1):
             entry.update({
-             'id': video_id,
-             'title': title,
+                'id': video_id,
+                'title': title,
             } if is_single else {
                 'id': f'{video_id}-{num}',
                 'title': f'{title} ({num})',
