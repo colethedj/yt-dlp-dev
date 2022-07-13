@@ -3847,7 +3847,10 @@ class InfoExtractor:
     def extract_from_webpage(cls, ydl, url, webpage):
         ie = (cls if isinstance(cls._extract_from_webpage, types.MethodType)
               else ydl.get_info_extractor(cls.ie_key()))
-        yield from ie._extract_from_webpage(url, webpage) or []
+        for info in ie._extract_from_webpage(url, webpage) or []:
+            # url = None since we do not want to set (webpage/original)_url
+            ydl.add_default_extra_info(info, ie, None)
+            yield info
 
     @classmethod
     def _extract_from_webpage(cls, url, webpage):
