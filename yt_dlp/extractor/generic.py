@@ -2687,9 +2687,7 @@ class GenericIE(InfoExtractor):
                 embeds.extend(current_embeds)
 
         del current_embeds
-        if len(embeds) == 1:
-            return {**info_dict, **embeds[0]}
-        elif embeds:
+        if embeds:
             return self.playlist_result(embeds, **info_dict)
 
         jwplayer_data = self._find_jwplayer_data(
