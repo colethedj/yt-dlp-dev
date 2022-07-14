@@ -83,6 +83,7 @@ class SubstackIE(InfoExtractor):
         if mobj:
             parsed = urllib.parse.urlparse(url)
             yield parsed._replace(netloc=f'{mobj.group("subdomain")}.substack.com').geturl()
+            raise cls.StopExtraction
 
     def _extract_video_formats(self, video_id, username):
         formats, subtitles = [], {}
