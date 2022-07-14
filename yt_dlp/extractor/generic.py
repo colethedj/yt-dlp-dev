@@ -2028,7 +2028,8 @@ class GenericIE(InfoExtractor):
                 while True:
                     current_embeds.append(next(gen))
             except self.StopExtraction:
-                self.report_detected(f'{ie.IE_NAME} exclusive embed', len(current_embeds))
+                self.report_detected(
+                    f'{ie.IE_NAME} exclusive embed' + '; discarding other embeds' if embeds else '', len(current_embeds))
                 embeds = current_embeds
                 break
             except StopIteration:
