@@ -2041,8 +2041,8 @@ class GenericIE(InfoExtractor):
             return self.playlist_result(embeds, **info_dict)
 
         def check_video(vurl):
-            if YoutubeIE.suitable(vurl):
-                return True
+            # if YoutubeIE.suitable(vurl):
+            #     return True
             if RtmpIE.suitable(vurl):
                 return True
             vpath = urllib.parse.urlparse(vurl).path
@@ -2052,67 +2052,11 @@ class GenericIE(InfoExtractor):
         def filter_video(urls):
             return list(filter(check_video, urls))
 
-        # Start with something easy: JW Player in SWFObject
-        found = filter_video(re.findall(r'flashvars: [\'"](?:.*&)?file=(http[^\'"&]*)', webpage))
+        # Broaden the search a little bit
+        found = filter_video(re.findall(r'[^A-Za-z0-9]?(?:file|source)=(http[^\'"&]*)', webpage))
         if found:
-            self.report_detected('JW Player in SFWObject')
-        else:
-            # Look for gorilla-vid style embedding
-            found = filter_video(re.findall(r'''(?sx)
-                (?:
-                    jw_plugins|
-                    JWPlayerOptions|
-                    jwplayer\s*\(\s*["'][^'"]+["']\s*\)\s*\.setup
-                )
-                .*?
-                ['"]?file['"]?\s*:\s*["\'](.*?)["\']''', webpage))
-            if found:
-                self.report_detected('JW Player embed')
-        if not found:
-            # Broaden the search a little bit
-            found = filter_video(re.findall(r'[^A-Za-z0-9]?(?:file|source)=(http[^\'"&]*)', webpage))
-            if found:
-                self.report_detected('video file')
-        if not found:
-            # Broaden the findall a little bit: JWPlayer JS loader
-            found = filter_video(re.findall(
-                r'[^A-Za-z0-9]?(?:file|video_url)["\']?:\s*["\'](http(?![^\'"]+\.[0-9]+[\'"])[^\'"]+)["\']', webpage))
-            if found:
-                self.report_detected('JW Player JS loader')
-        if not found:
-            # Flow player
-            found = filter_video(re.findall(r'''(?xs)
-                flowplayer\("[^"]+",\s*
-                    \{[^}]+?\}\s*,
-                    \s*\{[^}]+? ["']?clip["']?\s*:\s*\{\s*
-                        ["']?url["']?\s*:\s*["']([^"']+)["']
-            ''', webpage))
-            if found:
-                self.report_detected('Flow Player')
-        if not found:
-            # Cinerama player
-            found = re.findall(
-                r"cinerama\.embedPlayer\(\s*\'[^']+\',\s*'([^']+)'", webpage)
-            if found:
-                self.report_detected('Cinerama player')
-        if not found:
-            # Try to find twitter cards info
-            # twitter:player:stream should be checked before twitter:player since
-            # it is expected to contain a raw stream (see
-            # https://dev.twitter.com/cards/types/player#On_twitter.com_via_desktop_browser)
-            found = filter_video(re.findall(
-                r'<meta (?:property|name)="twitter:player:stream" (?:content|value)="(.+?)"', webpage))
-            if found:
-                self.report_detected('Twitter card')
-        if not found:
-            # We look for Open Graph info:
-            # We have to match any number spaces between elements, some sites try to align them (eg.: statigr.am)
-            m_video_type = re.findall(r'<meta.*?property="og:video:type".*?content="video/(.*?)"', webpage)
-            # We only look in og:video if the MIME type is a video, don't try if it's a Flash player:
-            if m_video_type is not None:
-                found = filter_video(re.findall(r'<meta.*?property="og:(?:video|audio)".*?content="(.*?)"', webpage))
-                if found:
-                    self.report_detected('Open Graph video info')
+            self.report_detected('video file')
+
         if not found:
             REDIRECT_REGEX = r'[0-9]{,2};\s*(?:URL|url)=\'?([^\'"]+)'
             found = re.search(
@@ -2134,15 +2078,6 @@ class GenericIE(InfoExtractor):
                     }
                 else:
                     found = None
-
-        if not found:
-            # twitter:player is a https URL to iframe player that may or may not
-            # be supported by yt-dlp thus this is checked the very last (see
-            # https://dev.twitter.com/cards/types/player#On_twitter.com_via_desktop_browser)
-            embed_url = self._html_search_meta('twitter:player', webpage, default=None)
-            if embed_url and embed_url != url:
-                self.report_detected('twitter:player iframe')
-                return self.url_result(embed_url)
 
         if not found:
             raise UnsupportedError(url)

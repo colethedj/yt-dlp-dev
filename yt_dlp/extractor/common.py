@@ -3872,8 +3872,7 @@ class InfoExtractor:
         for regex in cls._EMBED_URL_RE:
             for mobj in regex.finditer(webpage):
                 embed_url = urllib.parse.urljoin(url, unescapeHTML(mobj.group('url')))
-                if cls._VALID_URL is False or cls.suitable(embed_url):
-                    yield embed_url
+                yield embed_url
 
     class StopExtraction(Exception):
         pass

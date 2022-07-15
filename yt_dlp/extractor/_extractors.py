@@ -655,6 +655,12 @@ from .hse import (
 from .genericembeds import (
     HTML5MediaEmbedIE,
     JSONLDEmbedIE,
+    FlowPlayerEmbedIE,
+    CineramaPlayerEmbedIE,
+    OpenGraphEmbedIE,
+    TwitterPlayerStreamCardIE,
+    TwitterPlayerCardIE,
+    JWPlayerAlternativeEmbedIE,
 )
 from .huajiao import HuajiaoIE
 from .huya import HuyaLiveIE
