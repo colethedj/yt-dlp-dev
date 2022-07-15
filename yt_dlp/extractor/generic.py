@@ -2040,124 +2040,28 @@ class GenericIE(InfoExtractor):
         if embeds:
             return self.playlist_result(embeds, **info_dict)
 
-        def check_video(vurl):
-            # if YoutubeIE.suitable(vurl):
-            #     return True
-            if RtmpIE.suitable(vurl):
-                return True
-            vpath = urllib.parse.urlparse(vurl).path
-            vext = determine_ext(vpath, None)
-            return vext not in (None, 'swf', 'png', 'jpg', 'srt', 'sbv', 'sub', 'vtt', 'ttml', 'js', 'xml')
+        # compat
+        from .genericembeds import GenericVideoFileComponentIE
+        entries = list(GenericVideoFileComponentIE.extract_from_webpage(self._downloader, url, webpage))
+        if entries:
+            self.report_detected(f'video file', len(entries))
+            return self.playlist_result(entries, **info_dict)
 
-        def filter_video(urls):
-            return list(filter(check_video, urls))
+        REDIRECT_REGEX = r'[0-9]{,2};\s*(?:URL|url)=\'?([^\'"]+)'
+        redirect_url = re.search(
+            r'(?i)<meta\s+(?=(?:[a-z-]+="[^"]+"\s+)*http-equiv="refresh")'
+            r'(?:[a-z-]+="[^"]+"\s+)*?content="%s' % REDIRECT_REGEX,
+            webpage)
+        if not redirect_url:
+            redirect_url = re.search(REDIRECT_REGEX, full_response.headers.get('Refresh', ''))
 
-        # Broaden the search a little bit
-        found = filter_video(re.findall(r'[^A-Za-z0-9]?(?:file|source)=(http[^\'"&]*)', webpage))
-        if found:
-            self.report_detected('video file')
+        if redirect_url:
+            new_url = urllib.parse.urljoin(url, unescapeHTML(redirect_url.group(1)))
+            if new_url != url:
+                self.report_following_redirect(new_url)
+                return {
+                    '_type': 'url',
+                    'url': new_url,
+                }
 
-        if not found:
-            REDIRECT_REGEX = r'[0-9]{,2};\s*(?:URL|url)=\'?([^\'"]+)'
-            found = re.search(
-                r'(?i)<meta\s+(?=(?:[a-z-]+="[^"]+"\s+)*http-equiv="refresh")'
-                r'(?:[a-z-]+="[^"]+"\s+)*?content="%s' % REDIRECT_REGEX,
-                webpage)
-            if not found:
-                # Look also in Refresh HTTP header
-                refresh_header = full_response.headers.get('Refresh')
-                if refresh_header:
-                    found = re.search(REDIRECT_REGEX, refresh_header)
-            if found:
-                new_url = urllib.parse.urljoin(url, unescapeHTML(found.group(1)))
-                if new_url != url:
-                    self.report_following_redirect(new_url)
-                    return {
-                        '_type': 'url',
-                        'url': new_url,
-                    }
-                else:
-                    found = None
-
-        if not found:
-            raise UnsupportedError(url)
-
-        entries = []
-        for video_url in orderedSet(found):
-            video_url = unescapeHTML(video_url)
-            video_url = video_url.replace('\\/', '/')
-            video_url = urllib.parse.urljoin(url, video_url)
-            video_id = urllib.parse.unquote(os.path.basename(video_url))
-
-            # Sometimes, jwplayer extraction will result in a YouTube URL
-            if YoutubeIE.suitable(video_url):
-                entries.append(self.url_result(video_url, 'Youtube'))
-                continue
-
-            video_id = os.path.splitext(video_id)[0]
-            headers = {
-                'referer': full_response.geturl()
-            }
-
-            entry_info_dict = {
-                'id': video_id,
-                'uploader': domain_name,
-                'title': info_dict['title'],
-                'age_limit': info_dict['age_limit'],
-                'http_headers': headers,
-            }
-
-            if RtmpIE.suitable(video_url):
-                entry_info_dict.update({
-                    '_type': 'url_transparent',
-                    'ie_key': RtmpIE.ie_key(),
-                    'url': video_url,
-                })
-                entries.append(entry_info_dict)
-                continue
-
-            ext = determine_ext(video_url)
-            if ext == 'smil':
-                entry_info_dict = {**self._extract_smil_info(video_url, video_id), **entry_info_dict}
-            elif ext == 'xspf':
-                return self.playlist_result(self._extract_xspf_playlist(video_url, video_id), video_id)
-            elif ext == 'm3u8':
-                entry_info_dict['formats'], entry_info_dict['subtitles'] = self._extract_m3u8_formats_and_subtitles(video_url, video_id, ext='mp4', headers=headers)
-            elif ext == 'mpd':
-                entry_info_dict['formats'], entry_info_dict['subtitles'] = self._extract_mpd_formats_and_subtitles(video_url, video_id, headers=headers)
-            elif ext == 'f4m':
-                entry_info_dict['formats'] = self._extract_f4m_formats(video_url, video_id, headers=headers)
-            elif re.search(r'(?i)\.(?:ism|smil)/manifest', video_url) and video_url != url:
-                # Just matching .ism/manifest is not enough to be reliably sure
-                # whether it's actually an ISM manifest or some other streaming
-                # manifest since there are various streaming URL formats
-                # possible (see [1]) as well as some other shenanigans like
-                # .smil/manifest URLs that actually serve an ISM (see [2]) and
-                # so on.
-                # Thus the most reasonable way to solve this is to delegate
-                # to generic extractor in order to look into the contents of
-                # the manifest itself.
-                # 1. https://azure.microsoft.com/en-us/documentation/articles/media-services-deliver-content-overview/#streaming-url-formats
-                # 2. https://svs.itworkscdn.net/lbcivod/smil:itwfcdn/lbci/170976.smil/Manifest
-                entry_info_dict = self.url_result(
-                    smuggle_url(video_url, {'to_generic': True}),
-                    GenericIE.ie_key())
-            else:
-                entry_info_dict['url'] = video_url
-
-            if entry_info_dict.get('formats'):
-                self._sort_formats(entry_info_dict['formats'])
-
-            entries.append(entry_info_dict)
-
-        if len(entries) == 1:
-            return merge_dicts(entries[0], info_dict)
-        else:
-            for num, e in enumerate(entries, start=1):
-                # 'url' results don't have a title
-                if e.get('title') is not None:
-                    e['title'] = '%s (%d)' % (e['title'], num)
-            return {
-                '_type': 'playlist',
-                'entries': entries,
-            }
+        raise UnsupportedError(url)

@@ -68,7 +68,7 @@ class JSONLDEmbedIE(InfoExtractor):
             }
 
 
-class GenericUrlEmbedBaseIE(InfoExtractor):
+class GenericComponentIE(InfoExtractor):
 
     @staticmethod
     def _check_generic_video(url):
@@ -79,12 +79,6 @@ class GenericUrlEmbedBaseIE(InfoExtractor):
         return super()._extract_embed_urls(url, webpage)
 
     def _extract_from_webpage(self, url, webpage):
-        entry_info_dict = {
-            'id': self._generic_id(url),
-            'title': self._generic_title(url),
-            'age_limit': self._rta_search(webpage),
-            'http_headers': {'Referer': url},
-        }
         for embed_url in orderedSet(self._extract_embed_urls(url, webpage) or [], lazy=True):
             for ie in gen_extractor_classes():
                 if ie.suitable(embed_url) and ie.ie_key() != 'Generic':
@@ -94,13 +88,16 @@ class GenericUrlEmbedBaseIE(InfoExtractor):
                 if not self._check_generic_video(embed_url):
                     continue
                 yield {
-                    **entry_info_dict,
+                    'id': self._generic_id(url),
+                    'title': self._generic_title(url),
+                    'age_limit': self._rta_search(webpage),
+                    'http_headers': {'Referer': url},
                     '_type': 'url_transparent',
                     'url': smuggle_url(embed_url, {'to_generic': True}),
                     'ie_key': 'Generic'}
 
 
-class FlowPlayerEmbedIE(GenericUrlEmbedBaseIE):
+class FlowPlayerEmbedIE(GenericComponentIE):
     _VALID_URL = False
     IE_NAME = 'flowplayer'
     _EMBED_REGEX = [r'''(?xs)
@@ -111,13 +108,13 @@ class FlowPlayerEmbedIE(GenericUrlEmbedBaseIE):
                     ''']
 
 
-class CineramaPlayerEmbedIE(GenericUrlEmbedBaseIE):
+class CineramaPlayerEmbedIE(GenericComponentIE):
     _VALID_URL = False
     IE_NAME = 'cinerama'
     _EMBED_REGEX = [r"cinerama\.embedPlayer\(\s*\'[^']+\',\s*'(?P<url>[^']+)'"]
 
 
-class OpenGraphEmbedIE(GenericUrlEmbedBaseIE):
+class OpenGraphComponentIE(GenericComponentIE):
     _VALID_URL = False
     IE_NAME = 'opengraph'
 
@@ -131,21 +128,19 @@ class OpenGraphEmbedIE(GenericUrlEmbedBaseIE):
             return re.findall(r'<meta.*?property="og:(?:video|audio)".*?content="(.*?)"', webpage)
 
 
-class TwitterPlayerStreamCardIE(GenericUrlEmbedBaseIE):
-    # Try to find twitter cards info
-    # twitter:player:stream should be checked before twitter:player since
-    # it is expected to contain a raw stream (see
-    # https://dev.twitter.com/cards/types/player#On_twitter.com_via_desktop_browser)
-    _VALID_URL = False
-    IE_NAME = 'twitter:player:stream'
-    _EMBED_REGEX = [r'<meta (?:property|name)="twitter:player:stream" (?:content|value)="(?P<url>.+?)"']
-
-
-class TwitterPlayerCardIE(GenericUrlEmbedBaseIE):
+class TwitterPlayerCardIE(GenericComponentIE):
     _VALID_URL = False
     IE_NAME = 'twitter:player'
+    _EMBED_REGEX = [r'<meta (?:property|name)="twitter:player:stream" (?:content|value)="(?P<url>.+?)"']
 
     def _extract_embed_urls(self, url, webpage):
+        # Try to find twitter cards info
+        # twitter:player:stream should be checked before twitter:player since
+        # it is expected to contain a raw stream (see
+        # https://dev.twitter.com/cards/types/player#On_twitter.com_via_desktop_browser)
+        embed_urls = list(super()._extract_embed_urls(url, webpage))
+        if embed_urls:
+            return embed_urls
         # twitter:player is a https URL to iframe player that may or may not
         # be supported by yt-dlp thus this is checked the very last (see
         # https://dev.twitter.com/cards/types/player#On_twitter.com_via_desktop_browser)
@@ -153,13 +148,8 @@ class TwitterPlayerCardIE(GenericUrlEmbedBaseIE):
         if embed_url and embed_url != url:
             return [embed_url]
 
-    def _extract_from_webpage(self, url, webpage):
-        if list(TwitterPlayerStreamCardIE.extract_from_webpage(self._downloader, url, webpage)):
-            return
-        yield from super()._extract_from_webpage(url, webpage)
 
-
-class JWPlayerAlternativeEmbedIE(GenericUrlEmbedBaseIE):
+class JWPlayerAlternativeEmbedIE(GenericComponentIE):
     _VALID_URL = False
     IE_NAME = 'jwplayer:alternative'
     _EMBED_REGEX = [r'flashvars: [\'"](?:.*&)?file=(?P<url>http[^\'"&]*)',  # Start with something easy: JW Player in SWFObject
@@ -179,3 +169,10 @@ class JWPlayerAlternativeEmbedIE(GenericUrlEmbedBaseIE):
         if list(JWPlayerEmbedIE.extract_from_webpage(self._downloader, url, webpage)):
             return
         yield from super()._extract_from_webpage(url, webpage)
+
+
+class GenericVideoFileComponentIE(GenericComponentIE):
+    _VALID_URL = False
+    IE_DESC = False  # Do not list
+    IE_NAME = 'generic:video'
+    _EMBED_REGEX = [r'[^A-Za-z0-9]?(?:file|source)=(http[^\'"&]*)'],

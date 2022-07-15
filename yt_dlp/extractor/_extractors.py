@@ -657,8 +657,7 @@ from .genericembeds import (
     JSONLDEmbedIE,
     FlowPlayerEmbedIE,
     CineramaPlayerEmbedIE,
-    OpenGraphEmbedIE,
-    TwitterPlayerStreamCardIE,
+    OpenGraphComponentIE,
     TwitterPlayerCardIE,
     JWPlayerAlternativeEmbedIE,
 )
