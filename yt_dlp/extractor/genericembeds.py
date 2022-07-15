@@ -87,7 +87,7 @@ class GenericUrlEmbedBaseIE(InfoExtractor):
         }
         for embed_url in orderedSet(self._extract_embed_urls(url, webpage) or [], lazy=True):
             for ie in gen_extractor_classes():
-                if ie.suitable(embed_url):
+                if ie.suitable(embed_url) and ie.ie_key() != 'Generic':
                     yield self.url_result(embed_url, ie_key=ie.ie_key())
                     break
             else:
