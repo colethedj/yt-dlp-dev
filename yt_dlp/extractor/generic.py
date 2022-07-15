@@ -2041,11 +2041,12 @@ class GenericIE(InfoExtractor):
             return self.playlist_result(embeds, **info_dict)
 
         # compat
-        from .genericembeds import GenericVideoFileComponentIE
-        entries = list(GenericVideoFileComponentIE.extract_from_webpage(self._downloader, url, webpage))
-        if entries:
-            self.report_detected(f'video file', len(entries))
-            return self.playlist_result(entries, **info_dict)
+        # FIXME
+        # from .genericembeds import GenericVideoFileComponentIE
+        # entries = list(GenericVideoFileComponentIE.extract_from_webpage(self._downloader, url, webpage))
+        # if entries:
+        #     self.report_detected(f'video file', len(entries))
+        #     return self.playlist_result(entries, **info_dict)
 
         REDIRECT_REGEX = r'[0-9]{,2};\s*(?:URL|url)=\'?([^\'"]+)'
         redirect_url = re.search(
