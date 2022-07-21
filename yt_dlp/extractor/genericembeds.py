@@ -70,31 +70,40 @@ class JSONLDEmbedIE(InfoExtractor):
 
 class GenericComponentIE(InfoExtractor):
 
-    @staticmethod
-    def _check_generic_video(url):
-        vext = determine_ext(urllib.parse.urlparse(url).path)
-        return vext not in (None, 'swf', 'png', 'jpg', 'srt', 'sbv', 'sub', 'vtt', 'ttml', 'js', 'xml')
-
     def _extract_embed_urls(self, url, webpage):
         return super()._extract_embed_urls(url, webpage)
 
     def _extract_from_webpage(self, url, webpage):
         for embed_url in orderedSet(self._extract_embed_urls(url, webpage) or [], lazy=True):
+            if embed_url == url:
+                continue
             for ie in gen_extractor_classes():
                 if ie.suitable(embed_url) and ie.ie_key() != 'Generic':
                     yield self.url_result(embed_url, ie_key=ie.ie_key())
                     break
             else:
-                if not self._check_generic_video(embed_url):
+                ext = determine_ext(embed_url)
+                if ext in (None, 'swf', 'png', 'jpg', 'srt', 'sbv', 'sub', 'vtt', 'ttml', 'js', 'xml'):
                     continue
-                yield {
+
+                info_dict = {
                     'id': self._generic_id(url),
-                    'title': self._generic_title(url),
+                    'title': (self._og_search_title(webpage, default=None)
+                              or self._html_extract_title(webpage, 'video title', default=None)
+                              or self._generic_title(url)),
+                    'description': self._og_search_description(webpage, default=None),
+                    'thumbnail': self._og_search_thumbnail(webpage, default=None),
                     'age_limit': self._rta_search(webpage),
                     'http_headers': {'Referer': url},
-                    '_type': 'url_transparent',
-                    'url': smuggle_url(embed_url, {'to_generic': True}),
-                    'ie_key': 'Generic'}
+                }
+
+                if ext not in (*KNOWN_EXTENSIONS, 'xspf', 'mpd'):  # excludes (?:ism|smil)/manifest for compat
+                    yield self.url_result(embed_url, ie='Generic', **info_dict)
+                else:
+                    # Manifest or video file of some sort; rely on generic to handle it.
+                    # Prefer metadata extracted here as it is likely better than what generic will extract
+                    yield self.url_result(
+                        smuggle_url(embed_url, {'to_generic': True}), ie='Generic', **info_dict, url_transparent=True)
 
 
 class FlowPlayerEmbedIE(GenericComponentIE):
