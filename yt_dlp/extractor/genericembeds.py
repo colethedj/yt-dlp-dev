@@ -79,23 +79,61 @@ class GenericComponentIE(InfoExtractor):
         return super()._extract_embed_urls(url, webpage)
 
     def _extract_from_webpage(self, url, webpage):
-        for embed_url in orderedSet(self._extract_embed_urls(url, webpage) or [], lazy=True):
+        for video_url in orderedSet(self._extract_embed_urls(url, webpage) or [], lazy=True):
+            video_url = video_url.replace('\\/', '/')  # TODO: merge this into core?
             for ie in gen_extractor_classes():
-                if ie.suitable(embed_url) and ie.ie_key() != 'Generic':
-                    yield self.url_result(embed_url, ie_key=ie.ie_key())
+                if ie.suitable(video_url) and ie.ie_key() != 'Generic':
+                    yield self.url_result(video_url, ie_key=ie.ie_key())
                     break
             else:
-                if not self._check_generic_video(embed_url):
+                if not self._check_generic_video(video_url):
                     continue
-                yield {
-                    'id': self._generic_id(url),
+
+                video_id = self._generic_id(video_url)
+                video_info_dict = {
+                    'id': video_id,
                     'title': self._generic_title(url),
                     'age_limit': self._rta_search(webpage),
                     'http_headers': {'Referer': url},
-                    '_type': 'url_transparent',
-                    'url': smuggle_url(embed_url, {'to_generic': True}),
-                    'ie_key': 'Generic'}
+                }
 
+                ext = determine_ext(video_url)
+                if ext == 'smil':
+                    video_info_dict = {**self._extract_smil_info(video_url, video_id), **video_info_dict}
+                elif ext == 'xspf':
+                    return self.playlist_result(self._extract_xspf_playlist(video_url, video_id), video_id)
+                elif ext == 'm3u8':
+                    video_info_dict['formats'], video_info_dict['subtitles'] = self._extract_m3u8_formats_and_subtitles(
+                        video_url, video_id, ext='mp4', headers=video_info_dict['http_headers'])
+                elif ext == 'mpd':
+                    video_info_dict['formats'], video_info_dict['subtitles'] = self._extract_mpd_formats_and_subtitles(
+                        video_url, video_id, headers=video_info_dict['http_headers'])
+                elif ext == 'f4m':
+                    video_info_dict['formats'] = self._extract_f4m_formats(video_url, video_id, headers=video_info_dict['http_headers'])
+                elif re.search(r'(?i)\.(?:ism|smil)/manifest', video_url) and video_url != url:
+                    # Just matching .ism/manifest is not enough to be reliably sure
+                    # whether it's actually an ISM manifest or some other streaming
+                    # manifest since there are various streaming URL formats
+                    # possible (see [1]) as well as some other shenanigans like
+                    # .smil/manifest URLs that actually serve an ISM (see [2]) and
+                    # so on.
+                    # Thus the most reasonable way to solve this is to delegate
+                    # to generic extractor in order to look into the contents of
+                    # the manifest itself.
+                    # 1. https://azure.microsoft.com/en-us/documentation/articles/media-services-deliver-content-overview/#streaming-url-formats
+                    # 2. https://svs.itworkscdn.net/lbcivod/smil:itwfcdn/lbci/170976.smil/Manifest
+                    video_info_dict = self.url_result(
+                        smuggle_url(video_url, {'to_generic': True}),
+                        ie_key='Generic', **video_info_dict)
+                else:
+                    video_info_dict['url'] = video_url
+
+                if video_info_dict.get('formats'):
+                    self._sort_formats(video_info_dict['formats'])
+
+                yield video_info_dict
+
+                # case where url is not supported and not a video url, but redirects to a blank page
 
 class FlowPlayerEmbedIE(GenericComponentIE):
     _VALID_URL = False
