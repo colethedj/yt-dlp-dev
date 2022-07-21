@@ -4,36 +4,13 @@ import urllib.parse
 from . import gen_extractor_classes
 from .common import InfoExtractor
 from .jwplatform import JWPlayerEmbedIE
-from ..utils import smuggle_url, determine_ext, KNOWN_EXTENSIONS, orderedSet, urljoin, unescapeHTML
-
-
-class HTML5MediaEmbedIE(InfoExtractor):
-    _VALID_URL = False
-    IE_NAME = 'html5'
-    _WEBPAGE_TESTS = [
-        {
-            'url': 'https://html.com/media/',
-            'info_dict': {
-                'title': 'HTML5 Media',
-                'description': 'md5:933b2d02ceffe7a7a0f3c8326d91cc2a',
-            },
-            'playlist_count': 2
-        }
-    ]
-
-    def _extract_from_webpage(self, url, webpage):
-        video_id, title = self._generic_id(url), self._generic_title(url)
-        entries = self._parse_html5_media_entries(url, webpage, video_id, m3u8_id='hls') or []
-        for num, entry in enumerate(entries, start=1):
-            entry.update({
-                'id': f'{video_id}-{num}',
-                'title': f'{title} ({num})',
-                '_old_archive_ids': [
-                    f'Generic {f"{video_id}-{num}" if len(entries) > 1 else video_id}',
-                ],
-            })
-            self._sort_formats(entry['formats'])
-            yield entry
+from ..utils import (
+    smuggle_url,
+    determine_ext,
+    KNOWN_EXTENSIONS,
+    orderedSet,
+    traverse_obj
+)
 
 
 class JSONLDEmbedIE(InfoExtractor):
@@ -104,6 +81,42 @@ class GenericComponentIE(InfoExtractor):
                     # Prefer metadata extracted here as it is likely better than what generic will extract
                     yield self.url_result(
                         smuggle_url(embed_url, {'to_generic': True}), ie='Generic', **info_dict, url_transparent=True)
+
+
+class HTML5MediaEmbedIE(GenericComponentIE):
+    _VALID_URL = False
+    IE_NAME = 'html5'
+    _WEBPAGE_TESTS = [
+        {
+            'url': 'https://html.com/media/',
+            'info_dict': {
+                'title': 'HTML5 Media',
+                'description': 'md5:933b2d02ceffe7a7a0f3c8326d91cc2a',
+            },
+            'playlist_count': 2
+        }
+    ]
+
+    def _extract_from_webpage(self, url, webpage):
+        video_id, title = self._generic_id(url), self._generic_title(url)
+        entries = self._parse_html5_media_entries(url, webpage, video_id, m3u8_id='hls') or []
+        for num, entry in enumerate(entries, start=1):
+            # A format url from HTML media may be supported by another extractor (e.g. Gfycat).
+            format_url = traverse_obj(entry, ('formats', 0, 'url'))
+            for ie in gen_extractor_classes():
+                if ie.suitable(format_url) and ie.ie_key() != 'Generic':
+                    yield self.url_result(format_url, ie_key=ie.ie_key())
+                    break
+            else:
+                entry.update({
+                    'id': f'{video_id}-{num}',
+                    'title': f'{title} ({num})',
+                    '_old_archive_ids': [
+                        f'Generic {f"{video_id}-{num}" if len(entries) > 1 else video_id}',
+                    ],
+                })
+                self._sort_formats(entry['formats'])
+                yield entry
 
 
 class FlowPlayerEmbedIE(GenericComponentIE):

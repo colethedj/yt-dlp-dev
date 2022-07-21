@@ -9,7 +9,7 @@ from ..utils import (
 
 class GfycatIE(InfoExtractor):
     _VALID_URL = r'https?://(?:(?:www|giant|thumbs)\.)?gfycat\.com/(?i:ru/|ifr/|gifs/detail/)?(?P<id>[^-/?#\."\']+)'
-    _EMBED_REGEX = [rf'<(?:iframe|source)[^>]+\bsrc=["\'](?P<url>{_VALID_URL})']
+    _EMBED_REGEX = [rf'<iframe[^>]+\bsrc=["\'](?P<url>{_VALID_URL})']
     _TESTS = [{
         'url': 'http://gfycat.com/DeadlyDecisiveGermanpinscher',
         'info_dict': {
