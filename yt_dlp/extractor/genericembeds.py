@@ -198,3 +198,9 @@ class GenericVideoFileComponentIE(GenericComponentIE):
     IE_DESC = False  # Do not list
     IE_NAME = 'generic:video'
     _EMBED_REGEX = [r'[^A-Za-z0-9]?(?:file|source)=(http[^\'"&]*)'],
+
+
+class WebArchiveGenericEmbedIE(GenericComponentIE):
+    _VALID_URL = False
+    IE_NAME = 'webarchive:generic'
+    _EMBED_REGEX = [r'<iframe[^>]+?id=[\"\']playback[\"\'][^>]+?src=[\"\'](?P<url>(?:https?://web\.archive\.org[^\"\'>]+)?)']
