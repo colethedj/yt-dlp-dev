@@ -64,7 +64,7 @@ class GenericComponentIE(InfoExtractor):
                     continue
 
                 info_dict = {
-                    'id': self._generic_id(url),
+                    'id': self._generic_id(embed_url),
                     'title': (self._og_search_title(webpage, default=None)
                               or self._html_extract_title(webpage, 'video title', default=None)
                               or self._generic_title(url)),
