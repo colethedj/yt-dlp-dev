@@ -83,7 +83,7 @@ class GenericComponentIE(InfoExtractor):
                         smuggle_url(embed_url, {'to_generic': True}), ie='Generic', **info_dict, url_transparent=True)
 
 
-class HTML5MediaEmbedIE(GenericComponentIE):
+class HTML5MediaEmbedIE(InfoExtractor):
     _VALID_URL = False
     IE_NAME = 'html5'
     _WEBPAGE_TESTS = [
