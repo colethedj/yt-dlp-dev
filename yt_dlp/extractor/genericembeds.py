@@ -197,7 +197,8 @@ class GenericVideoFileComponentIE(GenericComponentIE):
     _VALID_URL = False
     IE_DESC = False  # Do not list
     IE_NAME = 'generic:video'
-    _EMBED_REGEX = [r'[^A-Za-z0-9]?(?:file|source)=(http[^\'"&]*)'],
+    _EMBED_REGEX = [r'[^A-Za-z0-9]?(?:file|source)=(?P<url>http[^\'"&]*)']
+    EMBED_GROUP = 100
 
 
 class WebArchiveGenericEmbedIE(GenericComponentIE):

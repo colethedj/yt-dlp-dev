@@ -1,3 +1,4 @@
+import itertools
 import os
 import re
 import urllib.parse
@@ -2019,34 +2020,27 @@ class GenericIE(InfoExtractor):
                 getter=lambda x: smuggle_url(x, {'referrer': url}),
                 ie='BrightcoveNew')
 
-        self._downloader.write_debug('Looking for embeds')
-        embeds = []
-        for ie in gen_extractor_classes():
-            gen = ie.extract_from_webpage(self._downloader, url, webpage)
-            current_embeds = []
-            try:
-                while True:
-                    current_embeds.append(next(gen))
-            except self.StopExtraction:
-                self.report_detected(
-                    f'{ie.IE_NAME} exclusive embed' + '; discarding other embeds' if embeds else '', len(current_embeds))
-                embeds = current_embeds
-                break
-            except StopIteration:
-                self.report_detected(f'{ie.IE_NAME} embed', len(current_embeds))
-                embeds.extend(current_embeds)
-
-        del current_embeds
-        if embeds:
-            return self.playlist_result(embeds, **info_dict)
-
-        # compat
-        # FIXME
-        # from .genericembeds import GenericVideoFileComponentIE
-        # entries = list(GenericVideoFileComponentIE.extract_from_webpage(self._downloader, url, webpage))
-        # if entries:
-        #     self.report_detected(f'video file', len(entries))
-        #     return self.playlist_result(entries, **info_dict)
+        group_key = lambda x: x.EMBED_GROUP
+        for group, ies in itertools.groupby(sorted(gen_extractor_classes(), key=group_key), key=group_key):
+            self._downloader.write_debug(f'Looking for group {group} embeds')
+            embeds = []
+            for ie in ies:
+                gen = ie.extract_from_webpage(self._downloader, url, webpage)
+                current_embeds = []
+                try:
+                    while True:
+                        current_embeds.append(next(gen))
+                except self.StopExtraction:
+                    self.report_detected(
+                        f'{ie.IE_NAME} exclusive embed' + '; discarding other embeds' if embeds else '', len(current_embeds))
+                    embeds = current_embeds
+                    break
+                except StopIteration:
+                    self.report_detected(f'{ie.IE_NAME} embed', len(current_embeds))
+                    embeds.extend(current_embeds)
+            del current_embeds
+            if embeds:
+                return self.playlist_result(embeds, **info_dict)
 
         REDIRECT_REGEX = r'[0-9]{,2};\s*(?:URL|url)=\'?([^\'"]+)'
         redirect_url = re.search(

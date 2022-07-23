@@ -660,7 +660,8 @@ from .genericembeds import (
     OpenGraphComponentIE,
     TwitterPlayerCardIE,
     JWPlayerAlternativeEmbedIE,
-    WebArchiveGenericEmbedIE
+    WebArchiveGenericEmbedIE,
+    GenericVideoFileComponentIE
 )
 from .huajiao import HuajiaoIE
 from .huya import HuyaLiveIE
