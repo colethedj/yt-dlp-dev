@@ -197,21 +197,21 @@ class BGenericVideoFileComponentIE(GenericComponentIE):
     _VALID_URL = False
     IE_DESC = False  # Do not list
     IE_NAME = 'generic:video'
-    AFTER_IES = ['Generic']
+    AFTER_IES = ['AGenericVideoFileComponent2IE']
     _EMBED_REGEX = [r'[^A-Za-z0-9]?(?:file|source)=(?P<url>http[^\'"&]*)']
 
 class AGenericVideoFileComponent2IE(GenericComponentIE):
     _VALID_URL = False
     IE_DESC = False  # Do not list
     IE_NAME = 'generic:video'
-    AFTER_IES = ['Generic']
+    AFTER_IES = ['GenericVideoFileComponent3IE']
     _EMBED_REGEX = [r'[^A-Za-z0-9]?(?:file|source)=(?P<url>http[^\'"&]*)']
 
 class GenericVideoFileComponent3IE(GenericComponentIE):
     _VALID_URL = False
     IE_DESC = False  # Do not list
     IE_NAME = 'generic:video'
-   # AFTER_IES = ['GenericVideoFileComponent']
+    AFTER_IES = ['BGenericVideoFileComponentIE']
     _EMBED_REGEX = [r'[^A-Za-z0-9]?(?:file|source)=(?P<url>http[^\'"&]*)']
 
 class WebArchiveGenericEmbedIE(GenericComponentIE):

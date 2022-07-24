@@ -2025,25 +2025,24 @@ class GenericIE(InfoExtractor):
         for ie in gen_extractor_classes():
             q.put(ie)
 
+        MAX_RETRIES = 5  # todo: should be able to calculate worst case
         seen = set()
         seen_has_embeds = set()
         embeds = []
-
-        all_excludes = set()
+        loop_count = {}
         while not q.empty():
             ie = q.get()
-            print(ie.ie_key())
+            self.write_debug(ie.ie_key())
             after_ies = set((i if isinstance(i, str) else i.ie_key()) for i in ie.AFTER_IES)
-            if 'all' in after_ies:
-                all_excludes.add(ie.ie_key())
-
-            if q.qsize() < len(all_excludes):
-                seen.add('all')
-
             if seen_has_embeds.intersection(after_ies):
                 continue  # skip this IE
 
             if after_ies.difference(seen):
+                if loop_count.get(ie.ie_key(), 0) > MAX_RETRIES:
+                    raise ExtractorError(f'Embed dependency loop detected ({ie.ie_key()} has been seen too many times)')
+
+                loop_count.setdefault(ie.ie_key(), 0)
+                loop_count[ie.ie_key()] += 1
                 # still more after ies to go
                 q.put(ie)
                 continue
