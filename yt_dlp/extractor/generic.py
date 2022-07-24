@@ -1,3 +1,5 @@
+import enum
+import itertools
 import os
 import re
 import urllib.parse
@@ -2021,60 +2023,56 @@ class GenericIE(InfoExtractor):
                 ie='BrightcoveNew')
 
         self._downloader.write_debug('Looking for embeds')
-        q = Queue()
-        for ie in gen_extractor_classes():
-            q.put(ie)
 
-        MAX_RETRIES = 5  # todo: should be able to calculate worst case
-        seen = set()
-        seen_has_embeds = set()
-        embeds = []
-        loop_count = {}
-        while not q.empty():
-            ie = q.get()
-            self.write_debug(ie.ie_key())
-            after_ies = set((i if isinstance(i, str) else i.ie_key()) for i in ie.AFTER_IES)
-            if seen_has_embeds.intersection(after_ies):
-                continue  # skip this IE
+        level_key = lambda x: x._EMBED_LEVEL
+        for level, ies in itertools.groupby(sorted(gen_extractor_classes(), key=level_key), key=level_key):
 
-            if after_ies.difference(seen):
-                if loop_count.get(ie.ie_key(), 0) > MAX_RETRIES:
-                    raise ExtractorError(f'Embed dependency loop detected ({ie.ie_key()} has been seen too many times)')
-
-                loop_count.setdefault(ie.ie_key(), 0)
-                loop_count[ie.ie_key()] += 1
-                # still more after ies to go
+            self._downloader.write_debug(f'Looking for {level.name if isinstance(level, enum.Enum) else f"level {level}"} embeds')
+            q = Queue()
+            for ie in ies:
                 q.put(ie)
-                continue
 
-            gen = ie.extract_from_webpage(self._downloader, url, webpage)
-            current_embeds = []
-            try:
-                while True:
-                    current_embeds.append(next(gen))
-            except self.StopExtraction:
-                self.report_detected(
-                    f'{ie.IE_NAME} exclusive embed' + '; discarding other embeds' if embeds else '', len(current_embeds))
-                embeds = current_embeds
-                break
-            except StopIteration:
-                self.report_detected(f'{ie.IE_NAME} embed', len(current_embeds))
-                embeds.extend(current_embeds)
-                seen_has_embeds.add(ie.ie_key())
+            seen = set()
+            seen_has_embeds = set()
+            embeds = []
+            loop_count = {}
+            while not q.empty():
+                ie = q.get()
+               # self.write_debug(ie.ie_key())
+                after_ies = set((i if isinstance(i, str) else i.ie_key()) for i in ie._AFTER_IES)
+                if seen_has_embeds.intersection(after_ies):
+                    continue  # skip this IE
 
-            seen.add(ie.ie_key())
+                if after_ies.difference(seen):
+                    loop_count.setdefault(ie.ie_key(), 0)
+                    if loop_count[ie.ie_key()] >= 10:  # TODO: is there a way to calculate worst case?
+                        raise ExtractorError(f'Embed dependency loop detected ({ie.IE_NAME} has been seen too many times)')
 
-        del current_embeds
-        if embeds:
-            return self.playlist_result(embeds, **info_dict)
+                    loop_count[ie.ie_key()] += 1
+                    # still more after ies to go
+                    q.put(ie)
+                    continue
 
-        # compat
-        # FIXME
-        # from .genericembeds import GenericVideoFileComponentIE
-        # entries = list(GenericVideoFileComponentIE.extract_from_webpage(self._downloader, url, webpage))
-        # if entries:
-        #     self.report_detected(f'video file', len(entries))
-        #     return self.playlist_result(entries, **info_dict)
+                gen = ie.extract_from_webpage(self._downloader, url, webpage)
+                current_embeds = []
+                try:
+                    while True:
+                        current_embeds.append(next(gen))
+                except self.StopExtraction:
+                    self.report_detected(
+                        f'{ie.IE_NAME} exclusive embed' + '; discarding other embeds' if embeds else '', len(current_embeds))
+                    embeds = current_embeds
+                    break
+                except StopIteration:
+                    self.report_detected(f'{ie.IE_NAME} embed', len(current_embeds))
+                    embeds.extend(current_embeds)
+                    seen_has_embeds.add(ie.ie_key())
+
+                seen.add(ie.ie_key())
+
+            del current_embeds
+            if embeds:
+                return self.playlist_result(embeds, **info_dict)
 
         REDIRECT_REGEX = r'[0-9]{,2};\s*(?:URL|url)=\'?([^\'"]+)'
         redirect_url = re.search(

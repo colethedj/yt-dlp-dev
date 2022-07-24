@@ -1,5 +1,6 @@
 import base64
 import collections
+import enum
 import getpass
 import hashlib
 import http.client
@@ -488,7 +489,15 @@ class InfoExtractor:
     SEARCH_KEY = None
     _VALID_URL = None
     _EMBED_REGEX = []
-    AFTER_IES = []
+    _AFTER_IES = []
+
+    @enum.unique
+    class EmbedLevel(enum.IntEnum):
+        DEFAULT = 50
+        GENERIC = 100
+
+    _EMBED_LEVEL = EmbedLevel.DEFAULT
+
     def _login_hint(self, method=NO_DEFAULT, netrc=None):
         password_hint = f'--username and --password, or --netrc ({netrc or self._NETRC_MACHINE}) to provide account credentials'
         return {

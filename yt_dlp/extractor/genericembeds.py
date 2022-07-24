@@ -187,45 +187,21 @@ class JWPlayerAlternativeEmbedIE(GenericComponentIE):
                     # Broaden the findall a little bit: JWPlayer JS loader
                     r'[^A-Za-z0-9]?(?:file|video_url)["\']?:\s*["\'](?P<url>http(?![^\'"]+\.[0-9]+[\'"])[^\'"]+)["\']']
 
+    _AFTER_IES = ['JWPlayerEmbed']
+
     def _extract_from_webpage(self, url, webpage):
-        if list(JWPlayerEmbedIE.extract_from_webpage(self._downloader, url, webpage)):
-            return
         yield from super()._extract_from_webpage(url, webpage)
 
 
-class BGenericVideoFileComponentIE(GenericComponentIE):
+class GenericVideoFileComponentIE(GenericComponentIE):
     _VALID_URL = False
     IE_DESC = False  # Do not list
     IE_NAME = 'generic:video'
-    AFTER_IES = ['AGenericVideoFileComponent2IE']
     _EMBED_REGEX = [r'[^A-Za-z0-9]?(?:file|source)=(?P<url>http[^\'"&]*)']
+    _EMBED_LEVEL = InfoExtractor.EmbedLevel.GENERIC
 
-class AGenericVideoFileComponent2IE(GenericComponentIE):
-    _VALID_URL = False
-    IE_DESC = False  # Do not list
-    IE_NAME = 'generic:video'
-    AFTER_IES = ['GenericVideoFileComponent3IE']
-    _EMBED_REGEX = [r'[^A-Za-z0-9]?(?:file|source)=(?P<url>http[^\'"&]*)']
-
-class GenericVideoFileComponent3IE(GenericComponentIE):
-    _VALID_URL = False
-    IE_DESC = False  # Do not list
-    IE_NAME = 'generic:video'
-    AFTER_IES = ['BGenericVideoFileComponentIE']
-    _EMBED_REGEX = [r'[^A-Za-z0-9]?(?:file|source)=(?P<url>http[^\'"&]*)']
 
 class WebArchiveGenericEmbedIE(GenericComponentIE):
     _VALID_URL = False
     IE_NAME = 'webarchive:generic'
     _EMBED_REGEX = [r'<iframe[^>]+?id=[\"\']playback[\"\'][^>]+?src=[\"\'](?P<url>(?:https?://web\.archive\.org[^\"\'>]+)?)']
-
-
-class MyEmbedIE:
-    _VALID_URL = False
-    EMBED_AFTER_IES = ['Generic'] # nope, won't work cause will still run with after ies extract something.
-    _EMBED_REGEX = [...]
-
-
-class MyIE:
-    _VALID_URL = ...
-    AFTER_IES = [...]
