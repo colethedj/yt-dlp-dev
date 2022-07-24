@@ -193,14 +193,39 @@ class JWPlayerAlternativeEmbedIE(GenericComponentIE):
         yield from super()._extract_from_webpage(url, webpage)
 
 
-class GenericVideoFileComponentIE(GenericComponentIE):
+class BGenericVideoFileComponentIE(GenericComponentIE):
     _VALID_URL = False
     IE_DESC = False  # Do not list
     IE_NAME = 'generic:video'
-    _EMBED_REGEX = [r'[^A-Za-z0-9]?(?:file|source)=(http[^\'"&]*)'],
+    AFTER_IES = ['Generic']
+    _EMBED_REGEX = [r'[^A-Za-z0-9]?(?:file|source)=(?P<url>http[^\'"&]*)']
 
+class AGenericVideoFileComponent2IE(GenericComponentIE):
+    _VALID_URL = False
+    IE_DESC = False  # Do not list
+    IE_NAME = 'generic:video'
+    AFTER_IES = ['Generic']
+    _EMBED_REGEX = [r'[^A-Za-z0-9]?(?:file|source)=(?P<url>http[^\'"&]*)']
+
+class GenericVideoFileComponent3IE(GenericComponentIE):
+    _VALID_URL = False
+    IE_DESC = False  # Do not list
+    IE_NAME = 'generic:video'
+   # AFTER_IES = ['GenericVideoFileComponent']
+    _EMBED_REGEX = [r'[^A-Za-z0-9]?(?:file|source)=(?P<url>http[^\'"&]*)']
 
 class WebArchiveGenericEmbedIE(GenericComponentIE):
     _VALID_URL = False
     IE_NAME = 'webarchive:generic'
     _EMBED_REGEX = [r'<iframe[^>]+?id=[\"\']playback[\"\'][^>]+?src=[\"\'](?P<url>(?:https?://web\.archive\.org[^\"\'>]+)?)']
+
+
+class MyEmbedIE:
+    _VALID_URL = False
+    EMBED_AFTER_IES = ['Generic'] # nope, won't work cause will still run with after ies extract something.
+    _EMBED_REGEX = [...]
+
+
+class MyIE:
+    _VALID_URL = ...
+    AFTER_IES = [...]

@@ -488,7 +488,7 @@ class InfoExtractor:
     SEARCH_KEY = None
     _VALID_URL = None
     _EMBED_REGEX = []
-
+    AFTER_IES = []
     def _login_hint(self, method=NO_DEFAULT, netrc=None):
         password_hint = f'--username and --password, or --netrc ({netrc or self._NETRC_MACHINE}) to provide account credentials'
         return {

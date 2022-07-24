@@ -2,8 +2,9 @@ import os
 import re
 import urllib.parse
 import xml.etree.ElementTree
+from queue import Queue, PriorityQueue
 
-from . import gen_extractor_classes
+from . import gen_extractor_classes, get_info_extractor
 from .common import InfoExtractor  # isort: split
 from .brightcove import BrightcoveLegacyIE, BrightcoveNewIE
 from .commonprotocols import RtmpIE
@@ -2020,8 +2021,33 @@ class GenericIE(InfoExtractor):
                 ie='BrightcoveNew')
 
         self._downloader.write_debug('Looking for embeds')
-        embeds = []
+        q = Queue()
         for ie in gen_extractor_classes():
+            q.put(ie)
+
+        seen = set()
+        seen_has_embeds = set()
+        embeds = []
+
+        all_excludes = set()
+        while not q.empty():
+            ie = q.get()
+            print(ie.ie_key())
+            after_ies = set((i if isinstance(i, str) else i.ie_key()) for i in ie.AFTER_IES)
+            if 'all' in after_ies:
+                all_excludes.add(ie.ie_key())
+
+            if q.qsize() < len(all_excludes):
+                seen.add('all')
+
+            if seen_has_embeds.intersection(after_ies):
+                continue  # skip this IE
+
+            if after_ies.difference(seen):
+                # still more after ies to go
+                q.put(ie)
+                continue
+
             gen = ie.extract_from_webpage(self._downloader, url, webpage)
             current_embeds = []
             try:
@@ -2035,6 +2061,9 @@ class GenericIE(InfoExtractor):
             except StopIteration:
                 self.report_detected(f'{ie.IE_NAME} embed', len(current_embeds))
                 embeds.extend(current_embeds)
+                seen_has_embeds.add(ie.ie_key())
+
+            seen.add(ie.ie_key())
 
         del current_embeds
         if embeds:
