@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import functools
 import io
 import ssl
@@ -12,6 +13,7 @@ from email.message import Message
 from http import HTTPStatus
 from typing import Union
 
+from .utils import ssl_load_certs
 from .. import utils
 
 try:
@@ -257,34 +259,48 @@ class Response(io.IOBase):
 
 class RequestHandler:
 
+    """Request Handler class
+
+    Request handlers are class that, given an HTTP Request,
+    process the request from start to finish and return an HTTP Response.
+
+    Subclasses should re-define the _real_handle() and (optionally) _prepare_request() methods,
+    which must return an instance of Response and Request respectively.
+
+    If a Request is not to be supported by the handler, an UnsupportedRequest
+    should be raised with a reason within _prepare_request().
+
+    If an implementation makes use of an SSLContext, it should retrieve one from make_sslcontext() and
+    (optionally) re-define _make_sslcontext() with a custom SSLContext initialization method.
+
+    All exceptions raised by a RequestHandler should be an instance of RequestError.
+    Any other exception raised will be treated as a handler issue.
+
+
+    To cover some common cases, the following may be defined:
+
+    _SUPPORTED_SCHEMES may contain a list of supported url schemes. Any Request
+    with an url scheme not in this list will raise an UnsupportedRequest.
+
+    _SUPPORTED_PROXY_SCHEMES may contain a list of support proxy url schemes. Any Request that contains
+    a proxy url with an url scheme not in this list will raise an UnsupportedRequest.
+
+    _SUPPORTED_ENCODINGS may contain a list of supported content encodings for the Accept-Encoding header.
+
+    """
+
     _SUPPORTED_SCHEMES: list = None
     _SUPPORTED_PROXY_SCHEMES: list = None
-
-    # List of supported content encodings for Accept-Encoding header
     _SUPPORTED_ENCODINGS: list = None
 
     def __init__(self, ydl: YoutubeDL):
-        self._set_ydl(ydl)
-        self.cookiejar = self.ydl.cookiejar
-
-    def _set_ydl(self, ydl):
-        # FIXME: this is ugly
         self.ydl = ydl
-
-        for func in (
-            'deprecation_warning',
-            'report_warning',
-            'to_stderr',
-            'write_debug',
-            'to_debugtraffic'
-        ):
-            if not hasattr(self, func):
-                setattr(self, func, getattr(ydl, func))
+        self.cookiejar = self.ydl.cookiejar
 
     def make_sslcontext(self, **kwargs):
         """
         Make a new SSLContext configured for this backend.
-        Note: _make_sslcontext must be implemented
+        To customize SSLContext initialization, override _make_sslcontext()
         """
         context = self._make_sslcontext(
             verify=not self.ydl.params.get('nocheckcertificate'), **kwargs)
@@ -306,9 +322,19 @@ class RequestHandler:
 
         return context
 
-    def _make_sslcontext(self, verify: bool, **kwargs) -> ssl.SSLContext:
-        """Generate a backend-specific SSLContext. Redefine in subclasses"""
-        raise NotImplementedError
+    def _make_sslcontext(self, verify, **kwargs):
+        """Generates a default HTTP/1.1 SSLContext with certs"""
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        context.check_hostname = verify
+        context.verify_mode = ssl.CERT_REQUIRED if verify else ssl.CERT_NONE
+        # Some servers may reject requests if ALPN extension is not sent. See:
+        # https://github.com/python/cpython/issues/85140
+        # https://github.com/yt-dlp/yt-dlp/issues/3878
+        with contextlib.suppress(NotImplementedError):
+            context.set_alpn_protocols(['http/1.1'])
+        if verify:
+            ssl_load_certs(context, self.ydl.params)
+        return context
 
     def _check_scheme(self, request: Request):
         if self._SUPPORTED_SCHEMES is None:
@@ -376,7 +402,7 @@ class RequestHandler:
             raise
 
     def _real_handle(self, request: Request):
-        """Handle a request. Redefine in subclasses."""
+        """Handle a request from start to finish. Redefine in subclasses."""
         raise NotImplementedError
 
     def close(self):
