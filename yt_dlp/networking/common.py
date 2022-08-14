@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import enum
 import functools
 import io
 import ssl
@@ -53,6 +54,16 @@ class Request:
     @param compression: whether to include content-encoding header on request.
     @param allow_redirects: whether to follow redirects for this request.
     @param timeout: socket timeout value for this request.
+
+    A Request may also have the following special headers:
+    Youtubedl-no-compression: if present, equivalent to setting compression to False.
+    Ytdl-request-proxy: proxy url to use for request.
+
+    Apart from the url protocol, proxy dict also supports the following keys:
+    - all: proxy to use for all protocols. Used as a fallback if no proxy is set for a specific protocol.
+    - no: comma seperated list of hostnames (optionally with port) to not use a proxy for.
+
+    A proxy value can be set to __noproxy__ or None to set no proxy for that protocol.
     """
 
     def __init__(
@@ -257,6 +268,11 @@ class Response(io.IOBase):
         return self.headers
 
 
+class Features(enum.Enum):
+    ALL_PROXY = enum.auto()
+    NO_PROXY = enum.auto()
+
+
 class RequestHandler:
 
     """Request Handler class
@@ -292,6 +308,7 @@ class RequestHandler:
     _SUPPORTED_SCHEMES: list = None
     _SUPPORTED_PROXY_SCHEMES: list = None
     _SUPPORTED_ENCODINGS: list = None
+    _SUPPORTED_FEATURES: list = None
 
     def __init__(self, ydl: YoutubeDL):
         self.ydl = ydl
@@ -352,6 +369,10 @@ class RequestHandler:
         for proxy_key, proxy_url in request.proxies.items():
             if proxy_url is None:
                 continue
+            if proxy_key == 'no' and Features.NO_PROXY in self._SUPPORTED_FEATURES:
+                continue
+            if proxy_key == 'all' and Features.ALL_PROXY not in self._SUPPORTED_FEATURES:
+                raise UnsupportedRequest('\'all\' proxy is not supported')
             scheme = urllib.parse.urlparse(proxy_url).scheme.lower()
             if scheme not in self._SUPPORTED_PROXY_SCHEMES:
                 raise UnsupportedRequest(f'unsupported proxy type: "{scheme}"')
@@ -369,7 +390,7 @@ class RequestHandler:
         if not request.compression:
             request.headers.pop('Accept-Encoding', None)
 
-        # Proxy preference: header req proxy > req proxies > ydl opt proxies > env proxies
+        # Proxy preference: header req proxy > req proxies > ydl opt proxies / env proxies
         request.proxies = {**self.ydl.proxies, **request.proxies}
         req_proxy = request.headers.pop('Ytdl-request-proxy', None)
         if req_proxy:
@@ -378,7 +399,8 @@ class RequestHandler:
             if proxy_url == '__noproxy__':  # compat
                 request.proxies[proxy_key] = None
                 continue
-
+            if proxy_key == 'no':  # special case
+                continue
             if proxy_url is not None and _parse_proxy is not None:
                 # Ensure proxies without a scheme are http.
                 proxy_scheme = _parse_proxy(proxy_url)[0]
