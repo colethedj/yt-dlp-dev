@@ -400,6 +400,5 @@ class SocksProxyManager(urllib3.PoolManager):
 
 requests.adapters.SOCKSProxyManager = SocksProxyManager
 
-# XXX: Requests won't automatically handle no_proxy by default due to buddy no_proxy handling with proxy dict [1].
-# Their no_proxy implementation also doesn't support ports.
+# XXX: Requests will not automatically handle no_proxy by default due to buggy no_proxy handling with proxy dict [1].
 requests.adapters.select_proxy = select_proxy
