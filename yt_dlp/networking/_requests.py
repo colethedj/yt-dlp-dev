@@ -46,7 +46,6 @@ from .exceptions import (
     HTTPError,
     ProxyError,
     RequestError,
-    UnsupportedRequest
 )
 
 from http.client import HTTPConnection
