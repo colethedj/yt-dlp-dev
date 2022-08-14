@@ -25,7 +25,8 @@ import requests.adapters
 
 from .common import (
     Response,
-    RequestHandler
+    RequestHandler,
+    Features
 )
 from ..socks import (
     sockssocket,
@@ -35,7 +36,7 @@ from .utils import (
     ssl_load_certs,
     make_socks_proxy_opts,
     select_proxy,
-    get_redirect_method
+    get_redirect_method,
 )
 
 from .exceptions import (
@@ -238,9 +239,10 @@ class YDLUrllib3LoggingFilter(logging.Filter):
 
 
 class RequestsRH(RequestHandler):
-    _SUPPORTED_SCHEMES = ['http', 'https']
-    _SUPPORTED_ENCODINGS = SUPPORTED_ENCODINGS
-    _SUPPORTED_PROXY_SCHEMES = ['http', 'https', 'socks4', 'socks5', 'socks4a', 'socks']
+    SUPPORTED_SCHEMES = ['http', 'https']
+    SUPPORTED_ENCODINGS = SUPPORTED_ENCODINGS
+    SUPPORTED_PROXY_SCHEMES = ['http', 'https', 'socks4', 'socks5', 'socks4a', 'socks']
+    SUPPORTED_FEATURES = [Features.NO_PROXY, Features.ALL_PROXY]
     NAME = 'requests'
 
     def __init__(self, ydl):
@@ -296,12 +298,6 @@ class RequestsRH(RequestHandler):
         return context
 
     def _prepare_request(self, request):
-        if request.proxies and 'no' in request.proxies:
-            # NO_PROXY is buggy in requests.
-            # Disable the handler for now until it is fixed, or we implement a workaround
-            # See https://github.com/psf/requests/issues/5000 and related issues
-            raise UnsupportedRequest('NO_PROXY is not supported')
-
         # Requests doesn't set content-type if we have already encoded the data, while urllib does.
         # We need to manually set it in this case as many extractors do not.
         if 'content-type' not in request.headers:
@@ -404,4 +400,7 @@ class SocksProxyManager(urllib3.PoolManager):
 
 
 requests.adapters.SOCKSProxyManager = SocksProxyManager
+
+# XXX: Requests won't automatically handle no_proxy by default due to buddy no_proxy handling with proxy dict [1].
+# Their no_proxy implementation also doesn't support ports.
 requests.adapters.select_proxy = select_proxy
