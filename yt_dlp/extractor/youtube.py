@@ -161,7 +161,7 @@ INNERTUBE_CLIENTS = {
             'client': {
                 'clientName': 'IOS',
                 'clientVersion': '17.30.1',
-                'deviceModel': 'iPhone14,3',
+                'deviceModel': 'iPad13,11',
             }
         },
         'INNERTUBE_CONTEXT_CLIENT_NAME': 5,
