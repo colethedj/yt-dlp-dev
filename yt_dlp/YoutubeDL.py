@@ -144,7 +144,7 @@ from .utils import (
     write_json_file,
     write_string,
 )
-from .version import RELEASE_GIT_HEAD, __version__
+from .version import RELEASE_GIT_HEAD, VARIANT, __version__
 
 if compat_os_name == 'nt':
     import ctypes
@@ -272,7 +272,7 @@ class YoutubeDL:
     subtitleslangs:    List of languages of the subtitles to download (can be regex).
                        The list may contain "all" to refer to all the available
                        subtitles. The language can be prefixed with a "-" to
-                       exclude it from the requested languages. Eg: ['all', '-live_chat']
+                       exclude it from the requested languages, e.g. ['all', '-live_chat']
     keepvideo:         Keep the video file after post-processing
     daterange:         A DateRange object, download only if the upload_date is in the range.
     skip_download:     Skip the actual download of the video file
@@ -301,8 +301,8 @@ class YoutubeDL:
                        should act on each input URL as opposed to for the entire queue
     cookiefile:        File name or text stream from where cookies should be read and dumped to
     cookiesfrombrowser:  A tuple containing the name of the browser, the profile
-                       name/pathfrom where cookies are loaded, and the name of the
-                       keyring. Eg: ('chrome', ) or ('vivaldi', 'default', 'BASICTEXT')
+                       name/path from where cookies are loaded, and the name of the
+                       keyring, e.g. ('chrome', ) or ('vivaldi', 'default', 'BASICTEXT')
     legacyserverconnect: Explicitly allow HTTPS connection to servers that do not
                        support RFC 5746 secure renegotiation
     nocheckcertificate:  Do not verify SSL certificates
@@ -470,7 +470,7 @@ class YoutubeDL:
                        discontinuities such as ad breaks (default: False)
     extractor_args:    A dictionary of arguments to be passed to the extractors.
                        See "EXTRACTOR ARGUMENTS" for details.
-                       Eg: {'youtube': {'skip': ['dash', 'hls']}}
+                       E.g. {'youtube': {'skip': ['dash', 'hls']}}
     mark_watched:      Mark videos watched (even with --simulate). Only for YouTube
 
     The following options are deprecated and may be removed in the future:
@@ -1046,7 +1046,7 @@ class YoutubeDL:
 
         # outtmpl should be expand_path'ed before template dict substitution
         # because meta fields may contain env variables we don't want to
-        # be expanded. For example, for outtmpl "%(title)s.%(ext)s" and
+        # be expanded. E.g. for outtmpl "%(title)s.%(ext)s" and
         # title "Hello $PATH", we don't want `$PATH` to be expanded.
         return expand_path(outtmpl).replace(sep, '')
 
@@ -1797,6 +1797,8 @@ class YoutubeDL:
             })
 
             if self._match_entry(entry_copy, incomplete=True) is not None:
+                # For compatabilty with youtube-dl. See https://github.com/yt-dlp/yt-dlp/issues/4369
+                resolved_entries[i] = (playlist_index, NO_DEFAULT)
                 continue
 
             self.to_screen('[download] Downloading video %s of %s' % (
@@ -1817,7 +1819,8 @@ class YoutubeDL:
                 resolved_entries[i] = (playlist_index, entry_result)
 
         # Update with processed data
-        ie_result['requested_entries'], ie_result['entries'] = tuple(zip(*resolved_entries)) or ([], [])
+        ie_result['requested_entries'] = [i for i, e in resolved_entries if e is not NO_DEFAULT]
+        ie_result['entries'] = [e for _, e in resolved_entries if e is not NO_DEFAULT]
 
         # Write the updated info to json
         if _infojson_written is True and self._write_info_json(
@@ -1974,8 +1977,8 @@ class YoutubeDL:
                     filter_parts.append(string)
 
         def _remove_unused_ops(tokens):
-            # Remove operators that we don't use and join them with the surrounding strings
-            # for example: 'mp4' '-' 'baseline' '-' '16x9' is converted to 'mp4-baseline-16x9'
+            # Remove operators that we don't use and join them with the surrounding strings.
+            # E.g. 'mp4' '-' 'baseline' '-' '16x9' is converted to 'mp4-baseline-16x9'
             ALLOWED_OPS = ('/', '+', ',', '(', ')')
             last_string, last_start, last_end, last_line = None, None, None, None
             for type, string, start, end, line in tokens:
@@ -3676,6 +3679,8 @@ class YoutubeDL:
             write_debug = lambda msg: self._write_string(f'[debug] {msg}\n')
 
         source = detect_variant()
+        if VARIANT not in (None, 'pip'):
+            source += '*'
         write_debug(join_nonempty(
             'yt-dlp version', __version__,
             f'[{RELEASE_GIT_HEAD}]' if RELEASE_GIT_HEAD else '',
