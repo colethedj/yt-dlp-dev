@@ -1,5 +1,6 @@
 import base64
 import calendar
+import collections.abc
 import copy
 import datetime
 import hashlib
@@ -384,6 +385,10 @@ class YoutubeBaseInfoExtractor(InfoExtractor):
         pref.update({'hl': 'en', 'tz': 'UTC'})
         self._set_cookie('.youtube.com', name='PREF', value=urllib.parse.urlencode(pref))
 
+    def _initialize_session(self):
+        self._ytcfgs = copy.deepcopy(INNERTUBE_CLIENTS)
+        self._apply_to_base = {}
+
     def _real_initialize(self):
         self._initialize_pref()
         self._initialize_consent()
@@ -395,6 +400,129 @@ class YoutubeBaseInfoExtractor(InfoExtractor):
 
     _YT_INITIAL_DATA_RE = r'(?:window\s*\[\s*["\']ytInitialData["\']\s*\]|ytInitialData)\s*='
     _YT_INITIAL_PLAYER_RESPONSE_RE = r'ytInitialPlayerResponse\s*='
+
+    def _extract_player_url(self, *ytcfgs, webpage=None):
+        player_url = traverse_obj(
+            ytcfgs, (..., 'PLAYER_JS_URL'), (..., 'WEB_PLAYER_CONTEXT_CONFIGS', ..., 'jsUrl'),
+            get_all=False, expected_type=str)
+        if not player_url:
+            return
+        return urljoin('https://www.youtube.com', player_url)
+
+    def load_ytcfg(self, ytcfg, client):
+        # TODO: this is terrible
+        def ytcfg_update(target, source):
+            for k, v in source.items():
+                if isinstance(v, collections.abc.Mapping):
+                    target[k] = ytcfg_update(target.get(k, {}), v)
+                else:
+                    target[k] = v if v is not None else target.get(k)
+            return target
+
+        target_ytcfg = self._ytcfgs.get(client)
+        if not target_ytcfg:
+            target_ytcfg = {}
+            self._ytcfgs[client] = target_ytcfg
+
+        if target_ytcfg and not target_ytcfg['INNERTUBE_CONTEXT']['clientName'] == ytcfg['INNERTUBE_CONTEXT']['clientName']:
+            raise ExtractorError('Incompatible ytcfg')
+
+        ytcfg_update(target_ytcfg, ytcfg)
+
+        # Attributes to copy to all clients of the same innertube client
+        base_ytcfg = {
+            'INNERTUBE_API_KEY': ytcfg.get('INNERTUBE_API_KEY'),
+            'client': {
+                'clientVersion': traverse_obj(ytcfg, ('INNERTUBE_CONTEXT', 'client', 'clientVersion')),
+                'hl': 'en',
+                'timeZone': 'UTC',
+                'utcOffsetMinutes': 0,
+            },
+        }
+
+        for target_ytcfg in self._ytcfgs.values():
+            if target_ytcfg.get('REQUIRE_JS_PLAYER'):
+                ytcfg_update(target_ytcfg, {
+                    'STS': ytcfg.get('STS'),
+                    'PLAYER_JS_URL': self._extract_player_url(ytcfg)
+                })
+            ytcfg_update(target_ytcfg, {
+                'DELEGATED_SESSION_ID': ytcfg.get('DELEGATED_SESSION_ID'),
+                'SESSION_INDEX': ytcfg.get('SESSION_INDEX'),
+            })
+            if target_ytcfg['INNERTUBE_CONTEXT']['clientName'] == ytcfg['INNERTUBE_CONTEXT']['clientName']:
+                ytcfg_update(target_ytcfg, base_ytcfg)
+
+    def _download_ytcfg(self, client, item_id):
+        url = {
+            'web': 'https://www.youtube.com',
+            'web_music': 'https://music.youtube.com',
+            'web_embedded': f'https://www.youtube.com/embed/BaW_jenozKc?html5=1'
+        }.get(client)
+        if not url:
+            return {}
+        webpage = self._download_webpage(
+            url, item_id, fatal=False, note=f'Downloading {client.replace("_", " ").strip()} client config')
+        return self.extract_ytcfg(item_id, webpage) or {}
+
+    def get_ytcfg(self, client, item_id):
+        if not self._ytcfgs.get(client).get('IS_UPDATED'):
+            updated_ytcfg = self._download_ytcfg(client, item_id)
+            if updated_ytcfg:
+                updated_ytcfg['IS_UPDATED'] = True
+                self.load_ytcfg(updated_ytcfg, client)
+
+        ytcfg = self._ytcfgs.get(client)
+        return ytcfg
+
+    def _generate_innertube_headers(self, client, innertube_host, item_id):
+        origin = 'https://' + innertube_host
+        ytcfg = self.get_ytcfg(client, item_id)
+        account_syncid = self._extract_account_syncid(ytcfg)
+        headers = {
+            'Origin': origin,
+            'X-Goog-PageId': account_syncid,
+            'X-Goog-Visitor-Id': self._extract_visitor_data(ytcfg),
+            'User-Agent': traverse_obj(ytcfg, ('INNERTUBE_CONTEXT', 'client', 'userAgent')),
+        }
+
+        session_index = self._extract_session_index(ytcfg)
+        if account_syncid or session_index is not None:
+            headers['X-Goog-AuthUser'] = session_index if session_index is not None else 0
+
+        auth = self._generate_sapisidhash_header(origin)
+        if auth is not None:
+            headers['Authorization'] = auth
+            headers['X-Origin'] = origin
+        return {h: v for h, v in headers.items() if v is not None}
+
+    def _call_innertube(self, client, ep, item_id, params=None, fatal=True, extra_headers=None, note=None, errnote=None):
+        if not note:
+            note = 'Downloading Innertube API JSON'
+        if not errnote:
+            errnote = 'Unable to download Innertube API page'
+        ytcfg = self.get_ytcfg(client, item_id)
+
+        payload = {
+            'context': ytcfg['INNERTUBE_CONTEXT'],
+            **(params or {})
+        }
+
+        innertube_host = self._configuration_arg('innertube_host', [''], ie_key=YoutubeIE.ie_key())[0] or ytcfg.get('INNERTUBE_HOST')
+        headers = self._generate_innertube_headers(client, innertube_host, item_id)
+        headers.update({'Content-Type': 'application/json'})
+        if extra_headers:
+            headers.update(extra_headers)
+
+        api_key = (self._configuration_arg('innertube_key', [''], ie_key=YoutubeIE.ie_key(), casesense=True)[0]
+                   or ytcfg.get('INNERTUBE_API_KEY'))
+
+        return self._download_json(
+            f'https://{innertube_host}/youtubei/v1/{ep}',
+            video_id=item_id, fatal=fatal, note=note, errnote=errnote,
+            data=json.dumps(payload).encode('utf8'), headers=headers,
+            query={'key': api_key, 'prettyPrint': 'false'})
+
 
     def _get_default_ytcfg(self, client='web'):
         return copy.deepcopy(INNERTUBE_CLIENTS[client])
@@ -556,18 +684,6 @@ class YoutubeBaseInfoExtractor(InfoExtractor):
             headers['Authorization'] = auth
             headers['X-Origin'] = origin
         return {h: v for h, v in headers.items() if v is not None}
-
-    def _download_ytcfg(self, client, video_id):
-        url = {
-            'web': 'https://www.youtube.com',
-            'web_music': 'https://music.youtube.com',
-            'web_embedded': f'https://www.youtube.com/embed/{video_id}?html5=1'
-        }.get(client)
-        if not url:
-            return {}
-        webpage = self._download_webpage(
-            url, video_id, fatal=False, note=f'Downloading {client.replace("_", " ").strip()} client config')
-        return self.extract_ytcfg(video_id, webpage) or {}
 
     @staticmethod
     def _build_api_continuation_query(continuation, ctp=None):
@@ -2450,14 +2566,6 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                 continue
 
             time.sleep(max(0, FETCH_SPAN + fetch_time - time.time()))
-
-    def _extract_player_url(self, *ytcfgs, webpage=None):
-        player_url = traverse_obj(
-            ytcfgs, (..., 'PLAYER_JS_URL'), (..., 'WEB_PLAYER_CONTEXT_CONFIGS', ..., 'jsUrl'),
-            get_all=False, expected_type=str)
-        if not player_url:
-            return
-        return urljoin('https://www.youtube.com', player_url)
 
     def _download_player_url(self, video_id, fatal=False):
         res = self._download_webpage(
