@@ -26,9 +26,7 @@ import requests.adapters
 from .common import (
     Response,
     RequestHandler,
-    Features,
-    OptFeatures,
-    DEFAULT_SSL_FEATURES
+    Features
 )
 from ..socks import (
     sockssocket,
@@ -236,9 +234,7 @@ class RequestsRH(RequestHandler):
     SUPPORTED_SCHEMES = ['http', 'https']
     SUPPORTED_ENCODINGS = SUPPORTED_ENCODINGS
     SUPPORTED_PROXY_SCHEMES = ['http', 'https', 'socks4', 'socks5', 'socks4a', 'socks']
-    SUPPORTED_FEATURES = [
-        Features.NO_PROXY, Features.ALL_PROXY,
-        OptFeatures.OPT_SOURCE_ADDRESS, *DEFAULT_SSL_FEATURES]
+    SUPPORTED_FEATURES = [Features.NO_PROXY, Features.ALL_PROXY]
     NAME = 'requests'
 
     def __init__(self, ydl):
