@@ -179,19 +179,13 @@ def handle_urllib3_read_exceptions(e):
 
 
 class YDLRequestsHTTPAdapter(requests.adapters.HTTPAdapter):
-    """
-    Custom HTTP adapter to support passing SSLContext and other arguments to
-    the underlying urllib3 PoolManager.
-    """
-    def __init__(self, ydl, ssl_context):
-        self.ydl = ydl
-        self._pm_args = {
-            'ssl_context': ssl_context,
-        }
-        source_address = self.ydl.params.get('source_address')
+    def __init__(self, ssl_context=None, source_address=None, **kwargs):
+        self._pm_args = {}
+        if ssl_context:
+            self._pm_args['ssl_context'] = ssl_context
         if source_address:
             self._pm_args['source_address'] = (source_address, 0)
-        super().__init__(max_retries=urllib3.util.retry.Retry(False))
+        super().__init__(**kwargs)
 
     def init_poolmanager(self, *args, **kwargs):
         return super().init_poolmanager(*args, **kwargs, **self._pm_args)
@@ -200,16 +194,15 @@ class YDLRequestsHTTPAdapter(requests.adapters.HTTPAdapter):
         return super().proxy_manager_for(*args, **kwargs, **self._pm_args)
 
     def cert_verify(*args, **kwargs):
-        # skip as using our SSLContext
+        # lean on SSLContext for cert verification
         pass
 
 
 class YDLRequestsSession(requests.sessions.Session):
-
+    """
+    Ensure unified redirect method handling with our urllib redirect handler.
+    """
     def rebuild_method(self, prepared_request, response):
-        """
-        Ensure unified redirect method handling with our urllib redirect handler.
-        """
         new_method = get_redirect_method(prepared_request.method, response.status_code)
 
         # HACK: requests removes headers/body on redirect unless code was a 307/308.
@@ -275,7 +268,10 @@ class RequestsRH(RequestHandler):
 
     def _create_session(self):
         session = YDLRequestsSession()
-        _http_adapter = YDLRequestsHTTPAdapter(ydl=self.ydl, ssl_context=self.make_sslcontext())
+        _http_adapter = YDLRequestsHTTPAdapter(
+            ssl_context=self.make_sslcontext(),
+            source_address=self.ydl.params.get('source_address'),
+            max_retries=urllib3.util.retry.Retry(False))
         session.adapters.clear()
         session.headers = requests.models.CaseInsensitiveDict({'Connection': 'keep-alive'})
         session.mount('https://', _http_adapter)
