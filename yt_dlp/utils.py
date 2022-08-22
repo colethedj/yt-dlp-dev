@@ -776,9 +776,9 @@ class Popen(subprocess.Popen):
             self.wait(timeout=timeout)
 
     @classmethod
-    def run(cls, *args, **kwargs):
+    def run(cls, *args, timeout=None, **kwargs):
         with cls(*args, **kwargs) as proc:
-            stdout, stderr = proc.communicate_or_kill()
+            stdout, stderr = proc.communicate_or_kill(timeout=timeout)
             return stdout or '', stderr or '', proc.returncode
 
 
@@ -5239,12 +5239,6 @@ def _create_http_connection(*args, **kwargs):
     return c(*args, **kwargs)
 
 
-# TODO: compat (moved to networking.utils)
-def handle_youtubedl_headers(headers):
-    from .networking.utils import handle_youtubedl_headers as h
-    return h(headers)
-
-
 # TODO: compat (moved to networking._urllib)
 def YoutubeDLHandler(*args, **kwargs):
     from .networking._urllib import YoutubeDLHandler as y
@@ -5314,3 +5308,14 @@ def request_to_url(req):
         return req.get_full_url()
     else:
         return req
+
+
+# Deprecated
+def handle_youtubedl_headers(headers):
+    filtered_headers = headers
+
+    if 'Youtubedl-no-compression' in filtered_headers:
+        filtered_headers = {k: v for k, v in filtered_headers.items() if k.lower() != 'accept-encoding'}
+        del filtered_headers['Youtubedl-no-compression']
+
+    return filtered_headers

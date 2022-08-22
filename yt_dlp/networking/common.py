@@ -327,6 +327,7 @@ class RequestHandler:
         if self.ydl.params.get('legacyserverconnect'):
             context.options |= 4  # SSL_OP_LEGACY_SERVER_CONNECT
             # Allow use of weaker ciphers in Python 3.10+. See https://bugs.python.org/issue43998
+            # XXX: this be should probably a separate option, or delegate to external SSL config
             context.set_ciphers('DEFAULT')
 
         client_certfile = self.ydl.params.get('client_certificate')
@@ -360,7 +361,7 @@ class RequestHandler:
             raise RequestError('file:// scheme is explicitly disabled in yt-dlp for security reasons')
 
         if self.SUPPORTED_SCHEMES is not None and scheme not in self.SUPPORTED_SCHEMES:
-            raise UnsupportedRequest(f'"unsupported scheme: "{scheme}"')
+            raise UnsupportedRequest(f'unsupported scheme: "{scheme}"')
 
     def _check_proxies(self, request: Request):
         if self.SUPPORTED_PROXY_SCHEMES is None:
@@ -373,6 +374,7 @@ class RequestHandler:
                     raise UnsupportedRequest('\'no\' proxy is not supported')
                 continue
             if proxy_key == 'all' and Features.ALL_PROXY not in self.SUPPORTED_FEATURES:
+                # XXX: If necessary, we could break up all_proxy here using SUPPORTED_SCHEMES
                 raise UnsupportedRequest('\'all\' proxy is not supported')
 
             # Unlikely this handler will use this proxy, so ignore.
@@ -392,7 +394,7 @@ class RequestHandler:
             del request.headers['Youtubedl-no-compression']
             request.compression = False
 
-        if self.SUPPORTED_ENCODINGS:
+        if self.SUPPORTED_ENCODINGS and 'Accept-Encoding' not in request.headers:
             request.headers['Accept-Encoding'] = ', '.join(self.SUPPORTED_ENCODINGS)
 
         if not request.compression:
@@ -428,7 +430,8 @@ class RequestHandler:
             request = self.prepare_request(request)
             return self._real_handle(request)
         except RequestError as e:
-            e.handler = self
+            if e.handler is None:
+                e.handler = self
             raise
 
     def _real_handle(self, request: Request):
