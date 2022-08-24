@@ -560,16 +560,11 @@ class TestRequestDirector(RequestHandlerTestCase):
                 rd.send(None)
 
 
-class TestRequestsRH(RequestHandlerCommonTestsBase, unittest.TestCase):
-    """
-    Notes
-    - test_redirect_loop: the error doesn't say we hit a loop
-    """
-    handler = RequestsRH
-
-    def test_no_persistent_connections(self):
-        with self.make_ydl({'no_persistent_connections': True}) as ydl:
-            content = str(ydl.urlopen(Request('http://127.0.0.1:%d/headers' % self.http_port, compression=False)).read().decode('utf-8'))
+class TestRequestsRH(RequestHandlerTestCase):
+    @with_make_rh([RequestsRH])
+    def test_no_persistent_connections(self, make_rh):
+        with make_rh({'no_persistent_connections': True}) as rh:
+            content = str(rh.handle(Request('http://127.0.0.1:%d/headers' % self.http_port, compression=False)).read().decode('utf-8'))
             self.assertIn('Connection: close', content)
 
 
