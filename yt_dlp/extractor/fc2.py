@@ -2,11 +2,10 @@ import re
 
 from .common import InfoExtractor
 from ..compat import compat_parse_qs
-from ..dependencies import websockets
 from ..networking import Request
+from ..networking.websocket import WebSocketRequest
 from ..utils import (
     ExtractorError,
-    WebSocketsWrapper,
     js_to_json,
     sanitized_Request,
     traverse_obj,
@@ -168,8 +167,6 @@ class FC2LiveIE(InfoExtractor):
     }]
 
     def _real_extract(self, url):
-        if not websockets:
-            raise ExtractorError('websockets library is not available. Please install it.', expected=True)
         video_id = self._match_id(url)
         webpage = self._download_webpage('https://live.fc2.com/%s/' % video_id, video_id)
 
@@ -200,11 +197,10 @@ class FC2LiveIE(InfoExtractor):
         ws_url = update_url_query(control_server['url'], {'control_token': control_server['control_token']})
         playlist_data = None
 
-        ws = self._request_webpage(Request(ws_url, headers={
+        ws = self._request_webpage(WebSocketRequest(ws_url, headers={
             'Cookie': str(self._get_cookies('https://live.fc2.com/'))[12:],
             'Origin': 'https://live.fc2.com',
             'Accept': '*/*',
-            'User-Agent': self.get_param('http_headers')['User-Agent'],
         }), video_id=video_id, note='Fetching HLS playlist info via WebSocket')
 
         self.write_debug('Sending HLS server request')
