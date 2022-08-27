@@ -15,10 +15,17 @@ try:
 except Exception as e:
     WebsocketsRH = None
 
+try:
+    from ._websocketclient import WebsocketClientRH
+except Exception as e:
+    WebsocketClientRH
 
 REQUEST_HANDLERS = [UrllibRH]
 
 if WebsocketsRH is not None:
     REQUEST_HANDLERS.append(WebsocketsRH)
+
+if WebsocketClientRH is not None:
+    REQUEST_HANDLERS.append(WebsocketClientRH)
 
 __all__ = ['UrllibRH', 'REQUEST_HANDLERS', 'Request', 'HEADRequest', 'PUTRequest', 'RequestDirector', 'RequestHandler']
