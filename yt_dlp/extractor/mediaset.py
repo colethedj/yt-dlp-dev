@@ -142,6 +142,10 @@ class MediasetIE(ThePlatformBaseIE):
         'url': 'https://static3.mediasetplay.mediaset.it/player/index.html?appKey=5ad3966b1de1c4000d5cec48&programGuid=FAFU000000665104&id=665104',
         'only_matching': True,
     }, {
+        # embedUrl (from https://www.wittytv.it/amici/est-ce-que-tu-maimes-gabriele-5-dicembre-copia/)
+        'url': 'https://static3.mediasetplay.mediaset.it/player/v2/index.html?partnerId=wittytv&configId=&programGuid=FD00000000153323&autoplay=true&purl=http://www.wittytv.it/amici/est-ce-que-tu-maimes-gabriele-5-dicembre-copia/',
+        'only_matching': True,
+    }, {
         'url': 'mediaset:FAFU000000665924',
         'only_matching': True,
     }, {
@@ -167,8 +171,7 @@ class MediasetIE(ThePlatformBaseIE):
         'only_matching': True,
     }]
 
-    @staticmethod
-    def _extract_urls(ie, webpage):
+    def _extract_from_webpage(self, url, webpage):
         def _qs(url):
             return parse_qs(url)
 
@@ -188,8 +191,7 @@ class MediasetIE(ThePlatformBaseIE):
             video_id = embed_qs.get('id', [None])[0]
             if not video_id:
                 continue
-            urlh = ie._request_webpage(
-                embed_url, video_id, note='Following embed URL redirect')
+            urlh = self._request_webpage(embed_url, video_id, note='Following embed URL redirect')
             embed_url = urlh.geturl()
             program_guid = _program_guid(_qs(embed_url))
             if program_guid:

@@ -620,14 +620,15 @@ class BiliBiliSearchIE(SearchInfoExtractor):
                     'keyword': query,
                     'page': page_num,
                     'context': '',
-                    'order': 'pubdate',
                     'duration': 0,
                     'tids_2': '',
                     '__refresh__': 'true',
                     'search_type': 'video',
                     'tids': 0,
                     'highlight': 1,
-                })['data'].get('result') or []
+                })['data'].get('result')
+            if not videos:
+                break
             for video in videos:
                 yield self.url_result(video['arcurl'], 'BiliBili', str(video['aid']))
 
@@ -795,12 +796,14 @@ class BiliIntlBaseIE(InfoExtractor):
 
     def _get_subtitles(self, *, ep_id=None, aid=None):
         sub_json = self._call_api(
-            '/web/v2/subtitle', ep_id or aid, note='Downloading subtitles list',
-            errnote='Unable to download subtitles list', query=filter_dict({
+            '/web/v2/subtitle', ep_id or aid, fatal=False,
+            note='Downloading subtitles list', errnote='Unable to download subtitles list',
+            query=filter_dict({
                 'platform': 'web',
+                's_locale': 'en_US',
                 'episode_id': ep_id,
                 'aid': aid,
-            }))
+            })) or {}
         subtitles = {}
         for sub in sub_json.get('subtitles') or []:
             sub_url = sub.get('url')

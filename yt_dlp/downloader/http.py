@@ -6,6 +6,7 @@ from .common import FileDownloader
 from ..networking import Request
 from ..utils import (
     ContentTooShortError,
+    RetryManager,
     ThrottledDownload,
     XAttrMetadataError,
     XAttrUnavailableError,
@@ -60,9 +61,6 @@ class HttpFD(FileDownloader):
                     encodeFilename(ctx.tmpfilename))
 
         ctx.is_resume = ctx.resume_len > 0
-
-        count = 0
-        retries = self.params.get('retries', 0)
 
         class SucceedDownload(Exception):
             pass
@@ -189,6 +187,12 @@ class HttpFD(FileDownloader):
             except TransportError as err:
                 raise RetryDownload(err)
 
+        def close_stream():
+            if ctx.stream is not None:
+                if not ctx.tmpfilename == '-':
+                    ctx.stream.close()
+                ctx.stream = None
+
         def download():
             data_len = ctx.data.info().get('Content-length', None)
 
@@ -222,12 +226,9 @@ class HttpFD(FileDownloader):
             before = start  # start measuring
 
             def retry(e):
-                to_stdout = ctx.tmpfilename == '-'
-                if ctx.stream is not None:
-                    if not to_stdout:
-                        ctx.stream.close()
-                    ctx.stream = None
-                ctx.resume_len = byte_counter if to_stdout else os.path.getsize(encodeFilename(ctx.tmpfilename))
+                close_stream()
+                ctx.resume_len = (byte_counter if ctx.tmpfilename == '-'
+                                  else os.path.getsize(encodeFilename(ctx.tmpfilename)))
                 raise RetryDownload(e)
 
             while True:
@@ -329,9 +330,7 @@ class HttpFD(FileDownloader):
 
             if data_len is not None and byte_counter != data_len:
                 err = ContentTooShortError(byte_counter, int(data_len))
-                if count <= retries:
-                    retry(err)
-                raise err
+                retry(err)
 
             self.try_rename(ctx.tmpfilename, ctx.filename)
 
@@ -350,21 +349,20 @@ class HttpFD(FileDownloader):
 
             return True
 
-        while count <= retries:
+        for retry in RetryManager(self.params.get('retries'), self.report_retry):
             try:
                 establish_connection()
                 return download()
-            except RetryDownload as e:
-                count += 1
-                if count <= retries:
-                    self.report_retry(e.source_error, count, retries)
-                else:
-                    self.to_screen(f'[download] Got server HTTP error: {e.source_error}')
+            except RetryDownload as err:
+                retry.error = err.source_error
                 continue
             except NextFragment:
+                retry.error = None
+                retry.attempt -= 1
                 continue
             except SucceedDownload:
                 return True
-
-        self.report_error('giving up after %s retries' % retries)
+            except:  # noqa: E722
+                close_stream()
+                raise
         return False

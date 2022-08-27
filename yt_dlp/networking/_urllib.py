@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import contextlib
 import errno
 import functools
 import gzip
@@ -23,15 +22,17 @@ from urllib.request import (
     DataHandler,
 )
 
-from .common import Response, RequestHandler
+from .common import Response, RequestHandler, Features
 from .utils import (
     get_redirect_method,
     select_proxy,
     make_socks_proxy_opts,
-    ssl_load_certs,
 )
 from ..dependencies import brotli
-from ..socks import sockssocket
+from ..socks import (
+    sockssocket,
+    ProxyError as SocksProxyError,
+)
 from ..utils import (
     escape_url,
     extract_basic_auth,
@@ -374,7 +375,7 @@ class YDLProxyHandler(urllib.request.BaseHandler):
             self, req, proxy, None)
 
 
-class UrllibHTTPResponseAdapter(Response):
+class UrllibResponseAdapter(Response):
     """
     HTTP Response adapter class for urllib addinfourl and http.client.HTTPResponse
     """
@@ -396,14 +397,6 @@ class UrllibHTTPResponseAdapter(Response):
             raise e
 
 
-def handle_sslerror(e):
-    if not isinstance(e, ssl.SSLError):
-        return
-    if e.errno == errno.ETIMEDOUT:
-        raise TransportError(cause=e) from e
-    raise SSLError(msg=str(e.reason or e), cause=e) from e
-
-
 def sanitized_Request(url, *args, **kwargs):
     url, auth_header = extract_basic_auth(escape_url(sanitize_url(url)))
     if auth_header is not None:
@@ -412,25 +405,29 @@ def sanitized_Request(url, *args, **kwargs):
     return urllib.request.Request(url, *args, **kwargs)
 
 
+def handle_sslerror(e: ssl.SSLError):
+    if not isinstance(e, ssl.SSLError):
+        return
+    if e.errno == errno.ETIMEDOUT:
+        raise TransportError(cause=e) from e
+    raise SSLError(msg=str(e.reason or e), cause=e) from e
+
+
 def handle_response_read_exceptions(e):
-    try:
-        raise e
-    except http.client.IncompleteRead as e:
-        raise IncompleteRead(partial=e.partial, cause=e, expected=e.expected)
-
-    except ssl.SSLError as e:
+    if isinstance(e, http.client.IncompleteRead):
+        raise IncompleteRead(partial=e.partial, cause=e, expected=e.expected) from e
+    elif isinstance(e, ssl.SSLError):
         handle_sslerror(e)
-
-    except (OSError, http.client.HTTPException, *CONTENT_DECODE_ERRORS) as e:
+    elif isinstance(e, (OSError, EOFError, http.client.HTTPException, *CONTENT_DECODE_ERRORS)):
         # OSErrors raised here should mostly be network related
-        if 'tunnel connection failed' in str(e).lower():
-            raise ProxyError(cause=e)
-        raise TransportError(cause=e)
+        raise TransportError(cause=e) from e
 
 
 class UrllibRH(RequestHandler):
     SUPPORTED_SCHEMES = ['http', 'https', 'data', 'ftp']
-    _SUPPORTED_ENCODINGS = SUPPORTED_ENCODINGS
+    SUPPORTED_ENCODINGS = SUPPORTED_ENCODINGS
+    SUPPORTED_PROXY_SCHEMES = ['http', 'socks4', 'socks4a', 'socks5', 'socks4a', 'socks']
+    SUPPORTED_FEATURES = [Features.NO_PROXY, Features.ALL_PROXY]
     NAME = 'urllib'
 
     def __init__(self, ydl):
@@ -466,19 +463,6 @@ class UrllibRH(RequestHandler):
             frozenset(list(request.proxies.items()) + [request.allow_redirects]),
             self._create_opener(proxies=request.proxies, allow_redirects=request.allow_redirects))
 
-    def _make_sslcontext(self, verify, **kwargs):
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        context.check_hostname = verify
-        context.verify_mode = ssl.CERT_REQUIRED if verify else ssl.CERT_NONE
-        # Some servers may reject requests if ALPN extension is not sent. See:
-        # https://github.com/python/cpython/issues/85140
-        # https://github.com/yt-dlp/yt-dlp/issues/3878
-        with contextlib.suppress(NotImplementedError):
-            context.set_alpn_protocols(['http/1.1'])
-        if verify:
-            ssl_load_certs(context, self.ydl.params)
-        return context
-
     def _real_handle(self, request):
         urllib_req = urllib.request.Request(
             url=request.url, data=request.data, headers=dict(request.headers), method=request.method)
@@ -487,18 +471,20 @@ class UrllibRH(RequestHandler):
             res = self.get_opener(request).open(urllib_req, timeout=request.timeout)
         except urllib.error.HTTPError as e:
             if isinstance(e.fp, (http.client.HTTPResponse, urllib.response.addinfourl)):
-                raise HTTPError(UrllibHTTPResponseAdapter(e.fp), redirect_loop='redirect error' in str(e))
+                raise HTTPError(UrllibResponseAdapter(e.fp), redirect_loop='redirect error' in str(e))
             raise  # unexpected
         except urllib.error.URLError as e:
-            cause = e.reason
-            # e.reason may be a string
-            if isinstance(cause, Exception):
-                handle_sslerror(cause)
-                handle_response_read_exceptions(cause)
-            raise TransportError(cause=e)
+            cause = e.reason  # NOTE: cause may be a string
+
+            # proxy errors
+            if 'tunnel connection failed' in str(cause).lower() or isinstance(cause, SocksProxyError):
+                raise ProxyError(cause=e) from e
+
+            handle_response_read_exceptions(cause)
+            raise TransportError(cause=e) from e
 
         except Exception as e:
             handle_response_read_exceptions(e)
             raise
 
-        return UrllibHTTPResponseAdapter(res)
+        return UrllibResponseAdapter(res)

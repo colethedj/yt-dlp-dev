@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import contextlib
+import enum
 import functools
 import io
 import ssl
@@ -12,6 +14,7 @@ from email.message import Message
 from http import HTTPStatus
 from typing import Union
 
+from .utils import ssl_load_certs
 from .. import utils
 
 try:
@@ -51,6 +54,16 @@ class Request:
     @param compression: whether to include content-encoding header on request.
     @param allow_redirects: whether to follow redirects for this request.
     @param timeout: socket timeout value for this request.
+
+    A Request may also have the following special headers:
+    Youtubedl-no-compression: if present, equivalent to setting compression to False.
+    Ytdl-request-proxy: proxy url to use for request.
+
+    Apart from the url protocol, proxy dict also supports the following keys:
+    - all: proxy to use for all protocols. Used as a fallback if no proxy is set for a specific protocol.
+    - no: comma seperated list of hostnames (optionally with port) to not use a proxy for.
+
+    A proxy value can be set to __noproxy__ or None to set no proxy for that protocol.
     """
 
     def __init__(
@@ -255,35 +268,57 @@ class Response(io.IOBase):
         return self.headers
 
 
+class Features(enum.Enum):
+    ALL_PROXY = enum.auto()
+    NO_PROXY = enum.auto()
+
+
 class RequestHandler:
 
-    SUPPORTED_SCHEMES: list = None
+    """Request Handler class
 
-    # List of supported content encodings for Accept-Encoding header
-    _SUPPORTED_ENCODINGS: list = None
+    Request handlers are class that, given an HTTP Request,
+    process the request from start to finish and return an HTTP Response.
+
+    Subclasses should re-define the _real_handle() and (optionally) _prepare_request() methods,
+    which must return an instance of Response and Request respectively.
+
+    If a Request is not to be supported by the handler, an UnsupportedRequest
+    should be raised with a reason within _prepare_request().
+
+    If an implementation makes use of an SSLContext, it should retrieve one from make_sslcontext() and
+    (optionally) re-define _make_sslcontext() with a custom SSLContext initialization method.
+
+    All exceptions raised by a RequestHandler should be an instance of RequestError.
+    Any other exception raised will be treated as a handler issue.
+
+
+    To cover some common cases, the following may be defined:
+
+    SUPPORTED_SCHEMES may contain a list of supported url schemes. Any Request
+    with an url scheme not in this list will raise an UnsupportedRequest.
+
+    SUPPORTED_PROXY_SCHEMES may contain a list of support proxy url schemes. Any Request that contains
+    a proxy url with an url scheme not in this list will raise an UnsupportedRequest.
+
+    SUPPORTED_ENCODINGS may contain a list of supported content encodings for the Accept-Encoding header.
+
+    SUPPORTED_FEATURES may contain a list of supported features, as defined in Features enum.
+    """
+
+    SUPPORTED_SCHEMES = None
+    SUPPORTED_PROXY_SCHEMES = None
+    SUPPORTED_ENCODINGS = None
+    SUPPORTED_FEATURES = []
 
     def __init__(self, ydl: YoutubeDL):
-        self._set_ydl(ydl)
-        self.cookiejar = self.ydl.cookiejar
-
-    def _set_ydl(self, ydl):
-        # FIXME: this is ugly
         self.ydl = ydl
-
-        for func in (
-            'deprecation_warning',
-            'report_warning',
-            'to_stderr',
-            'write_debug',
-            'to_debugtraffic'
-        ):
-            if not hasattr(self, func):
-                setattr(self, func, getattr(ydl, func))
+        self.cookiejar = self.ydl.cookiejar
 
     def make_sslcontext(self, **kwargs):
         """
         Make a new SSLContext configured for this backend.
-        Note: _make_sslcontext must be implemented
+        To customize SSLContext initialization, override _make_sslcontext()
         """
         context = self._make_sslcontext(
             verify=not self.ydl.params.get('nocheckcertificate'), **kwargs)
@@ -292,6 +327,7 @@ class RequestHandler:
         if self.ydl.params.get('legacyserverconnect'):
             context.options |= 4  # SSL_OP_LEGACY_SERVER_CONNECT
             # Allow use of weaker ciphers in Python 3.10+. See https://bugs.python.org/issue43998
+            # XXX: this be should probably a separate option, or delegate to external SSL config
             context.set_ciphers('DEFAULT')
 
         client_certfile = self.ydl.params.get('client_certificate')
@@ -305,17 +341,51 @@ class RequestHandler:
 
         return context
 
-    def _make_sslcontext(self, verify: bool, **kwargs) -> ssl.SSLContext:
-        """Generate a backend-specific SSLContext. Redefine in subclasses"""
-        raise NotImplementedError
+    def _make_sslcontext(self, verify, **kwargs):
+        """Generates a default HTTP/1.1 SSLContext with certs"""
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        context.check_hostname = verify
+        context.verify_mode = ssl.CERT_REQUIRED if verify else ssl.CERT_NONE
+        # Some servers may reject requests if ALPN extension is not sent. See:
+        # https://github.com/python/cpython/issues/85140
+        # https://github.com/yt-dlp/yt-dlp/issues/3878
+        with contextlib.suppress(NotImplementedError):
+            context.set_alpn_protocols(['http/1.1'])
+        if verify:
+            ssl_load_certs(context, self.ydl.params)
+        return context
 
     def _check_scheme(self, request: Request):
         scheme = urllib.parse.urlparse(request.url).scheme.lower()
         if scheme == 'file':  # no other handler should handle this request
             raise RequestError('file:// scheme is explicitly disabled in yt-dlp for security reasons')
 
-        if scheme not in self.SUPPORTED_SCHEMES:
-            raise UnsupportedRequest(f'{scheme} scheme is not supported')
+        if self.SUPPORTED_SCHEMES is not None and scheme not in self.SUPPORTED_SCHEMES:
+            raise UnsupportedRequest(f'unsupported scheme: "{scheme}"')
+
+    def _check_proxies(self, request: Request):
+        if self.SUPPORTED_PROXY_SCHEMES is None:
+            return
+        for proxy_key, proxy_url in request.proxies.items():
+            if proxy_url is None:
+                continue
+            if proxy_key == 'no':
+                if Features.NO_PROXY not in self.SUPPORTED_FEATURES:
+                    raise UnsupportedRequest('\'no\' proxy is not supported')
+                continue
+            if proxy_key == 'all' and Features.ALL_PROXY not in self.SUPPORTED_FEATURES:
+                # XXX: If necessary, we could break up all_proxy here using SUPPORTED_SCHEMES
+                raise UnsupportedRequest('\'all\' proxy is not supported')
+
+            # Unlikely this handler will use this proxy, so ignore.
+            # This is to allow a case where a proxy may be set for a protocol
+            # for one handler in which such protocol (and proxy) is not supported by another handler.
+            if self.SUPPORTED_SCHEMES is not None and proxy_key not in self.SUPPORTED_SCHEMES + ['all']:
+                continue
+
+            scheme = urllib.parse.urlparse(proxy_url).scheme.lower()
+            if scheme not in self.SUPPORTED_PROXY_SCHEMES:
+                raise UnsupportedRequest(f'unsupported proxy type: "{scheme}"')
 
     def prepare_request(self, request: Request):
         self._check_scheme(request)
@@ -324,22 +394,23 @@ class RequestHandler:
             del request.headers['Youtubedl-no-compression']
             request.compression = False
 
-        if self._SUPPORTED_ENCODINGS:
-            request.headers['Accept-Encoding'] = ', '.join(self._SUPPORTED_ENCODINGS)
+        if self.SUPPORTED_ENCODINGS and 'Accept-Encoding' not in request.headers:
+            request.headers['Accept-Encoding'] = ', '.join(self.SUPPORTED_ENCODINGS)
 
         if not request.compression:
             request.headers.pop('Accept-Encoding', None)
 
-        # Proxy preference: header req proxy > req proxies > ydl opt proxies > env proxies
-        request.proxies = {**self.ydl.proxies, **request.proxies}
+        request.proxies = request.proxies or self.ydl.proxies
         req_proxy = request.headers.pop('Ytdl-request-proxy', None)
         if req_proxy:
-            request.proxies.update({'http': req_proxy, 'https': req_proxy})
+            request.proxies = {'all': req_proxy}
+
         for proxy_key, proxy_url in request.proxies.items():
             if proxy_url == '__noproxy__':  # compat
                 request.proxies[proxy_key] = None
                 continue
-
+            if proxy_key == 'no':  # special case
+                continue
             if proxy_url is not None and _parse_proxy is not None:
                 # Ensure proxies without a scheme are http.
                 proxy_scheme = _parse_proxy(proxy_url)[0]
@@ -347,6 +418,7 @@ class RequestHandler:
                     request.proxies[proxy_key] = 'http://' + remove_start(proxy_url, '//')
 
         request.timeout = float(request.timeout or self.ydl.params.get('socket_timeout') or 20)  # do not accept 0
+        self._check_proxies(request)
         return self._prepare_request(request)
 
     def _prepare_request(self, request: Request):
@@ -358,11 +430,12 @@ class RequestHandler:
             request = self.prepare_request(request)
             return self._real_handle(request)
         except RequestError as e:
-            e.handler = self
+            if e.handler is None:
+                e.handler = self
             raise
 
     def _real_handle(self, request: Request):
-        """Handle a request. Redefine in subclasses."""
+        """Handle a request from start to finish. Redefine in subclasses."""
         raise NotImplementedError
 
     def close(self):
@@ -474,6 +547,6 @@ class RequestDirector:
 
         err_str = 'Unable to handle request'
         if reasons:
-            err_str += f', possible reason(s): ' + ', '.join(reasons)
+            err_str += ', possible reason(s): ' + ', '.join(reasons)
 
         raise RequestError(err_str)

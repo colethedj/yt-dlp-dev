@@ -4,6 +4,7 @@
  - **17live**
  - **17live:clip**
  - **1tv**: Первый канал
+ - **20.detik.com**
  - **20min**
  - **23video**
  - **247sports**
@@ -17,7 +18,7 @@
  - **8tracks**
  - **91porn**
  - **9c9media**
- - **9gag**
+ - **9gag**: 9GAG
  - **9now.com.au**
  - **abc.net.au**
  - **abc.net.au:iview**
@@ -31,6 +32,8 @@
  - **AcademicEarth:Course**
  - **acast**
  - **acast:channel**
+ - **AcFunBangumi**
+ - **AcFunVideo**
  - **ADN**: [<abbr title="netrc machine"><em>animedigitalnetwork</em></abbr>] Anime Digital Network
  - **AdobeConnect**
  - **adobetv**
@@ -61,6 +64,7 @@
  - **AmericasTestKitchenSeason**
  - **AmHistoryChannel**
  - **anderetijden**: npo.nl, ntr.nl, omroepwnl.nl, zapp.nl and npo3.nl
+ - **Angel**
  - **AnimalPlanet**
  - **AnimeOnDemand**: [<abbr title="netrc machine"><em>animeondemand</em></abbr>]
  - **ant1newsgr:article**: ant1news.gr articles
@@ -94,6 +98,8 @@
  - **ATVAt**
  - **AudiMedia**
  - **AudioBoom**
+ - **Audiodraft:custom**
+ - **Audiodraft:generic**
  - **audiomack**
  - **audiomack:album**
  - **Audius**: Audius.co
@@ -122,6 +128,8 @@
  - **bbc.co.uk:iplayer:group**
  - **bbc.co.uk:playlist**
  - **BBVTV**: [<abbr title="netrc machine"><em>bbvtv</em></abbr>]
+ - **BBVTVLive**: [<abbr title="netrc machine"><em>bbvtv</em></abbr>]
+ - **BBVTVRecordings**: [<abbr title="netrc machine"><em>bbvtv</em></abbr>]
  - **Beatport**
  - **Beeg**
  - **BehindKink**
@@ -182,6 +190,7 @@
  - **Camdemy**
  - **CamdemyFolder**
  - **CamModels**
+ - **CamtasiaEmbed**
  - **CamWithHer**
  - **CanalAlpha**
  - **canalc2.tv**
@@ -205,6 +214,7 @@
  - **CCMA**
  - **CCTV**: 央视网
  - **CDA**
+ - **Cellebrite**
  - **CeskaTelevize**
  - **CGTN**
  - **channel9**: Channel 9
@@ -226,6 +236,7 @@
  - **Clippit**
  - **ClipRs**
  - **Clipsyndicate**
+ - **ClipYouEmbed**
  - **CloserToTruth**
  - **CloudflareStream**
  - **Cloudy**
@@ -339,6 +350,8 @@
  - **ehftv**
  - **eHow**
  - **EinsUndEinsTV**: [<abbr title="netrc machine"><em>1und1tv</em></abbr>]
+ - **EinsUndEinsTVLive**: [<abbr title="netrc machine"><em>1und1tv</em></abbr>]
+ - **EinsUndEinsTVRecordings**: [<abbr title="netrc machine"><em>1und1tv</em></abbr>]
  - **Einthusan**
  - **eitb.tv**
  - **EllenTube**
@@ -366,11 +379,14 @@
  - **EuropeanTour**
  - **EUScreen**
  - **EWETV**: [<abbr title="netrc machine"><em>ewetv</em></abbr>]
+ - **EWETVLive**: [<abbr title="netrc machine"><em>ewetv</em></abbr>]
+ - **EWETVRecordings**: [<abbr title="netrc machine"><em>ewetv</em></abbr>]
  - **ExpoTV**
  - **Expressen**
  - **ExtremeTube**
  - **EyedoTV**
  - **facebook**: [<abbr title="netrc machine"><em>facebook</em></abbr>]
+ - **facebook:reel**
  - **FacebookPluginsVideo**
  - **fancode:live**: [<abbr title="netrc machine"><em>fancode</em></abbr>]
  - **fancode:vod**: [<abbr title="netrc machine"><em>fancode</em></abbr>]
@@ -444,6 +460,8 @@
  - **GiantBomb**
  - **Giga**
  - **GlattvisionTV**: [<abbr title="netrc machine"><em>glattvisiontv</em></abbr>]
+ - **GlattvisionTVLive**: [<abbr title="netrc machine"><em>glattvisiontv</em></abbr>]
+ - **GlattvisionTVRecordings**: [<abbr title="netrc machine"><em>glattvisiontv</em></abbr>]
  - **Glide**: Glide mobile video messages (glide.me)
  - **Globo**: [<abbr title="netrc machine"><em>globo</em></abbr>]
  - **GloboArticle**
@@ -467,6 +485,7 @@
  - **gronkh:feed**
  - **gronkh:vods**
  - **Groupon**
+ - **Harpodeon**
  - **hbo**
  - **HearThisAt**
  - **Heise**
@@ -485,6 +504,7 @@
  - **hitbox:live**
  - **HitRecord**
  - **hketv**: 香港教育局教育電視 (HKETV) Educational Television, Hong Kong Educational Bureau
+ - **Holodex**
  - **HotNewHipHop**
  - **hotstar**
  - **hotstar:playlist**
@@ -496,6 +516,7 @@
  - **HRTiPlaylist**: [<abbr title="netrc machine"><em>hrti</em></abbr>]
  - **HSEProduct**
  - **HSEShow**
+ - **html5**
  - **Huajiao**: 花椒直播
  - **HuffPost**: Huffington Post
  - **Hungama**
@@ -503,6 +524,7 @@
  - **HungamaSong**
  - **huya:live**: huya.com
  - **Hypem**
+ - **Hytale**
  - **Icareus**
  - **ign.com**
  - **IGNArticle**
@@ -566,6 +588,7 @@
  - **KickStarter**
  - **KinjaEmbed**
  - **KinoPoisk**
+ - **KompasVideo**
  - **KonserthusetPlay**
  - **Koo**
  - **KrasView**: Красвью
@@ -615,6 +638,7 @@
  - **linkedin:learning**: [<abbr title="netrc machine"><em>linkedin</em></abbr>]
  - **linkedin:learning:course**: [<abbr title="netrc machine"><em>linkedin</em></abbr>]
  - **LinuxAcademy**: [<abbr title="netrc machine"><em>linuxacademy</em></abbr>]
+ - **Liputan6**
  - **LiTV**
  - **LiveJournal**
  - **livestream**
@@ -694,10 +718,14 @@
  - **mixcloud:playlist**
  - **mixcloud:user**
  - **MLB**
+ - **MLBTV**: [<abbr title="netrc machine"><em>mlb</em></abbr>]
  - **MLBVideo**
  - **MLSSoccer**
  - **Mnet**
  - **MNetTV**: [<abbr title="netrc machine"><em>mnettv</em></abbr>]
+ - **MNetTVLive**: [<abbr title="netrc machine"><em>mnettv</em></abbr>]
+ - **MNetTVRecordings**: [<abbr title="netrc machine"><em>mnettv</em></abbr>]
+ - **MochaVideo**
  - **MoeVideo**: LetitBit video services: moevideo.net, playreplay.net and videochart.net
  - **Mofosex**
  - **MofosexEmbed**
@@ -706,9 +734,11 @@
  - **Motherless**
  - **MotherlessGroup**
  - **Motorsport**: motorsport.com
+ - **MotorTrend**
  - **MovieClips**
  - **MovieFap**
  - **Moviepilot**
+ - **MoviewPlay**
  - **Moviezine**
  - **MovingImage**
  - **MSN**
@@ -781,7 +811,9 @@
  - **netease:program**: 网易云音乐 - 电台节目
  - **netease:singer**: 网易云音乐 - 歌手
  - **netease:song**: 网易云音乐
- - **NetPlus**: [<abbr title="netrc machine"><em>netplus</em></abbr>]
+ - **NetPlusTV**: [<abbr title="netrc machine"><em>netplus</em></abbr>]
+ - **NetPlusTVLive**: [<abbr title="netrc machine"><em>netplus</em></abbr>]
+ - **NetPlusTVRecordings**: [<abbr title="netrc machine"><em>netplus</em></abbr>]
  - **Netverse**
  - **NetversePlaylist**
  - **Netzkino**
@@ -881,22 +913,13 @@
  - **openrec:capture**
  - **openrec:movie**
  - **OraTV**
- - **orf:burgenland**: Radio Burgenland
- - **orf:fm4**: radio FM4
  - **orf:fm4:story**: fm4.orf.at stories
  - **orf:iptv**: iptv.ORF.at
- - **orf:kaernten**: Radio Kärnten
- - **orf:noe**: Radio Niederösterreich
- - **orf:oberoesterreich**: Radio Oberösterreich
- - **orf:oe1**: Radio Österreich 1
- - **orf:oe3**: Radio Österreich 3
- - **orf:salzburg**: Radio Salzburg
- - **orf:steiermark**: Radio Steiermark
- - **orf:tirol**: Radio Tirol
+ - **orf:radio**
  - **orf:tvthek**: ORF TVthek
- - **orf:vorarlberg**: Radio Vorarlberg
- - **orf:wien**: Radio Wien
  - **OsnatelTV**: [<abbr title="netrc machine"><em>osnateltv</em></abbr>]
+ - **OsnatelTVLive**: [<abbr title="netrc machine"><em>osnateltv</em></abbr>]
+ - **OsnatelTVRecordings**: [<abbr title="netrc machine"><em>osnateltv</em></abbr>]
  - **OutsideTV**
  - **PacktPub**: [<abbr title="netrc machine"><em>packtpub</em></abbr>]
  - **PacktPubCourse**
@@ -910,10 +933,11 @@
  - **ParamountNetwork**
  - **ParamountPlus**
  - **ParamountPlusSeries**
+ - **Parler**: Posts on parler.com
  - **parliamentlive.tv**: UK parliament videos
  - **Parlview**
  - **Patreon**
- - **PatreonUser**
+ - **PatreonCampaign**
  - **pbs**: Public Broadcasting Service (PBS) and member stations: PBS: Public Broadcasting Service, APT - Alabama Public Television (WBIQ), GPB/Georgia Public Broadcasting (WGTV), Mississippi Public Broadcasting (WMPN), Nashville Public Television (WNPT), WFSU-TV (WFSU), WSRE (WSRE), WTCI (WTCI), WPBA/Channel 30 (WPBA), Alaska Public Media (KAKM), Arizona PBS (KAET), KNME-TV/Channel 5 (KNME), Vegas PBS (KLVX), AETN/ARKANSAS ETV NETWORK (KETS), KET (WKLE), WKNO/Channel 10 (WKNO), LPB/LOUISIANA PUBLIC BROADCASTING (WLPB), OETA (KETA), Ozarks Public Television (KOZK), WSIU Public Broadcasting (WSIU), KEET TV (KEET), KIXE/Channel 9 (KIXE), KPBS San Diego (KPBS), KQED (KQED), KVIE Public Television (KVIE), PBS SoCal/KOCE (KOCE), ValleyPBS (KVPT), CONNECTICUT PUBLIC TELEVISION (WEDH), KNPB Channel 5 (KNPB), SOPTV (KSYS), Rocky Mountain PBS (KRMA), KENW-TV3 (KENW), KUED Channel 7 (KUED), Wyoming PBS (KCWC), Colorado Public Television / KBDI 12 (KBDI), KBYU-TV (KBYU), Thirteen/WNET New York (WNET), WGBH/Channel 2 (WGBH), WGBY (WGBY), NJTV Public Media NJ (WNJT), WLIW21 (WLIW), mpt/Maryland Public Television (WMPB), WETA Television and Radio (WETA), WHYY (WHYY), PBS 39 (WLVT), WVPT - Your Source for PBS and More! (WVPT), Howard University Television (WHUT), WEDU PBS (WEDU), WGCU Public Media (WGCU), WPBT2 (WPBT), WUCF TV (WUCF), WUFT/Channel 5 (WUFT), WXEL/Channel 42 (WXEL), WLRN/Channel 17 (WLRN), WUSF Public Broadcasting (WUSF), ETV (WRLK), UNC-TV (WUNC), PBS Hawaii - Oceanic Cable Channel 10 (KHET), Idaho Public Television (KAID), KSPS (KSPS), OPB (KOPB), KWSU/Channel 10 & KTNW/Channel 31 (KWSU), WILL-TV (WILL), Network Knowledge - WSEC/Springfield (WSEC), WTTW11 (WTTW), Iowa Public Television/IPTV (KDIN), Nine Network (KETC), PBS39 Fort Wayne (WFWA), WFYI Indianapolis (WFYI), Milwaukee Public Television (WMVS), WNIN (WNIN), WNIT Public Television (WNIT), WPT (WPNE), WVUT/Channel 22 (WVUT), WEIU/Channel 51 (WEIU), WQPT-TV (WQPT), WYCC PBS Chicago (WYCC), WIPB-TV (WIPB), WTIU (WTIU), CET  (WCET), ThinkTVNetwork (WPTD), WBGU-TV (WBGU), WGVU TV (WGVU), NET1 (KUON), Pioneer Public Television (KWCM), SDPB Television (KUSD), TPT (KTCA), KSMQ (KSMQ), KPTS/Channel 8 (KPTS), KTWU/Channel 11 (KTWU), East Tennessee PBS (WSJK), WCTE-TV (WCTE), WLJT, Channel 11 (WLJT), WOSU TV (WOSU), WOUB/WOUC (WOUB), WVPB (WVPB), WKYU-PBS (WKYU), KERA 13 (KERA), MPBN (WCBB), Mountain Lake PBS (WCFE), NHPTV (WENH), Vermont PBS (WETK), witf (WITF), WQED Multimedia (WQED), WMHT Educational Telecommunications (WMHT), Q-TV (WDCQ), WTVS Detroit Public TV (WTVS), CMU Public Television (WCMU), WKAR-TV (WKAR), WNMU-TV Public TV 13 (WNMU), WDSE - WRPT (WDSE), WGTE TV (WGTE), Lakeland Public Television (KAWE), KMOS-TV - Channels 6.1, 6.2 and 6.3 (KMOS), MontanaPBS (KUSM), KRWG/Channel 22 (KRWG), KACV (KACV), KCOS/Channel 13 (KCOS), WCNY/Channel 24 (WCNY), WNED (WNED), WPBS (WPBS), WSKG Public TV (WSKG), WXXI (WXXI), WPSU (WPSU), WVIA Public Media Studios (WVIA), WTVI (WTVI), Western Reserve PBS (WNEO), WVIZ/PBS ideastream (WVIZ), KCTS 9 (KCTS), Basin PBS (KPBT), KUHT / Channel 8 (KUHT), KLRN (KLRN), KLRU (KLRU), WTJX Channel 12 (WTJX), WCVE PBS (WCVE), KBTC Public Television (KBTC)
  - **PearVideo**
  - **PeekVids**
@@ -1003,6 +1027,8 @@
  - **qqmusic:singer**: QQ音乐 - 歌手
  - **qqmusic:toplist**: QQ音乐 - 排行榜
  - **QuantumTV**: [<abbr title="netrc machine"><em>quantumtv</em></abbr>]
+ - **QuantumTVLive**: [<abbr title="netrc machine"><em>quantumtv</em></abbr>]
+ - **QuantumTVRecordings**: [<abbr title="netrc machine"><em>quantumtv</em></abbr>]
  - **Qub**
  - **R7**
  - **R7Article**
@@ -1021,12 +1047,14 @@
  - **radlive:channel**
  - **radlive:season**
  - **Rai**
+ - **RaiNews**
  - **RaiPlay**
  - **RaiPlayLive**
  - **RaiPlayPlaylist**
  - **RaiPlaySound**
  - **RaiPlaySoundLive**
  - **RaiPlaySoundPlaylist**
+ - **RaiSudtirol**
  - **RayWenderlich**
  - **RayWenderlichCourse**
  - **RBMARadio**
@@ -1063,15 +1091,19 @@
  - **RoosterTeethSeries**: [<abbr title="netrc machine"><em>roosterteeth</em></abbr>]
  - **RottenTomatoes**
  - **Rozhlas**
- - **RTBF**
+ - **RTBF**: [<abbr title="netrc machine"><em>rtbf</em></abbr>]
  - **RTDocumentry**
  - **RTDocumentryPlaylist**
  - **rte**: Raidió Teilifís Éireann TV
  - **rte:radio**: Raidió Teilifís Éireann radio
+ - **rtl.lu:article**
+ - **rtl.lu:tele-vod**
  - **rtl.nl**: rtl.nl and rtlxl.nl
  - **rtl2**
  - **rtl2:you**
  - **rtl2:you:series**
+ - **RTLLuLive**
+ - **RTLLuRadio**
  - **RTNews**
  - **RTP**
  - **RTRFM**
@@ -1083,6 +1115,7 @@
  - **rtve.es:television**
  - **RTVNH**
  - **RTVS**
+ - **rtvslo.si**
  - **RUHD**
  - **Rule34Video**
  - **RumbleChannel**
@@ -1104,7 +1137,11 @@
  - **safari:course**: [<abbr title="netrc machine"><em>safari</em></abbr>] safaribooksonline.com online courses
  - **Saitosan**
  - **SAKTV**: [<abbr title="netrc machine"><em>saktv</em></abbr>]
+ - **SAKTVLive**: [<abbr title="netrc machine"><em>saktv</em></abbr>]
+ - **SAKTVRecordings**: [<abbr title="netrc machine"><em>saktv</em></abbr>]
  - **SaltTV**: [<abbr title="netrc machine"><em>salttv</em></abbr>]
+ - **SaltTVLive**: [<abbr title="netrc machine"><em>salttv</em></abbr>]
+ - **SaltTVRecordings**: [<abbr title="netrc machine"><em>salttv</em></abbr>]
  - **SampleFocus**
  - **Sapo**: SAPO Vídeos
  - **savefrom.net**
@@ -1130,6 +1167,7 @@
  - **Shahid**: [<abbr title="netrc machine"><em>shahid</em></abbr>]
  - **ShahidShow**
  - **Shared**: shared.sx
+ - **ShareVideosEmbed**
  - **ShemarooMe**
  - **ShowRoomLive**
  - **simplecast**
@@ -1191,6 +1229,7 @@
  - **SRGSSR**
  - **SRGSSRPlay**: srf.ch, rts.ch, rsi.ch, rtr.ch and swissinfo.ch play sites
  - **stanfordoc**: Stanford Open ClassRoom
+ - **StarTrek**
  - **startv**
  - **Steam**
  - **SteamCommunityBroadcast**
@@ -1218,6 +1257,7 @@
  - **SVTSeries**
  - **SWRMediathek**
  - **Syfy**
+ - **SYVDK**
  - **SztvHu**
  - **t-online.de**
  - **Tagesschau**
@@ -1252,10 +1292,12 @@
  - **TeleQuebecVideo**
  - **TeleTask**
  - **Telewebion**
+ - **Tempo**
  - **TennisTV**: [<abbr title="netrc machine"><em>tennistv</em></abbr>]
  - **TenPlay**: [<abbr title="netrc machine"><em>10play</em></abbr>]
  - **TF1**
  - **TFO**
+ - **TheHoleTv**
  - **TheIntercept**
  - **ThePlatform**
  - **ThePlatformFeed**
@@ -1296,8 +1338,11 @@
  - **TrovoVod**
  - **TrueID**
  - **TruNews**
+ - **Truth**
  - **TruTV**
  - **Tube8**
+ - **TubeTuGraz**: [<abbr title="netrc machine"><em>tubetugraz</em></abbr>] tube.tugraz.at
+ - **TubeTuGrazSeries**: [<abbr title="netrc machine"><em>tubetugraz</em></abbr>]
  - **TubiTv**: [<abbr title="netrc machine"><em>tubitv</em></abbr>]
  - **TubiTvShow**
  - **Tumblr**: [<abbr title="netrc machine"><em>tumblr</em></abbr>]
@@ -1326,6 +1371,7 @@
  - **TVCArticle**
  - **TVer**
  - **tvigle**: Интернет-телевидение Tvigle.ru
+ - **TVIPlayer**
  - **tvland.com**
  - **TVN24**
  - **TVNet**
@@ -1468,6 +1514,8 @@
  - **VShare**
  - **VTM**
  - **VTXTV**: [<abbr title="netrc machine"><em>vtxtv</em></abbr>]
+ - **VTXTVLive**: [<abbr title="netrc machine"><em>vtxtv</em></abbr>]
+ - **VTXTVRecordings**: [<abbr title="netrc machine"><em>vtxtv</em></abbr>]
  - **VuClip**
  - **Vupload**
  - **VVVVID**
@@ -1477,6 +1525,8 @@
  - **Wakanim**
  - **Walla**
  - **WalyTV**: [<abbr title="netrc machine"><em>walytv</em></abbr>]
+ - **WalyTVLive**: [<abbr title="netrc machine"><em>walytv</em></abbr>]
+ - **WalyTVRecordings**: [<abbr title="netrc machine"><em>walytv</em></abbr>]
  - **wasdtv:clip**
  - **wasdtv:record**
  - **wasdtv:stream**
@@ -1498,7 +1548,10 @@
  - **Weibo**
  - **WeiboMobile**
  - **WeiqiTV**: WQTV
+ - **wetv:episode**
+ - **WeTvSeries**
  - **whowatch**
+ - **wikimedia.org**
  - **Willow**
  - **WimTV**
  - **Wistia**
@@ -1560,7 +1613,7 @@
  - **youtube:clip**
  - **youtube:favorites**: YouTube liked videos; ":ytfav" keyword (requires cookies)
  - **youtube:history**: Youtube watch history; ":ythis" keyword (requires cookies)
- - **youtube:music:search_url**: YouTube music search URLs with selectable sections (Eg: #songs)
+ - **youtube:music:search_url**: YouTube music search URLs with selectable sections, e.g. #songs
  - **youtube:notif**: YouTube notifications; ":ytnotif" keyword (requires cookies)
  - **youtube:playlist**: YouTube playlists
  - **youtube:recommended**: YouTube recommended videos; ":ytrec" keyword

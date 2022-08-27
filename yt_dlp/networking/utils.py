@@ -65,31 +65,21 @@ std_headers = CaseInsensitiveDict({
 })
 
 
-# XXX: do we need this still?
-def handle_youtubedl_headers(headers):
-    filtered_headers = headers
-
-    if 'Youtubedl-no-compression' in filtered_headers:
-        filtered_headers = {k: v for k, v in filtered_headers.items() if k.lower() != 'accept-encoding'}
-        del filtered_headers['Youtubedl-no-compression']
-
-    return filtered_headers
-
-
 def ssl_load_certs(context: ssl.SSLContext, params):
     if certifi is not None and 'no-certifi' not in params.get('compat_opts', []):
         context.load_verify_locations(cafile=certifi.where())
-    try:
-        context.load_default_certs()
-    # Work around the issue in load_default_certs when there are bad certificates. See:
-    # https://github.com/yt-dlp/yt-dlp/issues/1060,
-    # https://bugs.python.org/issue35665, https://bugs.python.org/issue45312
-    except ssl.SSLError:
-        # enum_certificates is not present in mingw python. See https://github.com/yt-dlp/yt-dlp/issues/1151
-        if sys.platform == 'win32' and hasattr(ssl, 'enum_certificates'):
-            for storename in ('CA', 'ROOT'):
-                _ssl_load_windows_store_certs(context, storename)
-        context.set_default_verify_paths()
+    else:
+        try:
+            context.load_default_certs()
+        # Work around the issue in load_default_certs when there are bad certificates. See:
+        # https://github.com/yt-dlp/yt-dlp/issues/1060,
+        # https://bugs.python.org/issue35665, https://bugs.python.org/issue45312
+        except ssl.SSLError:
+            # enum_certificates is not present in mingw python. See https://github.com/yt-dlp/yt-dlp/issues/1151
+            if sys.platform == 'win32' and hasattr(ssl, 'enum_certificates'):
+                for storename in ('CA', 'ROOT'):
+                    _ssl_load_windows_store_certs(context, storename)
+            context.set_default_verify_paths()
 
 
 def _ssl_load_windows_store_certs(ssl_context, storename):
@@ -128,9 +118,26 @@ def make_socks_proxy_opts(socks_proxy):
     }
 
 
-def select_proxy(url, proxies):
+def bypass_proxies(url, no_proxy):
+    # Should we bypass the proxies for this url going by no proxy?
+    # This is a default configuration making use of urllib handling
+    url_components = urllib.parse.urlparse(url)
+    hostport = str(url_components.hostname) + (f':{url_components.port}' if url_components.port is not None else '')
+    if urllib.request.proxy_bypass_environment(hostport, {'no': no_proxy}):
+        return True
+    elif urllib.request.proxy_bypass(hostport):  # check system settings
+        return True
+
+    return False
+
+
+def select_proxy(url, proxies, no_proxies_func=bypass_proxies):
     """Unified proxy selector for all backends"""
     url_components = urllib.parse.urlparse(url)
+
+    if 'no' in proxies and no_proxies_func and no_proxies_func(url, proxies['no']):
+        return
+
     priority = [
         url_components.scheme or 'http',  # prioritise more specific mappings
         'all'

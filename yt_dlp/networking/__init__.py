@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import itertools
-import urllib.parse
-
 from ._urllib import UrllibRH
 from ._websocket import WebSocketsRequestHandler
 from .common import (
