@@ -12,8 +12,11 @@ from ..dependencies import (
     brotli
 )
 
-if urllib3 is None or requests is None:
-    raise ImportError
+if requests is None:
+    raise ImportError('requests module is not installed')
+
+if urllib3 is None:
+    raise ImportError('urllib3 module is not installed')
 
 import urllib3.connection
 import urllib3.exceptions
