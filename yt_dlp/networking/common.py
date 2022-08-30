@@ -361,9 +361,6 @@ class RequestHandler:
 
     def _check_scheme(self, request: Request):
         scheme = urllib.parse.urlparse(request.url).scheme.lower()
-        if scheme == 'file':  # no other handler should handle this request
-            raise RequestError('file:// scheme is explicitly disabled in yt-dlp for security reasons')
-
         if self.SUPPORTED_SCHEMES is not None and scheme not in self.SUPPORTED_SCHEMES:
             raise UnsupportedRequest(f'unsupported scheme: "{scheme}"')
 
@@ -548,11 +545,6 @@ class RequestDirector:
                     f'Unexpected error from "{handler.NAME}" request handler: {e}' + bug_reports_message(),
                     is_error=False)
                 unexpected_errors.append(e)
-                continue
-
-            if not response:
-                self.ydl.report_warning(
-                    f'{handler.NAME} request handler returned nothing for response, trying another handler...' + bug_reports_message())
                 continue
 
             assert isinstance(response, Response)
