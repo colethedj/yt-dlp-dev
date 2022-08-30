@@ -22,7 +22,7 @@ from test.helper import FakeYDL, http_server_port
 from yt_dlp import YoutubeDL
 from yt_dlp.networking import Request, UrllibRH, RequestsRH, REQUEST_HANDLERS
 from yt_dlp.utils import urlencode_postdata
-from yt_dlp.networking.exceptions import HTTPError, IncompleteRead, SSLError, UnsupportedRequest
+from yt_dlp.networking.exceptions import HTTPError, IncompleteRead, SSLError, UnsupportedRequest, RequestError
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -244,7 +244,6 @@ def with_make_rh(handlers=None, ignore_handlers=None):
                     try:
                         test(self, functools.partial(make_rh, handler), *args, **kwargs)
                     except UnsupportedRequest as e:
-                        # TODO: test it only skips this sub test
                         self.skipTest(f'Skipping, unsupported test for {handler.NAME} handler: {e}')
         return wrapper
     return inner_func
@@ -290,6 +289,19 @@ class RequestHandlerTestCase(unittest.TestCase):
 
 
 class TestRequestHandler(RequestHandlerTestCase):
+
+    @with_make_rh()
+    def test_raise(self, make_rh):
+        with make_rh() as rh:
+            for func in (rh.handle, rh.prepare_request, functools.partial(rh.can_handle, fatal=True)):
+                try:
+                    func(Request('bad123://'))
+                except RequestError as e:
+                    self.assertIs(e.handler, rh)
+
+            with self.assertRaises(TypeError):
+                rh.handle(None)
+
     @with_make_rh()
     def test_nocheckcertificate(self, make_rh):
         with make_rh({'logger': FakeLogger()}) as rh:
@@ -499,6 +511,70 @@ class TestRequestDirector(RequestHandlerTestCase):
 
             with self.assertRaises(AssertionError):
                 rd.send(None)
+
+
+class TestHTTPProxy(RequestHandlerTestCase):
+    @with_make_rh()
+    def test_http_proxy(self, make_rh):
+        geo_proxy = f'127.0.0.1:{self.geo_port}'
+        geo_proxy2 = f'localhost:{self.geo_port}'  # tests no scheme handling
+
+        url = 'http://foo.com/bar'
+        with make_rh({
+            'proxy': f'//127.0.0.1:{self.proxy_port}',
+            'geo_verification_proxy': geo_proxy,
+        }) as rh:
+            response = rh.handle(Request(url)).read().decode('utf-8')
+            self.assertEqual(response, f'normal: {url}')
+
+            # Test Ytdl-request-proxy header
+            req = Request(url, headers={'Ytdl-request-proxy': geo_proxy2})
+            response1 = rh.handle(req).read().decode('utf-8')
+            self.assertEqual(response1, f'geo: {url}')
+
+            # Test proxies dict in request
+            response2 = rh.handle(Request(url, proxies={'http': geo_proxy})).read().decode('utf-8')
+            self.assertEqual(response2, f'geo: {url}')
+
+            # test that __noproxy__ disables all proxies for that request
+            real_url = 'http://127.0.0.1:%d/headers' % self.http_port
+            response3 = rh.handle(
+                Request(real_url, headers={'Ytdl-request-proxy': '__noproxy__'})).read().decode('utf-8')
+            self.assertNotEqual(response3, f'normal: {real_url}')
+            self.assertNotIn('Ytdl-request-proxy', response3)
+            self.assertIn('Accept', response3)
+
+            # test unrelated proxy is ignored (would cause all handlers to be unsupported otherwise)
+            response4 = rh.handle(
+                Request('http://localhost:%d/headers' % self.http_port,
+                        proxies={'unrelated': 'unrelated://example.com'})).read().decode('utf-8')
+            self.assertIn('Accept', response4)
+
+    @with_make_rh()
+    def test_no_proxy(self, make_rh):
+        with make_rh({'proxy': f'http://127.0.0.1:{self.proxy_port}'}) as rh:
+            # NO_PROXY
+            for no_proxy in (f'127.0.0.1:{self.http_port}', '127.0.0.1', 'localhost'):
+                nop_response = rh.handle(Request(f'http://127.0.0.1:{self.http_port}/headers', proxies={'no': no_proxy})).read().decode('utf-8')
+                self.assertIn('Accept', nop_response)
+
+    @with_make_rh()
+    def test_all_proxy(self, make_rh):
+        # test all proxy
+        url = 'http://foo.com/bar'
+        with make_rh() as rh:
+            response = rh.handle(Request(url, proxies={'all': f'http://127.0.0.1:{self.proxy_port}'})).read().decode('utf-8')
+            self.assertEqual(response, f'normal: {url}')
+
+    @with_make_rh()
+    def test_http_proxy_with_idn(self, make_rh):
+        with make_rh({
+            'proxy': f'127.0.0.1:{self.proxy_port}',
+        }) as rh:
+            url = 'http://中文.tw/'
+            response = rh.handle(Request(url)).read().decode('utf-8')
+            # b'xn--fiq228c' is '中文'.encode('idna')
+            self.assertEqual(response, 'normal: http://xn--fiq228c.tw/')
 
 
 class TestHTTPProxy(RequestHandlerTestCase):
