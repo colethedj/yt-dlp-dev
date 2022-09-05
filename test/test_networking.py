@@ -605,7 +605,7 @@ class TestRequestsRH(RequestHandlerTestCase):
     @with_make_rh([RequestsRH])
     def test_no_persistent_connections(self, make_rh):
         with make_rh({'no_persistent_connections': True}) as rh:
-            content = str(rh.handle(Request('http://127.0.0.1:%d/headers' % self.http_port, compression=False)).read().decode('utf-8'))
+            content = str(rh.handle(Request('http://127.0.0.1:%d/headers' % self.http_port)).read().decode('utf-8'))
             self.assertIn('Connection: close', content)
 
 
