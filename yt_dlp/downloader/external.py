@@ -20,7 +20,6 @@ from ..utils import (
     determine_ext,
     encodeArgument,
     encodeFilename,
-    handle_youtubedl_headers,
     remove_end,
     traverse_obj,
 )
@@ -372,12 +371,11 @@ class FFmpegFD(ExternalFD):
 
         http_headers = None
         if info_dict.get('http_headers'):
-            youtubedl_headers = handle_youtubedl_headers(info_dict['http_headers'])
             http_headers = [
                 # Trailing \r\n after each HTTP header is important to prevent warning from ffmpeg/avconv:
                 # [http @ 00000000003d2fa0] No trailing CRLF found in HTTP header.
                 '-headers',
-                ''.join(f'{key}: {val}\r\n' for key, val in youtubedl_headers.items())
+                ''.join(f'{key}: {val}\r\n' for key, val in info_dict.get('http_headers').items())
             ]
 
         env = None
@@ -515,16 +513,14 @@ _BY_NAME = {
     if name.endswith('FD') and name not in ('ExternalFD', 'FragmentFD')
 }
 
-_BY_EXE = {klass.EXE_NAME: klass for klass in _BY_NAME.values()}
-
 
 def list_external_downloaders():
     return sorted(_BY_NAME.keys())
 
 
 def get_external_downloader(external_downloader):
-    """ Given the name of the executable, see whether we support the given
-        downloader . """
-    # Drop .exe extension on Windows
+    """ Given the name of the executable, see whether we support the given downloader """
     bn = os.path.splitext(os.path.basename(external_downloader))[0]
-    return _BY_NAME.get(bn, _BY_EXE.get(bn))
+    return _BY_NAME.get(bn) or next((
+        klass for klass in _BY_NAME.values() if klass.EXE_NAME in bn
+    ), None)

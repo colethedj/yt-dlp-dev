@@ -112,10 +112,7 @@ class YoutubeDLHandler(urllib.request.AbstractHTTPHandler):
 
     This class, when installed with an OpenerDirector, automatically adds
     the standard headers to every HTTP request and handles gzipped and
-    deflated responses from web servers. If compression is to be avoided in
-    a particular request, the original request in the program code only has
-    to include the HTTP header "Youtubedl-no-compression", which will be
-    removed before making the real request.
+    deflated responses from web servers.
 
     Part of this code was copied from:
 
@@ -212,7 +209,7 @@ class YoutubeDLHandler(urllib.request.AbstractHTTPHandler):
             resp.msg = old_resp.msg
             del resp.headers['Content-encoding']
         # brotli
-        if resp.headers.get('Content-encoding', '') == 'br':
+        if resp.headers.get('Content-encoding', '') == 'br' and brotli is not None:
             resp = urllib.response.addinfourl(
                 io.BytesIO(self.brotli(resp.read())), old_resp.headers, old_resp.url, old_resp.code)
             resp.msg = old_resp.msg
@@ -451,7 +448,7 @@ class UrllibRH(RequestHandler):
             HTTPErrorProcessor(),
             YDLRedirectHandler() if allow_redirects else YDLNoRedirectHandler()]
 
-        if self.ydl.params.get('enable_file_protocol'):
+        if self.ydl.params.get('enable_file_urls'):
             handlers.append(FileHandler())
 
         for handler in handlers:
@@ -465,7 +462,7 @@ class UrllibRH(RequestHandler):
 
     def _prepare_request(self, request):
         scheme = urllib.parse.urlparse(request.url).scheme.lower()
-        if scheme == 'file' and not self.ydl.params.get('enable_file_protocol'):
+        if scheme == 'file' and not self.ydl.params.get('enable_file_urls'):
             raise UnsupportedRequest('file:// scheme is disabled by default in yt-dlp for security reasons')
         return request
 
