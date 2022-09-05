@@ -57,14 +57,11 @@ SUPPORTED_ENCODINGS = [
     'gzip', 'deflate'
 ]
 
-# TODO: enforce a minimum version of requests and urllib3
 
 urllib3_version = urllib3.__version__.split('.')
 if len(urllib3_version) == 2:
     urllib3_version.append('0')
 urllib3_version = tuple(map(int, urllib3_version[:3]))
-
-requests_version = tuple(map(int, requests.__version__.split('.')))
 
 # urllib3 does not support brotlicffi on versions < 1.26.9 [1], and brotli on < 1.25.1 [2]
 # 1: https://github.com/urllib3/urllib3/blob/1.26.x/CHANGES.rst#1269-2022-03-16
@@ -77,7 +74,7 @@ if (brotli is not None
 # requests < 2.24.0 always uses pyopenssl by default if installed.
 # We do not support pyopenssl's ssl context, so we need to revert this.
 # See: https://github.com/psf/requests/pull/5443
-if requests_version < (2, 24, 0):
+if requests.__build__ < 0x022400:
     with contextlib.suppress(ImportError, AttributeError):
         from urllib3.contrib import pyopenssl
         pyopenssl.extract_from_urllib3()
@@ -182,12 +179,13 @@ def handle_urllib3_read_exceptions(e):
 
 
 class YDLRequestsHTTPAdapter(requests.adapters.HTTPAdapter):
-    def __init__(self, ssl_context=None, source_address=None, **kwargs):
+    def __init__(self, ssl_context=None, proxy_ssl_context=None, source_address=None, **kwargs):
         self._pm_args = {}
         if ssl_context:
             self._pm_args['ssl_context'] = ssl_context
         if source_address:
             self._pm_args['source_address'] = (source_address, 0)
+        self._proxy_ssl_context = proxy_ssl_context or ssl_context
         super().__init__(**kwargs)
 
     def init_poolmanager(self, *args, **kwargs):
@@ -195,9 +193,8 @@ class YDLRequestsHTTPAdapter(requests.adapters.HTTPAdapter):
 
     def proxy_manager_for(self, proxy, **proxy_kwargs):
         extra_kwargs = {}
-        ssl_context = self._pm_args.get('ssl_context')
-        if not proxy.lower().startswith('socks') and ssl_context:
-            extra_kwargs['proxy_ssl_context'] = ssl_context
+        if not proxy.lower().startswith('socks') and self._proxy_ssl_context and urllib3_version >= (1, 26, 0):
+            extra_kwargs['proxy_ssl_context'] = self._proxy_ssl_context
         return super().proxy_manager_for(proxy, **proxy_kwargs, **self._pm_args, **extra_kwargs)
 
     def cert_verify(*args, **kwargs):
@@ -221,7 +218,7 @@ class YDLRequestsSession(requests.sessions.Session):
 
     def rebuild_auth(self, prepared_request, response):
         # HACK: undo status code change from rebuild_method, if applicable.
-        # rebuild_auth runs after requests would remove headers/body
+        # rebuild_auth runs after requests would remove headers/body based on status code
         if hasattr(response, '_real_status_code'):
             response.status_code = response._real_status_code
             del response._real_status_code
@@ -240,7 +237,9 @@ class YDLUrllib3LoggingFilter(logging.Filter):
 class RequestsRH(RequestHandler):
     SUPPORTED_SCHEMES = ['http', 'https']
     SUPPORTED_ENCODINGS = SUPPORTED_ENCODINGS
-    SUPPORTED_PROXY_SCHEMES = ['http', 'https', 'socks4', 'socks5', 'socks4a', 'socks']
+    SUPPORTED_PROXY_SCHEMES = ['http', 'socks4', 'socks5', 'socks4a', 'socks']
+    if urllib3_version >= (1, 26, 0):
+        SUPPORTED_PROXY_SCHEMES.append('https')
     SUPPORTED_FEATURES = [Features.NO_PROXY, Features.ALL_PROXY]
     NAME = 'requests'
 
