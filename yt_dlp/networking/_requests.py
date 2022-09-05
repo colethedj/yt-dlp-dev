@@ -193,8 +193,12 @@ class YDLRequestsHTTPAdapter(requests.adapters.HTTPAdapter):
     def init_poolmanager(self, *args, **kwargs):
         return super().init_poolmanager(*args, **kwargs, **self._pm_args)
 
-    def proxy_manager_for(self, *args, **kwargs):
-        return super().proxy_manager_for(*args, **kwargs, **self._pm_args)
+    def proxy_manager_for(self, proxy, **proxy_kwargs):
+        extra_kwargs = {}
+        ssl_context = self._pm_args.get('ssl_context')
+        if not proxy.lower().startswith('socks') and ssl_context:
+            extra_kwargs['proxy_ssl_context'] = ssl_context
+        return super().proxy_manager_for(proxy, **proxy_kwargs, **self._pm_args, **extra_kwargs)
 
     def cert_verify(*args, **kwargs):
         # lean on SSLContext for cert verification
