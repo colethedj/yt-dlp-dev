@@ -2,6 +2,7 @@ import base64
 import calendar
 import collections.abc
 import copy
+import dataclasses
 import datetime
 import hashlib
 import itertools
@@ -226,6 +227,78 @@ INNERTUBE_CLIENTS = {
     },
 }
 
+def recursive_merge_dicts(dict1, dict2):
+    merged = {}
+
+    for k, v in dict1.items():
+        if isinstance(v, collections.abc.Mapping):
+            merged[k] = recursive_merge_dicts(merged.get(k, {}), v)
+        else:
+            merged[k] = v if v is not None else merged.get(k)
+    return merged
+
+    #     if v is not None and k not in merged or isinstance(v, str) and merged[k] == '':
+    #         if isinstance(v, collections.abc.Mapping):
+    #
+    #         merged[k] = v
+    # return merged
+
+def recursive_merge(target, source):
+    for k, v in source.items():
+        if isinstance(v, collections.abc.Mapping):
+            target[k] = recursive_update(target.get(k, {}), v)
+        else:
+            target[k] = v if v is not None else target.get(k)
+    return target
+
+
+class Client:
+    def __init__(
+        self, base_client: 'Client' = None, require_js_player: bool = False,
+        context: dict = None, api_key: str = None, api_hostname: str = None
+    ):
+        self.base_client: 'Client' = base_client
+        self.context = context
+        for key in ('require_js_player', 'api_key', 'api_hostname'):
+            setattr(self, key, property(lambda: locals()[key] or getattr(self.base_client, locals()[key])))
+
+    @property
+    def context(self) -> dict:
+        base_context = self.base_client.context if self.base_client else {}
+        context = copy.deepcopy(self._context or {})
+        return {
+            **base_context, **context,
+            'client': {**(base_context.get('client') or {}), **(context.get('client') or {})},
+        }
+
+    @context.setter
+    def context(self, context):
+        if context is not None or not isinstance(context, dict):
+            raise TypeError('context must be a dict or None')
+        self._context = copy.deepcopy(context)
+
+
+
+innertube_base_clients = {
+    'WEB': Client(
+        require_js_player=True,
+        context={
+            'client': {
+                'clientName': 'WEB_CREATOR',
+                'clientVersion': '1.20220726.00.00',
+            }
+        },
+        api_key='AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8',
+        api_hostname='www.youtube.com',
+    )
+}
+
+dlp_clients = {
+    'web': Client(
+        base_client=innertube_base_clients['WEB'],
+    ),
+}
+
 
 def _split_innertube_client(client_name):
     variant, *base = client_name.rsplit('.', 1)
@@ -409,7 +482,7 @@ class YoutubeBaseInfoExtractor(InfoExtractor):
             return
         return urljoin('https://www.youtube.com', player_url)
 
-    def load_ytcfg(self, ytcfg, client):
+    def register_ytcfg(self, ytcfg, client):
         # TODO: this is terrible
         def ytcfg_update(target, source):
             for k, v in source.items():
@@ -470,7 +543,7 @@ class YoutubeBaseInfoExtractor(InfoExtractor):
             updated_ytcfg = self._download_ytcfg(client, item_id)
             if updated_ytcfg:
                 updated_ytcfg['IS_UPDATED'] = True
-                self.load_ytcfg(updated_ytcfg, client)
+                self.register_ytcfg(updated_ytcfg, client)
 
         ytcfg = self._ytcfgs.get(client)
         return ytcfg
