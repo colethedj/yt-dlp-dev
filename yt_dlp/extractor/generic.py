@@ -2784,27 +2784,52 @@ class GenericIE(InfoExtractor):
                 ie='BrightcoveNew')
 
         self._downloader.write_debug('Looking for embeds')
-        embeds = []
+        embeds = {}
+        exclusive_over = []
+        inclusive_over = []
         for ie in self._downloader._ies.values():
             gen = ie.extract_from_webpage(self._downloader, url, webpage)
             current_embeds = []
             try:
                 while True:
                     current_embeds.append(next(gen))
-            except self.StopExtraction:
-                self.report_detected(f'{ie.IE_NAME} exclusive embed', len(current_embeds),
-                                     embeds and 'discarding other embeds')
-                embeds = current_embeds
-                break
+            except self.StopExtraction as o:
+
+                if '*' in o.exclusive_over:
+                    self.report_detected(f'{ie.IE_NAME} exclusive embed', len(current_embeds),
+                                         embeds and 'discarding other embeds')
+                    embeds = {ie.ie_key(): current_embeds}
+                    exclusive_over = []
+                    break
+                exclusive_over.append((ie, o.exclusive_over))
+                inclusive_over.append((ie, o.inclusive_over))
             except StopIteration:
                 self.report_detected(f'{ie.IE_NAME} embed', len(current_embeds))
-                embeds.extend(current_embeds)
+            finally:
+                if current_embeds:
+                    embeds[ie.ie_key()] = current_embeds
 
         del current_embeds
+        for ie, over in exclusive_over:
+            removed = []
+            for ie_key in over or []:
+                if ie_key in embeds:
+                    embeds.pop(ie_key, None)
+                    removed.append(ie_key)
+            if removed:
+                self.write_debug(f'{ie.IE_NAME} has exclusive embed rights over {", ".join(removed)}, discarding other embeds')
+
+        for ie, over in inclusive_over:
+            for ie_key in over or []:
+                if ie_key not in embeds:
+                    continue
+                self.write_debug(f'{ie_key} reported embeds which {ie.IE_NAME} is inclusive over. Discarding {ie.IE_NAME} embeds.')
+                del embeds[ie.ie_key()]
+
         if len(embeds) == 1:
-            return {**info_dict, **embeds[0]}
+            return {**info_dict, **traverse_obj(embeds, (..., ...))[0]}
         elif embeds:
-            return self.playlist_result(embeds, **info_dict)
+            return self.playlist_result(traverse_obj(embeds, (..., ...)), **info_dict)
 
         jwplayer_data = self._find_jwplayer_data(
             webpage, video_id, transform_source=js_to_json)

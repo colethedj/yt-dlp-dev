@@ -29,3 +29,4 @@ class HTML5MediaEmbedIE(InfoExtractor):
             })
             self._sort_formats(entry['formats'])
             yield entry
+        raise self.StopExtraction(inclusive_over=['Youtube'])

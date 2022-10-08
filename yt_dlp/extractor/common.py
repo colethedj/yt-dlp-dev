@@ -3906,7 +3906,11 @@ class InfoExtractor:
                     yield embed_url
 
     class StopExtraction(Exception):
-        pass
+        def __init__(self, exclusive_over=None, inclusive_over=None):
+            if not inclusive_over:
+                exclusive_over = exclusive_over or ['*']
+            self.exclusive_over = exclusive_over or []
+            self.inclusive_over = inclusive_over or []
 
     @classmethod
     def _extract_url(cls, webpage):  # TODO: Remove
