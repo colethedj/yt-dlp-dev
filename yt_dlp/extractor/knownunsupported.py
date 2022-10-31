@@ -23,7 +23,8 @@ class KnownDRMIE(KnownUnsupportedBaseIE):
     UNSUPPORTED_SITES = (
         'play.hbomax.com',
         r'(?:www\.)?tvnow\.(?:de|at|ch)',
-        r'(?:www\.)?(?:(?:rmcstory|rmcdecouverte)\.bfmtv|rmcbfmplay)\.com'  # https://github.com/yt-dlp/yt-dlp/issues/3594
+        r'(?:www\.)?(?:(?:rmcstory|rmcdecouverte)\.bfmtv|rmcbfmplay)\.com',  # https://github.com/yt-dlp/yt-dlp/issues/3594
+        r'(www\.)?channel4\.com'  # https://github.com/yt-dlp/yt-dlp/issues/1719
     )
     TEMPLATE = (
         'The requested site is known to use DRM protection. '
