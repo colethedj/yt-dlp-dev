@@ -1488,7 +1488,6 @@ from .restudy import RestudyIE
 from .reuters import ReutersIE
 from .reverbnation import ReverbNationIE
 from .rice import RICEIE
-from .rmcdecouverte import RMCDecouverteIE
 from .rockstargames import RockstarGamesIE
 from .rokfin import (
     RokfinIE,

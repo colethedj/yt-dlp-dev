@@ -22,12 +22,11 @@ class KnownDRMIE(KnownUnsupportedBaseIE):
     IE_NAME = 'unsupported:drm'
     UNSUPPORTED_SITES = (
         'play.hbomax.com',
-        r'(?:www\.)?tvnow\.(?:de|at|ch)'
+        r'(?:www\.)?tvnow\.(?:de|at|ch)',
+        r'(?:www\.)?(?:(?:rmcstory|rmcdecouverte)\.bfmtv|rmcbfmplay)\.com'  # https://github.com/yt-dlp/yt-dlp/issues/3594
     )
     TEMPLATE = (
         'The requested site is known to use DRM protection. '
         'It will NOT be supported by yt-dlp, and will most likely fail to download. '
         'Please DO NOT open an issue, unless you have evidence that the video is not DRM protected'
     )
-
-
