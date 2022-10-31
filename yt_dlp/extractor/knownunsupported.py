@@ -25,11 +25,12 @@ class KnownDRMIE(KnownUnsupportedBaseIE):
         r'tvnow\.(?:de|at|ch)',
         r'(?:(?:rmcstory|rmcdecouverte)\.bfmtv|rmcbfmplay)\.com',
         r'channel4\.com',
-        r'peacocktv\.com'
+        r'peacocktv\.com',
+        r'([a-zA-Z0-9_\.]+\.)?disneyplus\.com',
     )
     TEMPLATE = (
         'The requested site is known to use DRM protection. '
-        'It will NOT be supported by yt-dlp, and will most likely fail to download. '
+        'It WILL NOT be supported by yt-dlp, and will most likely fail to download. '
         'Please DO NOT open an issue, unless you have evidence that the video is not DRM protected'
     )
 
@@ -61,5 +62,11 @@ class KnownDRMIE(KnownUnsupportedBaseIE):
         'only_matching': True,
     }, {
         'url': 'https://www.tvnow.ch',
+        'only_matching': True,
+    }, {
+        'url': r'https://hsesn.apps.disneyplus.com',
+        'only_matching': True,
+    }, {
+        'url': r'https://www.disneyplus.com',
         'only_matching': True,
     }]
