@@ -31,6 +31,7 @@ class KnownDRMIE(KnownUnsupportedBaseIE):
         r'tvnz\.co\.nz',
         r'oneplus\.ch',
         r'artstation\.com/learning/courses',
+        r'philo\.com'
     )
     MESSAGE = (
         'The requested site is known to use DRM protection. '
@@ -94,5 +95,9 @@ class KnownDRMIE(KnownUnsupportedBaseIE):
     }, {
         # https://github.com/yt-dlp/yt-dlp/issues/1140
         'url': 'https://www.artstation.com/learning/courses/',
+        'only_matching': True,
+    }, {
+        # https://github.com/yt-dlp/yt-dlp/issues/3544
+        'url': 'https://www.philo.com',
         'only_matching': True,
     }]
