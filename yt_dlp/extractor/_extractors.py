@@ -1,6 +1,5 @@
 # flake8: noqa: F401
 
-from .knownunsupported import KnownDRMIE  # Moved to top to prioritize
 
 from .youtube import (  # Youtube is moved to the top to improve performance
     YoutubeIE,
@@ -813,6 +812,7 @@ from .kicker import KickerIE
 from .kickstarter import KickStarterIE
 from .kinja import KinjaEmbedIE
 from .kinopoisk import KinoPoiskIE
+from .knownunsupported import KnownDRMIE
 from .kompas import KompasVideoIE
 from .konserthusetplay import KonserthusetPlayIE
 from .koo import KooIE
