@@ -24,11 +24,13 @@ class KnownDRMIE(KnownUnsupportedBaseIE):
         'play\.hbomax\.com',
         r'tvnow\.(?:de|at|ch)',
         r'(?:(?:rmcstory|rmcdecouverte)\.bfmtv|rmcbfmplay)\.com',
-        r'channel4\.com',
+        r'channel(?:4|5)\.com',
         r'peacocktv\.com',
         r'([a-zA-Z0-9_\.]+\.)?disneyplus\.com',
         r'open\.spotify\.com/(?:track|playlist|album|artist)',
         r'tvnz\.co\.nz',
+        r'oneplus\.ch',
+        r'artstation\.com/learning/courses',
     )
     MESSAGE = (
         'The requested site is known to use DRM protection. '
@@ -43,6 +45,10 @@ class KnownDRMIE(KnownUnsupportedBaseIE):
     }, {
         # https://github.com/yt-dlp/yt-dlp/issues/1719,
         'url': 'https://www.channel4.com',
+        'only_matching': True,
+    }, {
+        # https://github.com/yt-dlp/yt-dlp/issues/1548
+        'url': 'https://www.channel5.com',
         'only_matching': True,
     }, {
         # RMC: https://github.com/yt-dlp/yt-dlp/issues/3594
@@ -80,5 +86,13 @@ class KnownDRMIE(KnownUnsupportedBaseIE):
     }, {
         # TVNZ: https://github.com/yt-dlp/yt-dlp/issues/4122
         'url': 'https://tvnz.co.nz',
+        'only_matching': True,
+    }, {
+        # https://github.com/yt-dlp/yt-dlp/issues/1922
+        'url': 'https://www.oneplus.ch',
+        'only_matching': True,
+    }, {
+        # https://github.com/yt-dlp/yt-dlp/issues/1140
+        'url': 'https://www.artstation.com/learning/courses/',
         'only_matching': True,
     }]
