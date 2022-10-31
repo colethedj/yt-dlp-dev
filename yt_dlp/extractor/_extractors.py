@@ -1925,14 +1925,6 @@ from .tvland import TVLandIE
 from .tvn24 import TVN24IE
 from .tvnet import TVNetIE
 from .tvnoe import TVNoeIE
-from .tvnow import (
-    TVNowIE,
-    TVNowFilmIE,
-    TVNowNewIE,
-    TVNowSeasonIE,
-    TVNowAnnualIE,
-    TVNowShowIE,
-)
 from .tvopengr import (
     TVOpenGrWatchIE,
     TVOpenGrEmbedIE,

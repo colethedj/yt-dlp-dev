@@ -11,7 +11,7 @@ class KnownUnsupportedBaseIE(InfoExtractor):
 
     @classproperty
     def _VALID_URL(cls):
-        return r'https?://(%s)' % '|'.join(map(re.escape, cls.UNSUPPORTED_SITES))
+        return r'https?://(%s)' % '|'.join(cls.UNSUPPORTED_SITES)
 
     def _real_extract(self, url):
         self.report_warning(self.TEMPLATE)
@@ -22,6 +22,7 @@ class KnownDRMIE(KnownUnsupportedBaseIE):
     IE_NAME = 'unsupported:drm'
     UNSUPPORTED_SITES = (
         'play.hbomax.com',
+        r'(?:www\.)?tvnow\.(?:de|at|ch)'
     )
     TEMPLATE = (
         'The requested site is known to use DRM protection. '
