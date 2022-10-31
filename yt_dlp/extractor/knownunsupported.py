@@ -27,7 +27,8 @@ class KnownDRMIE(KnownUnsupportedBaseIE):
         r'channel4\.com',
         r'peacocktv\.com',
         r'([a-zA-Z0-9_\.]+\.)?disneyplus\.com',
-        r'open\.spotify\.com/(?:track|playlist|album|artist)'
+        r'open\.spotify\.com/(?:track|playlist|album|artist)',
+        r'tvnz\.co\.nz',
     )
     MESSAGE = (
         'The requested site is known to use DRM protection. '
@@ -75,5 +76,9 @@ class KnownDRMIE(KnownUnsupportedBaseIE):
         'only_matching': True,
     }, {
         'url': 'https://open.spotify.com/track/',
+        'only_matching': True,
+    }, {
+        # TVNZ: https://github.com/yt-dlp/yt-dlp/issues/4122
+        'url': 'https://tvnz.co.nz',
         'only_matching': True,
     }]
