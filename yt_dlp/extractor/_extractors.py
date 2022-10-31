@@ -1,5 +1,7 @@
 # flake8: noqa: F401
 
+from .knownunsupported import KnownDRMIE  # Moved to top to prioritize
+
 from .youtube import (  # Youtube is moved to the top to improve performance
     YoutubeIE,
     YoutubeClipIE,
