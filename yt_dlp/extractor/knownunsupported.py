@@ -11,7 +11,7 @@ class KnownUnsupportedBaseIE(InfoExtractor):
 
     @classproperty
     def _VALID_URL(cls):
-        return r'https?://(?:www\.)?(%s)' % '|'.join(cls.UNSUPPORTED_SITES)
+        return r'https?://(?:www\.)?(?:%s)' % '|'.join(rf'({s})' for s in cls.UNSUPPORTED_SITES)
 
     def _real_extract(self, url):
         self.report_warning(self.TEMPLATE)
@@ -21,10 +21,10 @@ class KnownUnsupportedBaseIE(InfoExtractor):
 class KnownDRMIE(KnownUnsupportedBaseIE):
     IE_NAME = 'unsupported:drm'
     UNSUPPORTED_SITES = (
-        'play.hbomax.com',
+        'play\.hbomax\.com',
         r'tvnow\.(?:de|at|ch)',
-        r'\w+\.bfmtv|rmcbfmplay\.com',
-        r'channel4\.com'
+        r'(?:(?:rmcstory|rmcdecouverte)\.bfmtv|rmcbfmplay)\.com',
+        r'channel4\.com',
         r'peacocktv\.com'
     )
     TEMPLATE = (
