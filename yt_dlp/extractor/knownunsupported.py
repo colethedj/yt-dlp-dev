@@ -11,7 +11,7 @@ class KnownUnsupportedBaseIE(InfoExtractor):
 
     @classproperty
     def _VALID_URL(cls):
-        return r'https?://(%s)' % '|'.join(cls.UNSUPPORTED_SITES)
+        return r'https?://(?:www\.)?(%s)' % '|'.join(cls.UNSUPPORTED_SITES)
 
     def _real_extract(self, url):
         self.report_warning(self.TEMPLATE)
@@ -22,10 +22,10 @@ class KnownDRMIE(KnownUnsupportedBaseIE):
     IE_NAME = 'unsupported:drm'
     UNSUPPORTED_SITES = (
         'play.hbomax.com',
-        r'(?:www\.)?tvnow\.(?:de|at|ch)',
-        r'(?:www\.)?(?:(?:rmcstory|rmcdecouverte)\.bfmtv|rmcbfmplay)\.com',  # https://github.com/yt-dlp/yt-dlp/issues/3594
-        r'(www\.)?channel4\.com'  # https://github.com/yt-dlp/yt-dlp/issues/1719,
-        r'(www\.)?peacocktv\.com'  # https://github.com/yt-dlp/yt-dlp/issues/4309
+        r'tvnow\.(?:de|at|ch)',
+        r'\w+\.bfmtv|rmcbfmplay\.com',
+        r'channel4\.com'
+        r'peacocktv\.com'
     )
     TEMPLATE = (
         'The requested site is known to use DRM protection. '
@@ -34,6 +34,32 @@ class KnownDRMIE(KnownUnsupportedBaseIE):
     )
 
     _TESTS = [{
-        'url': 'https://www.peacocktv.com/watch/playback/vod/',
+        # https://github.com/yt-dlp/yt-dlp/issues/4309
+        'url': 'https://www.peacocktv.com',
+        'only_matching': True,
+    }, {
+        # https://github.com/yt-dlp/yt-dlp/issues/1719,
+        'url': 'https://www.channel4.com',
+        'only_matching': True,
+    }, {
+        # RMC: https://github.com/yt-dlp/yt-dlp/issues/3594
+        # https://github.com/yt-dlp/yt-dlp/issues/309
+        'url': 'https://www.rmcbfmplay.com',
+        'only_matching': True
+    }, {
+        'url': 'https://rmcstory.bfmtv.com',
+        'only_matching': True
+    }, {
+        'url': 'https://rmcdecouverte.bfmtv.com',
+        'only_matching': True
+    }, {
+        # TVNOW: https://github.com/yt-dlp/yt-dlp/issues/1345
+        'url': 'https://www.tvnow.de',
+        'only_matching': True,
+    }, {
+        'url': 'https://www.tvnow.at',
+        'only_matching': True,
+    }, {
+        'url': 'https://www.tvnow.ch',
         'only_matching': True,
     }]
