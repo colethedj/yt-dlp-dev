@@ -31,7 +31,11 @@ class KnownDRMIE(KnownUnsupportedBaseIE):
         r'tvnz\.co\.nz',
         r'oneplus\.ch',
         r'artstation\.com/learning/courses',
-        r'philo\.com'
+        r'philo\.com',
+        r'([a-zA-Z0-9_\.]+\.)?mech-plus\.com',
+        r'aha\.video',
+        r'mubi\.com',
+        r'vootkids\.com'
     )
     MESSAGE = (
         'The requested site is known to use DRM protection. '
@@ -99,5 +103,24 @@ class KnownDRMIE(KnownUnsupportedBaseIE):
     }, {
         # https://github.com/yt-dlp/yt-dlp/issues/3544
         'url': 'https://www.philo.com',
+        'only_matching': True,
+    }, {
+        # https://github.com/yt-dlp/yt-dlp/issues/3533
+        'url': 'https://www.mech-plus.com/',
+        'only_matching': True,
+    }, {
+        'url': 'https://watch.mech-plus.com/',
+        'only_matching': True,
+    }, {
+        # https://github.com/yt-dlp/yt-dlp/issues/2934
+        'url': 'https://www.aha.video',
+        'only_matching': True,
+    }, {
+        # https://github.com/yt-dlp/yt-dlp/issues/2743
+        'url': 'https://mubi.com',
+        'only_matching': True,
+    }, {
+        # https://github.com/yt-dlp/yt-dlp/issues/3287
+        'url': 'https://www.vootkids.com',
         'only_matching': True,
     }]
