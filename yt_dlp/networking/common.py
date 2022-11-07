@@ -36,7 +36,7 @@ from ..utils import (
     sanitize_url,
     update_url_query,
 )
-from .exceptions import UnsupportedRequest
+from .exceptions import UnsupportedRequest, SSLError
 
 if typing.TYPE_CHECKING:
     from ..YoutubeDL import YoutubeDL
@@ -315,27 +315,41 @@ class RequestHandler:
         self.ydl = ydl
         self.cookiejar = self.ydl.cookiejar
 
-    def make_sslcontext(self, **kwargs):
+    def make_sslcontext(self):
         """
-        Make a new SSLContext configured for this backend.
-        To customize SSLContext initialization, override _make_sslcontext()
+        Make a new SSLContext configured for this request handler.
+        This assumes HTTP 1.1 is used.
         """
-        context = self._make_sslcontext(
-            verify=not self.ydl.params.get('nocheckcertificate'), **kwargs)
-        if not context:
-            return context
+        verify = not self.ydl.params.get('nocheckcertificate')
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        context.check_hostname = verify
+        context.verify_mode = ssl.CERT_REQUIRED if verify else ssl.CERT_NONE
+
+        # Some servers may reject requests if ALPN extension is not sent. See:
+        # https://github.com/python/cpython/issues/85140
+        # https://github.com/yt-dlp/yt-dlp/issues/3878
+        with contextlib.suppress(NotImplementedError):
+            context.set_alpn_protocols(['http/1.1'])
+        if verify:
+            ssl_load_certs(context, self.ydl.params)
+
         if self.ydl.params.get('legacyserverconnect'):
             context.options |= 4  # SSL_OP_LEGACY_SERVER_CONNECT
-            # Allow use of weaker ciphers in Python 3.10+. See https://bugs.python.org/issue43998
-            # XXX: this be should probably a separate option, or delegate to external SSL config
-            context.set_ciphers('DEFAULT')
-        elif (
-            sys.version_info < (3, 10)
-            and ssl.OPENSSL_VERSION_INFO >= (1, 1, 1)
-            and not ssl.OPENSSL_VERSION.startswith('LibreSSL')
-        ):
-            # Backport the default SSL ciphers and minimum TLS version settings from Python 3.10 [1].
-            # This is to ensure consistent behavior across Python versions, and help avoid fingerprinting
+
+        if self.ydl.params.get('cipher_list'):
+            # Allow the user to specify a custom cipher list in OpenSSL format [1].
+            # This may be required in cases where the default cipher suite is not supported by the server [2].
+            # 1. https://www.openssl.org/docs/man1.1.1/man1/ciphers.html
+            # 2. https://github.com/yt-dlp/yt-dlp/issues/2043
+            try:
+                context.set_ciphers(self.ydl.params.get('cipher_list'))
+            except ssl.SSLError as e:
+                raise SSLError(
+                    f'Failed to set user-specified cipher list (does it contain unsupported ciphers for {ssl.OPENSSL_VERSION}?): {e.args[0]}')
+
+        elif ssl.OPENSSL_VERSION_INFO >= (1, 1, 1) and not ssl.OPENSSL_VERSION.startswith('LibreSSL'):
+            # Use the default SSL ciphers and minimum TLS version settings from Python 3.10 [1].
+            # This is to ensure consistent behavior across Python versions and libraries, and help avoid fingerprinting
             # in some situations [2][3].
             # Python 3.10 only supports OpenSSL 1.1.1+ [4]. Because this change is likely
             # untested on older versions, we only apply this to OpenSSL 1.1.1+ to be safe.
@@ -359,20 +373,9 @@ class RequestHandler:
             except ssl.SSLError:
                 raise YoutubeDLError('Unable to load client certificate')
 
-        return context
+            if getattr(context, 'post_handshake_auth', None) is not None:
+                context.post_handshake_auth = True
 
-    def _make_sslcontext(self, verify, **kwargs):
-        """Generates a default HTTP/1.1 SSLContext with certs"""
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        context.check_hostname = verify
-        context.verify_mode = ssl.CERT_REQUIRED if verify else ssl.CERT_NONE
-        # Some servers may reject requests if ALPN extension is not sent. See:
-        # https://github.com/python/cpython/issues/85140
-        # https://github.com/yt-dlp/yt-dlp/issues/3878
-        with contextlib.suppress(NotImplementedError):
-            context.set_alpn_protocols(['http/1.1'])
-        if verify:
-            ssl_load_certs(context, self.ydl.params)
         return context
 
     def _check_scheme(self, request: Request):

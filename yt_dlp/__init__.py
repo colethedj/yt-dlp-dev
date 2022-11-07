@@ -854,6 +854,7 @@ def parse_options(argv=None):
         'legacyserverconnect': opts.legacy_server_connect,
         'nocheckcertificate': opts.no_check_certificate,
         'no_persistent_connections': opts.no_persistent_connections,
+        'cipher_list': opts.cipher_list,
         'prefer_insecure': opts.prefer_insecure,
         'enable_file_urls': opts.enable_file_urls,
         'http_headers': opts.headers,
