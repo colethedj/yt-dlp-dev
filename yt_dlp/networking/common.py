@@ -77,7 +77,9 @@ class Request:
             query: dict = None,
             method: str = None,
             allow_redirects: bool = True,
-            timeout: Union[float, int] = None):
+            timeout: Union[float, int] = None,
+            hooks: dict = None,
+    ):
 
         url, basic_auth_header = extract_basic_auth(escape_url(sanitize_url(url)))
 
@@ -91,7 +93,7 @@ class Request:
         self.data = data
         self.timeout = timeout
         self.allow_redirects = allow_redirects
-
+        self.hooks = hooks or {}
         if basic_auth_header:
             self.headers['Authorization'] = basic_auth_header
 
@@ -152,7 +154,7 @@ class Request:
         return type(self)(
             url=self.url, data=self.data, headers=self.headers.copy(), timeout=self.timeout,
             proxies=self.proxies.copy(), method=self.__method,
-            allow_redirects=self.allow_redirects)
+            allow_redirects=self.allow_redirects, hooks=self.hooks.copy())
 
     @property
     def type(self):
@@ -315,7 +317,7 @@ class RequestHandler:
         self.ydl = ydl
         self.cookiejar = self.ydl.cookiejar
 
-    def make_sslcontext(self):
+    def make_sslcontext(self, callback=None):
         """
         Make a new SSLContext configured for this request handler.
         This assumes HTTP 1.1 is used.
@@ -376,6 +378,8 @@ class RequestHandler:
             if getattr(context, 'post_handshake_auth', None) is not None:
                 context.post_handshake_auth = True
 
+        if callback:
+            callback(context)
         return context
 
     def _check_scheme(self, request: Request):

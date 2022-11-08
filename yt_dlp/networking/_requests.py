@@ -245,7 +245,7 @@ class RequestsRH(RequestHandler):
 
     def __init__(self, ydl):
         super().__init__(ydl)
-        self._session = None
+        self._session_store = {}
         if self.ydl.params.get('debug_printtraffic'):
             # Setting this globally is not ideal, but is easier than hacking with urllib3.
             # It could technically be problematic for scripts embedding yt-dlp.
@@ -262,20 +262,18 @@ class RequestsRH(RequestHandler):
         # this is expected if we are using --no-check-certificate
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-    @property
-    def session(self):
-        if self._session is None:
-            self._session = self._create_session()
-        return self._session
+    def get_session(self, hooks):
+        return self._session_store.setdefault(
+            frozenset([hooks.get('ssl_context')]), self._create_session(ssl_callback=hooks.get('ssl_context')))
 
     def close(self):
-        if self._session:
-            self.session.close()
+        for session in self._session_store.values():
+            session.close()
 
-    def _create_session(self):
+    def _create_session(self, ssl_callback=None):
         session = YDLRequestsSession()
         _http_adapter = YDLRequestsHTTPAdapter(
-            ssl_context=self.make_sslcontext(),
+            ssl_context=self.make_sslcontext(ssl_callback),
             source_address=self.ydl.params.get('source_address'),
             max_retries=urllib3.util.retry.Retry(False))
         session.adapters.clear()
@@ -301,7 +299,7 @@ class RequestsRH(RequestHandler):
         max_redirects_exceeded = False
 
         try:
-            res = self.session.request(
+            res = self.get_session(request.hooks).request(
                 method=request.method,
                 url=request.url,
                 data=request.data,

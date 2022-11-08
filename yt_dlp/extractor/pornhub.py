@@ -3,11 +3,13 @@ import itertools
 import math
 import operator
 import re
+import ssl
 import urllib.request
 
 from .common import InfoExtractor
 from .openload import PhantomJSwrapper
 from ..compat import compat_HTTPError, compat_str
+from ..networking import Request
 from ..utils import (
     NO_DEFAULT,
     ExtractorError,
@@ -266,6 +268,9 @@ class PornHubIE(PornHubBaseIE):
         host = mobj.group('host') or 'pornhub.com'
         video_id = mobj.group('id')
 
+        def ssl_context_hook(ssl_context: ssl.SSLContext):
+            ssl_context.set_ciphers('DEFAULT')
+
         self._login(host)
 
         self._set_cookie(host, 'age_verified', '1')
@@ -273,11 +278,10 @@ class PornHubIE(PornHubBaseIE):
         def dl_webpage(platform):
             self._set_cookie(host, 'platform', platform)
             return self._download_webpage(
-                'https://www.%s/view_video.php?viewkey=%s' % (host, video_id),
+                Request('https://www.%s/view_video.php?viewkey=%s' % (host, video_id), hooks={'ssl_context': ssl_context_hook}),
                 video_id, 'Downloading %s webpage' % platform)
 
         webpage = dl_webpage('pc')
-
         error_msg = self._html_search_regex(
             (r'(?s)<div[^>]+class=(["\'])(?:(?!\1).)*\b(?:removed|userMessageSection)\b(?:(?!\1).)*\1[^>]*>(?P<error>.+?)</div>',
              r'(?s)<section[^>]+class=["\']noVideo["\'][^>]*>(?P<error>.+?)</section>'),
