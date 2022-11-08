@@ -1,7 +1,9 @@
 import base64
+import random
 import urllib.parse
 
 from .common import InfoExtractor
+from ..networking import Request
 from ..utils import (
     ExtractorError,
     float_or_none,
@@ -63,8 +65,18 @@ class CrunchyrollBaseIE(InfoExtractor):
             else:
                 grant_type, key = 'client_id', 'anonClientId'
 
+            def headers_hook(headers: dict):
+                # shuffle headers
+                print(headers)
+                keys = list(headers.keys())
+                random.shuffle(keys)
+                new_headers = {}
+                for k in keys:
+                    new_headers[k] = headers.pop(k)
+                headers.update(new_headers)
+                print(headers)
             initial_state, app_config = self._get_embedded_json(self._download_webpage(
-                f'https://www.crunchyroll.com/{lang}', None, note='Retrieving main page'), None)
+                Request(f'https://www.crunchyroll.com/{lang}', hooks={'headers': headers_hook}), None, note='Retrieving main page'), None)
             api_domain = app_config['cxApiParams']['apiDomain'].replace('beta.crunchyroll.com', 'www.crunchyroll.com')
 
             auth_response = self._download_json(
