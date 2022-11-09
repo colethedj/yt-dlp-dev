@@ -28,7 +28,7 @@ from .common import Response, RequestHandler, Features
 from .utils import (
     get_redirect_method,
     select_proxy,
-    make_socks_proxy_opts,
+    make_socks_proxy_opts, inject_header_http_conn, generate_header_hook_header, register_header_hook,
 )
 from ..dependencies import brotli
 from ..socks import (
@@ -108,27 +108,7 @@ def _create_http_connection(ydl_handler, http_class, is_https, *args, **kwargs):
             hc._create_connection = _create_connection
         hc.source_address = (source_address, 0)
 
-    def putheader(self, header, *values):
-        self._current_headers[header] = values
-
-    def endheaders(self, *args, **kwargs):
-        hook_id = self._current_headers.pop('Ytdl-Hook', None)
-        if hook_id:
-            hook_id = hook_id[0]
-        hook = header_hooks.get(hook_id)
-        if hook:
-            hook(self._current_headers)
-        for header, values in self._current_headers.items():
-            for value in values:
-                self.putheader_old(header, value)
-        self._current_headers = {}
-        self.endheaders_old(*args, **kwargs)
-
-    hc._current_headers = {}
-    hc.putheader_old = hc.putheader
-    hc.endheaders_old = hc.endheaders
-    hc.putheader = functools.partial(putheader, hc)
-    hc.endheaders = functools.partial(endheaders, hc)
+    inject_header_http_conn(hc, header_hooks)
     return hc
 
 
@@ -501,13 +481,11 @@ class UrllibRH(RequestHandler):
             url=request.url, data=request.data, headers=dict(request.headers), method=request.method)
 
         headers_hook = request.hooks.get('headers')
-        hook_id = str(uuid.uuid4())
-        if headers_hook is not None:
-            header_hooks[hook_id] = headers_hook
-            urllib_req.add_header('Ytdl-hook', hook_id)
+        header_hook_id = register_header_hook(header_hooks, headers_hook)
+        if header_hook_id is not None:
+            urllib_req.headers.update(generate_header_hook_header(header_hook_id))
         try:
             res = self.get_opener(request).open(urllib_req, timeout=request.timeout)
-            header_hooks.pop(hook_id, None)
         except urllib.error.HTTPError as e:
             if isinstance(e.fp, (http.client.HTTPResponse, urllib.response.addinfourl)):
                 raise HTTPError(UrllibResponseAdapter(e.fp), redirect_loop='redirect error' in str(e))
@@ -525,5 +503,8 @@ class UrllibRH(RequestHandler):
         except Exception as e:
             handle_response_read_exceptions(e)
             raise
+
+        finally:
+            header_hooks.pop(header_hook_id, None)
 
         return UrllibResponseAdapter(res)

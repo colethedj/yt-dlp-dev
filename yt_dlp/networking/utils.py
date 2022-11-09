@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import contextlib
 import functools
+import http.client
 import random
 import ssl
 import sys
 import urllib.parse
 import urllib.request
+import uuid
 
 from .exceptions import UnsupportedRequest
 from ..dependencies import certifi
@@ -173,3 +175,51 @@ def handle_request_errors(func):
                 e.handler = self
             raise
     return wrapper
+
+
+def inject_header_http_conn(hc: http.client.HTTPConnection, hooks_dict):
+    """
+    Injects final header hook handling into http.client.HTTPConnection-like object.
+    hooks_dict is assumed to be a shared dictionary that stores hook_id:hook_func
+    """
+
+    def putheader(self, header, *values):
+        self._header_buffer[header] = values
+
+    def endheaders(self, *args, **kwargs):
+        hook_ids = self._header_buffer.pop('Ytdl-Header-Hook-Id', None)
+        if hook_ids:
+            hook_ids = hook_ids[0].split(',')
+        for hook_id in hook_ids:
+            hook = hooks_dict.get(hook_id)
+            if hook:
+                hook(self._header_buffer)
+        for header, values in self._header_buffer.items():
+            for value in values:
+                self.putheader_real(header, value)
+        self._header_buffer.clear()
+        return self.endheaders_real(*args, **kwargs)
+
+    hc._header_buffer = {}
+    hc.putheader_real = hc.putheader
+    hc.endheaders_real = hc.endheaders
+    hc.putheader = functools.partial(putheader, hc)
+    hc.endheaders = functools.partial(endheaders, hc)
+
+    return hc
+
+
+def register_header_hook(hooks_dict, hook_func):
+    """
+    Registers a hook function that will be called when a request is made.
+    The hook function will be passed a dict of headers that will be sent.
+    """
+    if hook_func is None:
+        return
+    hook_id = str(uuid.uuid4())
+    hooks_dict[hook_id] = hook_func
+    return hook_id
+
+
+def generate_header_hook_header(*hook_ids):
+    return {'Ytdl-Header-Hook-Id': ','.join(hook_ids)}
