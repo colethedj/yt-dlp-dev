@@ -3,7 +3,6 @@ import http.client
 import logging
 import re
 import socket
-import ssl
 import sys
 
 from ..dependencies import (
@@ -20,7 +19,6 @@ if urllib3 is None:
 
 import urllib3.connection
 import urllib3.exceptions
-from urllib3.util.ssl_ import create_urllib3_context
 
 import requests.utils
 import requests.adapters
@@ -36,7 +34,6 @@ from ..socks import (
     ProxyError as SocksProxyError
 )
 from .utils import (
-    ssl_load_certs,
     make_socks_proxy_opts,
     select_proxy,
     get_redirect_method,

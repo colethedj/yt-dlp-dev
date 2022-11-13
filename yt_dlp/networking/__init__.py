@@ -5,7 +5,6 @@ from typing import Union
 
 import warnings
 
-from .exceptions import UnsupportedRequest
 from ._urllib import UrllibRH
 from .common import (
     HEADRequest,
