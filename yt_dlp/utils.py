@@ -55,7 +55,8 @@ from .compat import (
     compat_os_name,
     compat_shlex_quote,
 )
-from .dependencies import certifi, websockets, xattr
+from .compat.utils import *  # noqa: F401, F403
+from .dependencies import websockets, xattr
 
 
 # This is not clearly defined otherwise
@@ -1378,9 +1379,10 @@ def system_identifier():
     with contextlib.suppress(OSError):  # We may not have access to the executable
         libc_ver = platform.libc_ver()
 
-    return 'Python %s (%s %s) - %s (%s%s)' % (
+    return 'Python %s (%s %s %s) - %s (%s%s)' % (
         platform.python_version(),
         python_implementation,
+        platform.machine(),
         platform.architecture()[0],
         platform.platform(),
         ssl.OPENSSL_VERSION,
@@ -2052,9 +2054,7 @@ def check_executable(exe, args=[]):
     return exe
 
 
-def _get_exe_version_output(exe, args, *, to_screen=None):
-    if to_screen:
-        to_screen(f'Checking exe version: {shell_quote([exe] + args)}')
+def _get_exe_version_output(exe, args):
     try:
         # STDIN should be redirected too. On UNIX-like systems, ffmpeg triggers
         # SIGTTOU if yt-dlp is run in the background.
@@ -2306,10 +2306,10 @@ class PlaylistEntries:
             self.is_exhausted = True
 
         requested_entries = info_dict.get('requested_entries')
-        self.is_incomplete = bool(requested_entries)
+        self.is_incomplete = requested_entries is not None
         if self.is_incomplete:
             assert self.is_exhausted
-            self._entries = [self.MissingEntry] * max(requested_entries)
+            self._entries = [self.MissingEntry] * max(requested_entries or [0])
             for i, entry in zip(requested_entries, entries):
                 self._entries[i - 1] = entry
         elif isinstance(entries, (list, PagedList, LazyList)):
@@ -2378,7 +2378,7 @@ class PlaylistEntries:
                     if not self.is_incomplete:
                         raise self.IndexError()
                 if entry is self.MissingEntry:
-                    raise EntryNotInPlaylist(f'Entry {i} cannot be found')
+                    raise EntryNotInPlaylist(f'Entry {i + 1} cannot be found')
                 return entry
         else:
             def get_entry(i):
@@ -5158,14 +5158,23 @@ def cached_method(f):
 
 
 class classproperty:
-    """property access for class methods"""
+    """property access for class methods with optional caching"""
+    def __new__(cls, func=None, *args, **kwargs):
+        if not func:
+            return functools.partial(cls, *args, **kwargs)
+        return super().__new__(cls)
 
-    def __init__(self, func):
+    def __init__(self, func, *, cache=False):
         functools.update_wrapper(self, func)
         self.func = func
+        self._cache = {} if cache else None
 
     def __get__(self, _, cls):
-        return self.func(cls)
+        if self._cache is None:
+            return self.func(cls)
+        elif cls not in self._cache:
+            self._cache[cls] = self.func(cls)
+        return self._cache[cls]
 
 
 class Namespace(types.SimpleNamespace):
@@ -5324,180 +5333,3 @@ def orderedSet_from_options(options, alias_dict, *, use_regex=False, start=None)
             requested.extend(current)
 
     return orderedSet(requested)
-
-
-# Deprecated
-has_certifi = bool(certifi)
-has_websockets = bool(websockets)
-
-
-# TODO: compat (moved to networking.utils)
-def _ssl_load_windows_store_certs(*args, **kwargs):
-    from .networking.utils import _ssl_load_windows_store_certs
-    return _ssl_load_windows_store_certs(*args, **kwargs)
-
-
-# TODO: remove
-def make_HTTPS_handler(params, **kwargs):
-    opts_check_certificate = not params.get('nocheckcertificate')
-    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-    context.check_hostname = opts_check_certificate
-    if params.get('legacyserverconnect'):
-        context.options |= 4  # SSL_OP_LEGACY_SERVER_CONNECT
-        # Allow use of weaker ciphers in Python 3.10+. See https://bugs.python.org/issue43998
-        context.set_ciphers('DEFAULT')
-
-    context.verify_mode = ssl.CERT_REQUIRED if opts_check_certificate else ssl.CERT_NONE
-    if opts_check_certificate:
-        from .networking.utils import ssl_load_certs
-        ssl_load_certs(context, params)
-
-    client_certfile = params.get('client_certificate')
-    if client_certfile:
-        try:
-            context.load_cert_chain(
-                client_certfile, keyfile=params.get('client_certificate_key'),
-                password=params.get('client_certificate_password'))
-        except ssl.SSLError:
-            raise YoutubeDLError('Unable to load client certificate')
-
-    # Some servers may reject requests if ALPN extension is not sent. See:
-    # https://github.com/python/cpython/issues/85140
-    # https://github.com/yt-dlp/yt-dlp/issues/3878
-    with contextlib.suppress(NotImplementedError):
-        context.set_alpn_protocols(['http/1.1'])
-
-    return YoutubeDLHTTPSHandler(params, context=context, **kwargs)
-
-
-# TODO: REMOVE
-class PerRequestProxyHandler(urllib.request.ProxyHandler):
-    def __init__(self, proxies=None):
-        # Set default handlers
-        for type in ('http', 'https'):
-            setattr(self, '%s_open' % type,
-                    lambda r, proxy='__noproxy__', type=type, meth=self.proxy_open:
-                        meth(r, proxy, type))
-        urllib.request.ProxyHandler.__init__(self, proxies)
-
-    def proxy_open(self, req, proxy, type):
-        req_proxy = req.headers.get('Ytdl-request-proxy')
-        if req_proxy is not None:
-            proxy = req_proxy
-            del req.headers['Ytdl-request-proxy']
-
-        if proxy == '__noproxy__':
-            return None  # No Proxy
-        if urllib.parse.urlparse(proxy).scheme.lower() in ('socks', 'socks4', 'socks4a', 'socks5'):
-            req.add_header('Ytdl-socks-proxy', proxy)
-            # yt-dlp's http/https handlers do wrapping the socket with socks
-            return None
-        return urllib.request.ProxyHandler.proxy_open(
-            self, req, proxy, type)
-
-
-# TODO: compat (moved to networking.utils)
-def random_user_agent():
-    from .networking.utils import random_user_agent as r
-    return r()
-
-
-# TODO: compat (moved to networking.utils)
-SUPPORTED_ENCODINGS = []
-
-# TODO: compat (moved to networking.utils)
-std_headers = {}
-
-
-# TODO: compat (moved to networking._urllib)
-def sanitized_Request(*args, **kwargs):
-    from .networking._urllib import sanitized_Request
-    return sanitized_Request(*args, *kwargs)
-
-
-# TODO: compat (moved to networking._urllib)
-def _create_http_connection(*args, **kwargs):
-    from .networking._urllib import _create_http_connection as c
-    return c(*args, **kwargs)
-
-
-# TODO: compat (moved to networking._urllib)
-def YoutubeDLHandler(*args, **kwargs):
-    from .networking._urllib import YoutubeDLHandler as y
-    return y(*args, **kwargs)
-
-
-# TODO: compat (moved to networking._urllib)
-def make_socks_conn_class(base_class, socks_proxy):
-    from .networking._urllib import make_socks_conn_class
-    return make_socks_conn_class(base_class, socks_proxy)
-
-
-# TODO: compat (moved to networking._urllib)
-def YoutubeDLHTTPSHandler(*args, **kwargs):
-    from .networking._urllib import YoutubeDLHTTPSHandler
-    return YoutubeDLHTTPSHandler(*args, *kwargs)
-
-
-# TODO: compat (moved to networking._urllib)
-def YoutubeDLCookieProcessor(*args, **kwargs):
-    from .networking._urllib import YoutubeDLCookieProcessor
-    return YoutubeDLCookieProcessor(*args, **kwargs)
-
-
-# TODO: compat (moved to networking._urllib)
-def YoutubeDLRedirectHandler(*args, **kwargs):
-    from .networking._urllib import YDLRedirectHandler
-    return YDLRedirectHandler(*args, **kwargs)
-
-
-# TODO: compat (moved to networking._urllib)
-def HEADRequest(*args, **kwargs):
-    from .networking._urllib import HEADRequest
-    return HEADRequest(*args, **kwargs)
-
-
-# TODO: compat (moved to networking._urllib)
-def PUTRequest(*args, **kwargs):
-    from .networking._urllib import PUTRequest
-    return PUTRequest(*args, **kwargs)
-
-
-# TODO: compat (moved to networking._urllib)
-def update_Request(*args, **kwargs):
-    from .networking._urllib import update_Request
-    return update_Request(*args, **kwargs)
-
-
-def YoutubeDLCookieJar(*args, **kwargs):
-    from .cookies import YoutubeDLCookieJar
-    return YoutubeDLCookieJar(*args, **kwargs)
-
-
-# TODO: don't think we actually need this
-def register_socks_protocols():
-    # "Register" SOCKS protocols
-    # In Python < 2.6.5, urlsplit() suffers from bug https://bugs.python.org/issue7904
-    # URLs with protocols not in urlparse.uses_netloc are not handled correctly
-    for scheme in ('socks', 'socks4', 'socks4a', 'socks5'):
-        if scheme not in urllib.parse.uses_netloc:
-            urllib.parse.uses_netloc.append(scheme)
-
-
-# TODO: remove
-def request_to_url(req):
-    if isinstance(req, urllib.request.Request):
-        return req.get_full_url()
-    else:
-        return req
-
-
-# TODO: remove, deprecated
-def handle_youtubedl_headers(headers):
-    filtered_headers = headers
-
-    if 'Youtubedl-no-compression' in filtered_headers:
-        filtered_headers = {k: v for k, v in filtered_headers.items() if k.lower() != 'accept-encoding'}
-        del filtered_headers['Youtubedl-no-compression']
-
-    return filtered_headers

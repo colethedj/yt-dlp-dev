@@ -34,12 +34,8 @@ from ..socks import (
     sockssocket,
     ProxyError as SocksProxyError,
 )
-from ..utils import (
-    escape_url,
-    extract_basic_auth,
-    sanitize_url,
-    update_url_query,
-)
+from ..utils import escape_url, update_url_query
+
 from .exceptions import (
     TransportError,
     HTTPError,
@@ -323,6 +319,27 @@ class YDLNoRedirectHandler(urllib.request.BaseHandler):
     http_error_301 = http_error_303 = http_error_307 = http_error_308 = http_error_302
 
 
+class YDLProxyHandler(urllib.request.BaseHandler):
+    handler_order = 100
+
+    def __init__(self, proxies=None):
+        self.proxies = proxies
+        # Set default handlers
+        for type in ('http', 'https', 'ftp'):
+            setattr(self, '%s_open' % type, lambda r, meth=self.proxy_open: meth(r))
+
+    def proxy_open(self, req):
+        proxy = select_proxy(req.get_full_url(), self.proxies)
+        if proxy is None:
+            return
+        if urllib.parse.urlparse(proxy).scheme.lower() in ('socks', 'socks4', 'socks4a', 'socks5'):
+            req.add_header('Ytdl-socks-proxy', proxy)
+            # yt-dlp's http/https handlers do wrapping the socket with socks
+            return None
+        return urllib.request.ProxyHandler.proxy_open(
+            self, req, proxy, None)
+
+
 class PUTRequest(urllib.request.Request):
     def get_method(self):
         return 'PUT'
@@ -353,27 +370,6 @@ def update_Request(req, url=None, data=None, headers=None, query=None):
     return new_req
 
 
-class YDLProxyHandler(urllib.request.BaseHandler):
-    handler_order = 100
-
-    def __init__(self, proxies=None):
-        self.proxies = proxies
-        # Set default handlers
-        for type in ('http', 'https', 'ftp'):
-            setattr(self, '%s_open' % type, lambda r, meth=self.proxy_open: meth(r))
-
-    def proxy_open(self, req):
-        proxy = select_proxy(req.get_full_url(), self.proxies)
-        if proxy is None:
-            return
-        if urllib.parse.urlparse(proxy).scheme.lower() in ('socks', 'socks4', 'socks4a', 'socks5'):
-            req.add_header('Ytdl-socks-proxy', proxy)
-            # yt-dlp's http/https handlers do wrapping the socket with socks
-            return None
-        return urllib.request.ProxyHandler.proxy_open(
-            self, req, proxy, None)
-
-
 class UrllibResponseAdapter(Response):
     """
     HTTP Response adapter class for urllib addinfourl and http.client.HTTPResponse
@@ -394,14 +390,6 @@ class UrllibResponseAdapter(Response):
         except Exception as e:
             handle_response_read_exceptions(e)
             raise e
-
-
-def sanitized_Request(url, *args, **kwargs):
-    url, auth_header = extract_basic_auth(escape_url(sanitize_url(url)))
-    if auth_header is not None:
-        headers = args[1] if len(args) >= 2 else kwargs.setdefault('headers', {})
-        headers['Authorization'] = auth_header
-    return urllib.request.Request(url, *args, **kwargs)
 
 
 def handle_sslerror(e: ssl.SSLError):
