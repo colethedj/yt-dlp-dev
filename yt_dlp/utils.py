@@ -5313,21 +5313,47 @@ def get_executable_path():
     return os.path.dirname(os.path.abspath(_get_variant_and_executable_path()[1]))
 
 
+def get_config_dirs(package_name):
+    locations = []
+    # .config
+    xdg_config_home = os.getenv('XDG_CONFIG_HOME') or compat_expanduser('~/.config')
+    config_dir = os.path.join(xdg_config_home, package_name)
+    if os.path.isdir(config_dir):
+        locations.append(config_dir)
+
+    # appdata
+    appdata_dir = os.getenv('appdata')
+    if appdata_dir:
+        config_dir = os.path.join(appdata_dir, package_name)
+        if os.path.isdir(config_dir):
+            locations.append(config_dir)
+
+    # home
+    user_config_directory = os.path.join(compat_expanduser('~'), '.%s' % package_name)
+    if os.path.isdir(user_config_directory):
+        locations.append(user_config_directory)
+
+    return locations
+
+
 def load_plugins(name, suffix, namespace):
     classes = {}
-    with contextlib.suppress(FileNotFoundError):
-        plugins_spec = importlib.util.spec_from_file_location(
-            name, os.path.join(get_executable_path(), 'ytdlp_plugins', name, '__init__.py'))
-        plugins = importlib.util.module_from_spec(plugins_spec)
-        sys.modules[plugins_spec.name] = plugins
-        plugins_spec.loader.exec_module(plugins)
-        for name in dir(plugins):
-            if name in namespace:
-                continue
-            if not name.endswith(suffix):
-                continue
-            klass = getattr(plugins, name)
-            classes[name] = namespace[name] = klass
+    plugin_locations = [os.path.join(l, 'plugins', 'ytdlp_plugins', name, '__init__.py') for l in get_config_dirs('yt-dlp')]
+    plugin_locations.append(os.path.join(get_executable_path(), 'ytdlp_plugins', name, '__init__.py'))
+    for plugin_location in plugin_locations:
+        with contextlib.suppress(FileNotFoundError):
+            plugins_spec = importlib.util.spec_from_file_location(
+                name, plugin_location)
+            plugins = importlib.util.module_from_spec(plugins_spec)
+            sys.modules[plugins_spec.name] = plugins
+            plugins_spec.loader.exec_module(plugins)
+            for name in dir(plugins):
+                if name in namespace:
+                    continue
+                if not name.endswith(suffix):
+                    continue
+                klass = getattr(plugins, name)
+                classes[name] = namespace[name] = klass
     return classes
 
 
