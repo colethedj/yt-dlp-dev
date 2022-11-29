@@ -1,14 +1,17 @@
 import contextlib
+import functools
 import http.client
 import logging
 import re
 import socket
 import sys
+import warnings
 
 from ..dependencies import (
     urllib3,
     requests,
-    brotli
+    brotli,
+    OptionalDependencyWarning
 )
 
 if requests is None:
@@ -39,6 +42,8 @@ from .utils import (
     get_redirect_method,
 )
 
+from ..utils import int_or_none
+
 from .exceptions import (
     IncompleteRead,
     TransportError,
@@ -58,7 +63,8 @@ SUPPORTED_ENCODINGS = [
 urllib3_version = urllib3.__version__.split('.')
 if len(urllib3_version) == 2:
     urllib3_version.append('0')
-urllib3_version = tuple(map(int, urllib3_version[:3]))
+
+urllib3_version = tuple(map(functools.partial(int_or_none, default=0), urllib3_version[:3]))
 
 # urllib3 does not support brotlicffi on versions < 1.26.9 [1], and brotli on < 1.25.1 [2]
 # 1: https://github.com/urllib3/urllib3/blob/1.26.x/CHANGES.rst#1269-2022-03-16
@@ -69,7 +75,7 @@ if (brotli is not None
     SUPPORTED_ENCODINGS.append('br')
 
 # requests < 2.24.0 always uses pyopenssl by default if installed.
-# We do not support pyopenssl's ssl context, so we need to revert this.
+# We do not support pyopenssl's SSLContext, so we need to revert this.
 # See: https://github.com/psf/requests/pull/5443
 if requests.__build__ < 0x022400:
     with contextlib.suppress(ImportError, AttributeError):
@@ -115,8 +121,12 @@ if urllib3_version >= (1, 25, 4):
     # 1.25.4 <= urllib3 < 1.25.8 uses findall:
     # https://github.com/urllib3/urllib3/commit/5b047b645f5f93900d5e2fc31230848c25eb1f5f
     import urllib3.util.url
-    urllib3.util.url.PERCENT_RE = _Urllib3PercentREOverride(urllib3.util.url.PERCENT_RE)
-
+    if hasattr(urllib3.util.url, 'PERCENT_RE'):
+        urllib3.util.url.PERCENT_RE = _Urllib3PercentREOverride(urllib3.util.url.PERCENT_RE)
+    elif hasattr(urllib3.util.url, '_PERCENT_RE'):  # urllib3 >= 2.0.0
+        urllib3.util.url._PERCENT_RE = _Urllib3PercentREOverride(urllib3.util.url._PERCENT_RE)
+    else:
+        warnings.warn('Failed to patch PERCENT_RE in urllib3 (does the attribute exist?)', OptionalDependencyWarning)
 elif (1, 25, 0) <= urllib3_version < (1, 25, 4):
     # 1.25.0 <= urllib3 < 1.25.4 uses rfc3986 normalizers package:
     # https://github.com/urllib3/urllib3/commit/a74c9cfbaed9f811e7563cfc3dce894928e0221a
@@ -131,7 +141,7 @@ however this is an issue because we set check_hostname to True in our SSLContext
 
 Monkey-patching IS_SECURETRANSPORT forces ssl_wrap_context to pass server_hostname regardless.
 
-This has been fixed in urllib3 2.0, which is still in development.
+This has been fixed in urllib3 2.0.
 See: https://github.com/urllib3/urllib3/issues/517
 """
 

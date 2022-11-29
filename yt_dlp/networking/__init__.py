@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import traceback
 import urllib.request
 from typing import Union
 
@@ -33,7 +34,8 @@ try:
     from ._requests import RequestsRH
 except Exception as e:
     if not isinstance(e, ImportError):
-        warnings.warn(f'Failed to import RequestsRH: {e}{bug_reports_message()}', OptionalDependencyWarning)
+        warnings.warn(
+            f'Failed to import RequestsRH: {type(e).__name__}: {e}{bug_reports_message()}\n{traceback.format_exc()}', OptionalDependencyWarning)
         RequestsRH = None
     else:
         RequestsRH = make_unavailable_rh('requests', str(e))
