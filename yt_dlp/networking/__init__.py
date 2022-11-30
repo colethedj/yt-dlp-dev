@@ -15,6 +15,7 @@ from .common import (
 from .exceptions import RequestError, UnsupportedRequest
 from ..utils import CaseInsensitiveDict, bug_reports_message
 
+
 from ..dependencies import OptionalDependencyWarning
 
 
@@ -38,9 +39,9 @@ except Exception as e:
     else:
         RequestsRH = make_unavailable_rh('requests', str(e))
 
-_BASE_HANDLER_PREFERENCE = ['Urllib']
+_BASE_HANDLER_PRIORITY = ['Urllib']
 if RequestsRH is not None:
-    _BASE_HANDLER_PREFERENCE.insert(0, RequestsRH.rh_key())
+    _BASE_HANDLER_PRIORITY.insert(0, RequestsRH.rh_key())
 
 
 class RequestDirector:
@@ -98,7 +99,7 @@ class RequestDirector:
 
         assert isinstance(request, Request)
 
-        request.preferred_handlers.append(_BASE_HANDLER_PREFERENCE)
+        request.preferred_handlers.extend(_BASE_HANDLER_PRIORITY)
 
         unexpected_errors = []
         unsupported_errors = []
