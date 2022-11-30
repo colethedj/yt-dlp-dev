@@ -79,6 +79,23 @@ class TestRequest(unittest.TestCase):
             req.data = {'test': 'test'}
         self.assertNotEqual(req.data, {'test': 'test'})
 
+    def test_extract_basic_auth(self):
+        auth_header = lambda url: Request(url).get_header('Authorization')
+        self.assertFalse(auth_header('http://foo.bar'))
+        self.assertFalse(auth_header('http://:foo.bar'))
+        self.assertEqual(auth_header('http://@foo.bar'), 'Basic Og==')
+        self.assertEqual(auth_header('http://:pass@foo.bar'), 'Basic OnBhc3M=')
+        self.assertEqual(auth_header('http://user:@foo.bar'), 'Basic dXNlcjo=')
+        self.assertEqual(auth_header('http://user:pass@foo.bar'), 'Basic dXNlcjpwYXNz')
+
+    def test_handler_preference(self):
+        req = Request('http://example.com')
+        self.assertEqual(req.preferred_handlers, [])
+        req = Request('http://example.com', preferred_handlers=['Urllib'])
+        self.assertEqual(req.preferred_handlers, ['Urllib'])
+        req.preferred_handlers.append('Test')
+        self.assertEqual(req.preferred_handlers, ['Urllib', 'Test'])
+
 
 if __name__ == '__main__':
     unittest.main()
