@@ -40,7 +40,7 @@ except Exception as e:
 
 _BASE_HANDLER_PREFERENCE = ['Urllib']
 if RequestsRH is not None:
-    _BASE_HANDLER_PREFERENCE.append(RequestsRH.rh_key())
+    _BASE_HANDLER_PREFERENCE.insert(0, RequestsRH.rh_key())
 
 
 class RequestDirector:

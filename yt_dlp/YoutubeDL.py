@@ -3857,7 +3857,7 @@ class YoutubeDL:
     def build_request_director(self, handlers):
         director = RequestDirector(self)
         for klass in handlers:
-            if klass is None or (klass.NAME == 'requests' and 'no-requests' in self.params.get('compat_opts', [])):
+            if klass is None or (klass.rh_key() == 'Requests' and 'no-requests' in self.params.get('compat_opts', [])):
                 continue
             director.add_handler(klass(self))
         return director

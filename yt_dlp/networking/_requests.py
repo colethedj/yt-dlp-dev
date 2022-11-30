@@ -248,7 +248,7 @@ class RequestsRH(RequestHandler):
     if urllib3_version >= (1, 26, 0):
         SUPPORTED_PROXY_SCHEMES.append('https')
     SUPPORTED_FEATURES = [Features.NO_PROXY, Features.ALL_PROXY]
-    NAME = 'requests'
+    RH_NAME = 'requests'
 
     def __init__(self, ydl):
         super().__init__(ydl)
