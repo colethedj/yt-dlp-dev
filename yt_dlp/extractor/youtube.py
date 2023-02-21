@@ -6254,8 +6254,15 @@ class YoutubeTabIE(YoutubeTabBaseInfoExtractor):
                     # Example: https://www.youtube.com/channel/UCEH7P7kyJIkS_gJf93VYbmg/live
                     raise UserNotLive(video_id=item_id)
                 elif self._has_tab(tabs, original_tab_id):
-                    raise ExtractorError(
-                        f'This channel has a {original_tab_id} tab but YouTube redirected to the {selected_tab_id} tab (likely an issue on YouTube\'s side)', expected=True)
+                    # Attempt to work around the issue by using the UCID channel url
+                    channel_id = traverse_obj(self._extract_metadata_from_tabs(item_id, data), 'channel_id')
+                    msg = f'The {original_tab_id} tab exists but YouTube redirected to the {selected_tab_id} tab (likely an issue with YouTube).'
+                    if not channel_id:
+                        raise ExtractorError(msg, expected=True)
+                    new_url = ''.join(('https://www.youtube.com/channel/', channel_id, f'/{original_tab_id}', post))
+                    self.report_warning(f'{msg} Attempting to workaround by using the UCID channel URL: {new_url}.')
+                    extra_tabs.append(new_url)
+                    url, data = f'{pre}{post}', None
                 elif selected_tab_name:
                     raise ExtractorError(f'This channel does not have a {original_tab_id} tab', expected=True)
 
