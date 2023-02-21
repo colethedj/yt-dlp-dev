@@ -6253,6 +6253,9 @@ class YoutubeTabIE(YoutubeTabBaseInfoExtractor):
                     # Except in the case the channel has an actual live tab
                     # Example: https://www.youtube.com/channel/UCEH7P7kyJIkS_gJf93VYbmg/live
                     raise UserNotLive(video_id=item_id)
+                elif self._has_tab(tabs, original_tab_id):
+                    raise ExtractorError(
+                        f'This channel has a {original_tab_id} tab but YouTube redirected to the {selected_tab_id} tab (likely an issue on YouTube\'s side)', expected=True)
                 elif selected_tab_name:
                     raise ExtractorError(f'This channel does not have a {original_tab_id} tab', expected=True)
 
