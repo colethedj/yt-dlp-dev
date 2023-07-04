@@ -29,7 +29,7 @@ from .exceptions import (
     ProxyError,
     RequestError,
     SSLError,
-    TransportError,
+    TransportError, CertificateVerifyError,
 )
 from .utils import (
     InstanceStoreMixin,
@@ -139,16 +139,18 @@ if urllib3_version < (2, 0, 0):
         pass
 
 
-class RequestsHTTPResponseAdapter(Response):
+class RequestsResponse(Response):
     def __init__(self, res: requests.models.Response):
         super().__init__(
-            raw=res, headers=res.headers, url=res.url,
+            raw=res.raw, headers=res.headers, url=res.url,
             status=res.status_code, reason=res.reason)
+
+        self.requests_response = res
 
     def read(self, amt: int = None):
         try:
             # Interact with urllib3 response directly.
-            return self.raw.raw.read(amt, decode_content=True)
+            return self.raw.read(amt, decode_content=True)
         # raw is an urllib3 HTTPResponse, so exceptions will be from urllib3
         except urllib3.exceptions.HTTPError as e:
             handle_urllib3_read_exceptions(e)
@@ -233,8 +235,8 @@ class RequestsRH(RequestHandler, InstanceStoreMixin):
     _SUPPORTED_ENCODINGS = tuple(SUPPORTED_ENCODINGS)
     _SUPPORTED_PROXY_SCHEMES = ('http', 'socks4', 'socks4a', 'socks5', 'socks5h')
     if urllib3_version >= (1, 26, 0):
-        _SUPPORTED_PROXY_SCHEMES = (_SUPPORTED_PROXY_SCHEMES, 'https')
-    SUPPORTED_FEATURES = (Features.NO_PROXY, Features.ALL_PROXY)
+        _SUPPORTED_PROXY_SCHEMES = (*_SUPPORTED_PROXY_SCHEMES, 'https')
+    _SUPPORTED_FEATURES = (Features.NO_PROXY, Features.ALL_PROXY)
     RH_NAME = 'requests'
 
     def __init__(self, *args, **kwargs):
@@ -262,7 +264,7 @@ class RequestsRH(RequestHandler, InstanceStoreMixin):
     def _create_instance(self, cookiejar):
         session = YDLRequestsSession()
         _http_adapter = YDLRequestsHTTPAdapter(
-            ssl_context=self.make_sslcontext(),
+            ssl_context=self._make_sslcontext(),
             source_address=self.source_address,
             max_retries=urllib3.util.retry.Retry(False))
         session.adapters.clear()
@@ -300,6 +302,8 @@ class RequestsRH(RequestHandler, InstanceStoreMixin):
             max_redirects_exceeded = True
             res = e.response
         except requests.exceptions.SSLError as e:
+            if 'CERTIFICATE_VERIFY_FAILED' in str(e):
+                raise CertificateVerifyError(cause=e) from e
             raise SSLError(cause=e) from e
         except requests.exceptions.ProxyError as e:
             raise ProxyError(cause=e) from e
@@ -315,7 +319,7 @@ class RequestsRH(RequestHandler, InstanceStoreMixin):
         except requests.exceptions.RequestException as e:
             raise RequestError(cause=e) from e
 
-        requests_res = RequestsHTTPResponseAdapter(res)
+        requests_res = RequestsResponse(res)
 
         if not 200 <= requests_res.status < 300:
             raise HTTPError(requests_res, redirect_loop=max_redirects_exceeded)
