@@ -3985,7 +3985,8 @@ class YoutubeDL:
         clean_headers(headers)
         clean_proxies(proxies, headers)
 
-        for handler in handlers:
+        # TODO: implement handler preference system. temporary workaround to prioritize requests
+        for handler in reversed(handlers):
             if handler.rh_key() == 'Requests' and 'no-requests' in self.params.get('compat_opts', []):
                 continue
             params = {
@@ -4008,6 +4009,14 @@ class YoutubeDL:
                 )
             if handler.rh_key() == 'Urllib':
                 params['enable_file_urls'] = bool(self.params.get('enable_file_urls'))
+
+            if handler.rh_key() == 'Requests':
+                # Increase the requests connection pool size if the number of concurrent downloads is high.
+                # Otherwise, since the pool size is limited to 10 by default, requests will not reuse some connections.
+                n = self.params.get('concurrent_fragment_downloads', 1)
+                if n > handler.DEFAULT_POOLSIZE:
+                    params['conn_pool_maxsize'] = n
+
             director.add_handler(handler(**params))
 
         return director

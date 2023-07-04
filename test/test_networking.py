@@ -325,6 +325,23 @@ def handler(request):
     return functools.partial(handler, logger=FakeLogger)
 
 
+# TODO
+@pytest.fixture
+def handler_nopartial(request):
+    rh_key = request.param
+    if inspect.isclass(rh_key) and issubclass(rh_key, RequestHandler):
+        handler = rh_key
+    else:
+        try:
+            handler = _get_request_handler(rh_key)
+        except KeyError:
+            handler = None
+        if handler is None:
+            pytest.skip(f'{rh_key} request handler is not available')
+
+    return handler
+
+
 class TestHTTPRequestHandler(TestRequestHandlerBase):
     @pytest.mark.parametrize('handler', ['Urllib', 'Requests'], indirect=True)
     def test_verify_cert(self, handler):
@@ -1182,6 +1199,15 @@ class TestYoutubeDLNetworking:
         with FakeYDL({'enable_file_urls': True}) as ydl:
             rh = self.build_handler(ydl, UrllibRH)
             assert rh.enable_file_urls is True
+
+    @pytest.mark.parametrize('handler_nopartial', ['Requests'], indirect=True)
+    def test_requests_concurrent_conns(self, handler_nopartial):
+        with FakeYDL({'concurrent_fragment_downloads': 4}) as ydl:
+            rh = self.build_handler(ydl, handler_nopartial)
+            assert rh.conn_pool_maxsize == 10
+        with FakeYDL({'concurrent_fragment_downloads': 11}) as ydl:
+            rh = self.build_handler(ydl, handler_nopartial)
+            assert rh.conn_pool_maxsize == 11
 
 
 class TestRequest:

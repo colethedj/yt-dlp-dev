@@ -4,7 +4,6 @@ import http.client
 import logging
 import re
 import socket
-import sys
 import warnings
 
 from ..dependencies import OptionalDependencyWarning, brotli, requests, urllib3
@@ -174,7 +173,7 @@ def handle_urllib3_read_exceptions(e):
         raise SSLError(cause=e) from e
 
 
-class YDLRequestsHTTPAdapter(requests.adapters.HTTPAdapter):
+class RequestsHTTPAdapter(requests.adapters.HTTPAdapter):
     def __init__(self, ssl_context=None, proxy_ssl_context=None, source_address=None, **kwargs):
         self._pm_args = {}
         if ssl_context:
@@ -198,7 +197,7 @@ class YDLRequestsHTTPAdapter(requests.adapters.HTTPAdapter):
         pass
 
 
-class YDLRequestsSession(requests.sessions.Session):
+class RequestsSession(requests.sessions.Session):
     """
     Ensure unified redirect method handling with our urllib redirect handler.
     """
@@ -221,7 +220,7 @@ class YDLRequestsSession(requests.sessions.Session):
         return super().rebuild_auth(prepared_request, response)
 
 
-class YDLUrllib3LoggingFilter(logging.Filter):
+class Urllib3LoggingFilter(logging.Filter):
 
     def filter(self, record):
         # Ignore HTTP request messages since HTTPConnection prints those
@@ -230,7 +229,32 @@ class YDLUrllib3LoggingFilter(logging.Filter):
         return True
 
 
+class Urllib3LoggingHandler(logging.Handler):
+    """Redirect urllib3 logs to our logger"""
+    def __init__(self, logger, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._logger = logger
+
+    def emit(self, record):
+        try:
+            msg = self.format(record)
+            if record.levelno >= logging.ERROR:
+                self._logger.report_error(msg)
+            else:
+                self._logger.to_stdout(msg)
+
+        except Exception:
+            self.handleError(record)
+
+
 class RequestsRH(RequestHandler, InstanceStoreMixin):
+
+    """Requests RequestHandler
+    Params:
+
+    @param max_pools: Max number of urllib3 connection pools to cache.
+    @param pool_maxsize: Max number of connections per pool.
+    """
     _SUPPORTED_URL_SCHEMES = ('http', 'https')
     _SUPPORTED_ENCODINGS = tuple(SUPPORTED_ENCODINGS)
     _SUPPORTED_PROXY_SCHEMES = ('http', 'socks4', 'socks4a', 'socks5', 'socks5h')
@@ -239,21 +263,27 @@ class RequestsRH(RequestHandler, InstanceStoreMixin):
     _SUPPORTED_FEATURES = (Features.NO_PROXY, Features.ALL_PROXY)
     RH_NAME = 'requests'
 
-    def __init__(self, *args, **kwargs):
+    DEFAULT_POOLSIZE = requests.adapters.DEFAULT_POOLSIZE
+
+    def __init__(self, max_conn_pools: int = None, conn_pool_maxsize: int = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.max_conn_pools = max_conn_pools or self.DEFAULT_POOLSIZE  # default from urllib3
+        self.conn_pool_maxsize = conn_pool_maxsize or self.DEFAULT_POOLSIZE
+
+        # Forward urllib3 debug messages to our logger
+        logger = logging.getLogger('urllib3')
+        handler = Urllib3LoggingHandler(logger=self._logger)
+        handler.setFormatter(logging.Formatter('requests: %(message)s'))
+        handler.addFilter(Urllib3LoggingFilter())
+        logger.addHandler(handler)
+        logger.setLevel(logging.WARNING)
+
         if self.verbose:
             # Setting this globally is not ideal, but is easier than hacking with urllib3.
             # It could technically be problematic for scripts embedding yt-dlp.
             # However, it is unlikely debug traffic is used in that context in a way this will cause problems.
             HTTPConnection.debuglevel = 1
-
-            # Print urllib3 debug messages
-            # TODO: Redirect to our logger
-            logger = logging.getLogger('urllib3')
-            handler = logging.StreamHandler(stream=sys.stdout)
-            handler.setFormatter(logging.Formatter("%(message)s"))
-            handler.addFilter(YDLUrllib3LoggingFilter())
-            logger.addHandler(handler)
             logger.setLevel(logging.DEBUG)
         # this is expected if we are using --no-check-certificate
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -262,11 +292,15 @@ class RequestsRH(RequestHandler, InstanceStoreMixin):
         self._clear_instances()
 
     def _create_instance(self, cookiejar):
-        session = YDLRequestsSession()
-        _http_adapter = YDLRequestsHTTPAdapter(
+        session = RequestsSession()
+        _http_adapter = RequestsHTTPAdapter(
             ssl_context=self._make_sslcontext(),
             source_address=self.source_address,
-            max_retries=urllib3.util.retry.Retry(False))
+            max_retries=urllib3.util.retry.Retry(False),
+            pool_maxsize=self.conn_pool_maxsize,
+            pool_connections=self.max_conn_pools,
+            pool_block=False,
+        )
         session.adapters.clear()
         session.headers = requests.models.CaseInsensitiveDict({'Connection': 'keep-alive'})
         session.mount('https://', _http_adapter)
