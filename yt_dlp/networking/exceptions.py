@@ -1,17 +1,22 @@
 from __future__ import annotations
 
-import http.client
 import typing
 import urllib.error
+import warnings
 
 from ..utils import YoutubeDLError
 
 if typing.TYPE_CHECKING:
-    from .common import Response
+    from .common import RequestHandler, Response
 
 
 class RequestError(YoutubeDLError):
-    def __init__(self, msg=None, cause=None, handler=None):
+    def __init__(
+        self,
+        msg: str = None,
+        cause: Exception | str | None = None,
+        handler: RequestHandler = None
+    ):
         self.handler = handler
         self.cause = cause
         if not msg and cause:
@@ -24,42 +29,189 @@ class UnsupportedRequest(RequestError):
     pass
 
 
+class NoSupportingHandlers(RequestError):
+    """raised when no handlers can support a request for various reasons"""
+
+    def __init__(self, unsupported_errors: list[UnsupportedRequest], unexpected_errors: list[Exception]):
+        self.unsupported_errors = unsupported_errors or []
+        self.unexpected_errors = unexpected_errors or []
+
+        # Print a quick summary of the errors
+        err_handler_map = {}
+        for err in unsupported_errors:
+            err_handler_map.setdefault(err.msg, []).append(err.handler.RH_NAME)
+
+        reason_str = ', '.join([f'{msg} ({", ".join(handlers)})' for msg, handlers in err_handler_map.items()])
+        if unexpected_errors:
+            reason_str = ' + '.join(filter(None, [reason_str, f'{len(unexpected_errors)} unexpected error(s)']))
+
+        err_str = 'Unable to handle request'
+        if reason_str:
+            err_str += f': {reason_str}'
+
+        super().__init__(msg=err_str)
+
+
 class TransportError(RequestError):
     """Network related errors"""
 
 
-# Backwards compat with urllib.error.HTTPError
-class HTTPError(urllib.error.HTTPError, RequestError):
+class HTTPError(RequestError):
     def __init__(self, response: Response, redirect_loop=False):
         self.response = response
-        msg = response.reason or ''
+        self.status = response.status
+        self.reason = response.reason
+        self.redirect_loop = redirect_loop
+        msg = f'HTTP Error {response.status}: {response.reason}'
         if redirect_loop:
             msg += ' (redirect loop detected)'
-        RequestError.__init__(self)
-        super().__init__(
-            url=response.url, code=response.code, msg=msg, hdrs=response.headers, fp=response)
+
+        super().__init__(msg=msg)
+
+    def close(self):
+        self.response.close()
+
+    def __repr__(self):
+        return f'<HTTPError {self.status}: {self.reason}>'
 
 
-# Backwards compat with http.client.IncompleteRead
-class IncompleteRead(TransportError, http.client.IncompleteRead):
-    def __init__(self, partial, cause=None, expected=None):
+class IncompleteRead(TransportError):
+    def __init__(self, partial, expected=None, **kwargs):
         self.partial = partial
         self.expected = expected
-        super().__init__(msg=repr(self), cause=cause)
-        http.client.IncompleteRead.__init__(self, partial=partial, expected=expected)
+        msg = f'{len(partial)} bytes read'
+        if expected is not None:
+            msg += f', {expected} more expected'
+
+        super().__init__(msg=msg, **kwargs)
+
+    def __repr__(self):
+        return f'<IncompleteRead: {self.msg}>'
 
 
 class SSLError(TransportError):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if 'UNSAFE_LEGACY_RENEGOTIATION_DISABLED' in str(self):
-            self.msg = 'UNSAFE_LEGACY_RENEGOTIATION_DISABLED: Try using --legacy-server-connect'
-        elif 'SSLV3_ALERT_HANDSHAKE_FAILURE' in str(self.msg):
-            self.msg = 'SSLV3_ALERT_HANDSHAKE_FAILURE: The server may not support the current cipher list. Try using --cipher-list DEFAULT'
+    pass
+
+
+class CertificateVerifyError(SSLError):
+    """Raised when certificate validated has failed"""
+    pass
 
 
 class ProxyError(TransportError):
     pass
+
+
+class _CompatHTTPError(urllib.error.HTTPError, HTTPError):
+    """
+    Provides backwards compatibility with urllib.error.HTTPError.
+    Do not use this class directly, use HTTPError instead.
+    """
+    def __init__(self, http_error: HTTPError):
+        super().__init__(
+            url=http_error.response.url,
+            code=http_error.status,
+            msg=http_error.msg,
+            hdrs=http_error.response.headers,
+            fp=http_error.response
+        )
+        self._closer.file = None  # Disable auto close
+        self._http_error = http_error
+        HTTPError.__init__(self, http_error.response, redirect_loop=http_error.redirect_loop)
+
+    @property
+    def status(self):
+        return self._http_error.status
+
+    @status.setter
+    def status(self, value):
+        return
+
+    @property
+    def reason(self):
+        return self._http_error.reason
+
+    @reason.setter
+    def reason(self, value):
+        return
+
+    @property
+    def headers(self):
+        warnings.warn('HTTPError.headers is deprecated, use HTTPError.response.headers instead', DeprecationWarning)
+        return self._http_error.response.headers
+
+    @headers.setter
+    def headers(self, value):
+        return
+
+    def info(self):
+        warnings.warn('HTTPError.info() is deprecated, use HTTPError.response.headers instead', DeprecationWarning)
+        return self.response.headers
+
+    def getcode(self):
+        warnings.warn('HTTPError.getcode is deprecated, use HTTPError.status instead', DeprecationWarning)
+        return self.status
+
+    def geturl(self):
+        warnings.warn('HTTPError.geturl is deprecated, use HTTPError.response.url instead', DeprecationWarning)
+        return self.response.url
+
+    @property
+    def code(self):
+        warnings.warn('HTTPError.code is deprecated, use HTTPError.status instead', DeprecationWarning)
+        return self.status
+
+    @code.setter
+    def code(self, value):
+        return
+
+    @property
+    def url(self):
+        warnings.warn('HTTPError.url is deprecated, use HTTPError.response.url instead', DeprecationWarning)
+        return self.response.url
+
+    @url.setter
+    def url(self, value):
+        return
+
+    @property
+    def hdrs(self):
+        warnings.warn('HTTPError.hdrs is deprecated, use HTTPError.response.headers instead', DeprecationWarning)
+        return self.response.headers
+
+    @hdrs.setter
+    def hdrs(self, value):
+        return
+
+    @property
+    def filename(self):
+        warnings.warn('HTTPError.filename is deprecated, use HTTPError.response.url instead', DeprecationWarning)
+        return self.response.url
+
+    @filename.setter
+    def filename(self, value):
+        return
+
+    def __getattr__(self, name):
+        # File operations are passed through the response.
+        # Warn for some commonly used ones
+        passthrough_warnings = {
+            'read': 'response.read()',
+            # technically possibly due to passthrough, but we should discourage this
+            'get_header': 'response.get_header()',
+            'readable': 'response.readable()',
+            'closed': 'response.closed',
+            'tell': 'response.tell()',
+        }
+        if name in passthrough_warnings:
+            warnings.warn(f'HTTPError.{name} is deprecated, use HTTPError.{passthrough_warnings[name]} instead', DeprecationWarning)
+        return super().__getattr__(name)
+
+    def __str__(self):
+        return str(self._http_error)
+
+    def __repr__(self):
+        return repr(self._http_error)
 
 
 network_exceptions = (HTTPError, TransportError)

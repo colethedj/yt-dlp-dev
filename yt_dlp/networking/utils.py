@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import contextlib
-import functools
 import random
 import ssl
 import sys
 import urllib.parse
 import urllib.request
+from typing import Any, Iterable
 
-from .exceptions import UnsupportedRequest
+from .exceptions import RequestError
 from ..dependencies import certifi
 from ..socks import ProxyType
 from ..utils import CaseInsensitiveDict, traverse_obj
@@ -67,8 +67,8 @@ std_headers = CaseInsensitiveDict({
 })
 
 
-def ssl_load_certs(context: ssl.SSLContext, params):
-    if certifi is not None and 'no-certifi' not in params.get('compat_opts', []):
+def ssl_load_certs(context: ssl.SSLContext, use_certifi=True):
+    if certifi and use_certifi:
         context.load_verify_locations(cafile=certifi.where())
     else:
         try:
@@ -101,10 +101,18 @@ def make_socks_proxy_opts(socks_proxy):
     url_components = urllib.parse.urlparse(socks_proxy)
     if url_components.scheme.lower() == 'socks5':
         socks_type = ProxyType.SOCKS5
-    elif url_components.scheme.lower() in ('socks', 'socks4'):
+        rdns = False
+    elif url_components.scheme.lower() == 'socks5h':
+        socks_type = ProxyType.SOCKS5
+        rdns = True
+    elif url_components.scheme.lower() == 'socks4':
         socks_type = ProxyType.SOCKS4
+        rdns = False
     elif url_components.scheme.lower() == 'socks4a':
         socks_type = ProxyType.SOCKS4A
+        rdns = True
+    else:
+        raise ValueError(f'Unknown SOCKS proxy version: {url_components.scheme.lower()}')
 
     def unquote_if_non_empty(s):
         if not s:
@@ -114,30 +122,29 @@ def make_socks_proxy_opts(socks_proxy):
         'proxytype': socks_type,
         'addr': url_components.hostname,
         'port': url_components.port or 1080,
-        'rdns': True,
+        'rdns': rdns,
         'username': unquote_if_non_empty(url_components.username),
         'password': unquote_if_non_empty(url_components.password),
     }
 
 
 def bypass_proxies(url, no_proxy):
-    # Should we bypass the proxies for this url going by no proxy?
+    # Should we bypass the proxies for this url going by no proxy or system settings?
     # This is a default configuration making use of urllib handling
     url_components = urllib.parse.urlparse(url)
     hostport = str(url_components.hostname) + (f':{url_components.port}' if url_components.port is not None else '')
-    if urllib.request.proxy_bypass_environment(hostport, {'no': no_proxy}):
-        return True
-    elif urllib.request.proxy_bypass(hostport):  # check system settings
-        return True
 
-    return False
+    if no_proxy is not None:
+        return urllib.request.proxy_bypass_environment(hostport, {'no': no_proxy})
+
+    return urllib.request.proxy_bypass(hostport)  # check system settings
 
 
-def select_proxy(url, proxies, no_proxies_func=bypass_proxies):
+def select_proxy(url, proxies):
     """Unified proxy selector for all backends"""
     url_components = urllib.parse.urlparse(url)
 
-    if 'no' in proxies and no_proxies_func and no_proxies_func(url, proxies['no']):
+    if bypass_proxies(url, proxies.get('no')):
         return
 
     priority = [
@@ -163,13 +170,94 @@ def get_redirect_method(method, status):
     return method
 
 
-def handle_request_errors(func):
-    @functools.wraps(func)
-    def wrapper(self, *args, **kwargs):
+def make_ssl_context(
+    verify=True,
+    client_certificate=None,
+    client_certificate_key=None,
+    client_certificate_password=None,
+    legacy_support=False,
+    use_certifi=True,
+):
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    context.check_hostname = verify
+    context.verify_mode = ssl.CERT_REQUIRED if verify else ssl.CERT_NONE
+
+    # Some servers may reject requests if ALPN extension is not sent. See:
+    # https://github.com/python/cpython/issues/85140
+    # https://github.com/yt-dlp/yt-dlp/issues/3878
+    with contextlib.suppress(NotImplementedError):
+        context.set_alpn_protocols(['http/1.1'])
+    if verify:
+        ssl_load_certs(context, use_certifi)
+
+    if legacy_support:
+        context.options |= 4  # SSL_OP_LEGACY_SERVER_CONNECT
+        context.set_ciphers('DEFAULT')  # compat
+
+    elif ssl.OPENSSL_VERSION_INFO >= (1, 1, 1) and not ssl.OPENSSL_VERSION.startswith('LibreSSL'):
+        # Use the default SSL ciphers and minimum TLS version settings from Python 3.10 [1].
+        # This is to ensure consistent behavior across Python versions and libraries, and help avoid fingerprinting
+        # in some situations [2][3].
+        # Python 3.10 only supports OpenSSL 1.1.1+ [4]. Because this change is likely
+        # untested on older versions, we only apply this to OpenSSL 1.1.1+ to be safe.
+        # LibreSSL is excluded until further investigation due to cipher support issues [5][6].
+        # 1. https://github.com/python/cpython/commit/e983252b516edb15d4338b0a47631b59ef1e2536
+        # 2. https://github.com/yt-dlp/yt-dlp/issues/4627
+        # 3. https://github.com/yt-dlp/yt-dlp/pull/5294
+        # 4. https://peps.python.org/pep-0644/
+        # 5. https://peps.python.org/pep-0644/#libressl-support
+        # 6. https://github.com/yt-dlp/yt-dlp/commit/5b9f253fa0aee996cf1ed30185d4b502e00609c4#commitcomment-89054368
+        context.set_ciphers(
+            '@SECLEVEL=2:ECDH+AESGCM:ECDH+CHACHA20:ECDH+AES:DHE+AES:!aNULL:!eNULL:!aDSS:!SHA1:!AESCCM')
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
+
+    if client_certificate:
         try:
-            return func(self, *args, **kwargs)
-        except UnsupportedRequest as e:
-            if e.handler is None:
-                e.handler = self
-            raise
-    return wrapper
+            context.load_cert_chain(
+                client_certificate, keyfile=client_certificate_key,
+                password=client_certificate_password)
+        except ssl.SSLError:
+            raise RequestError('Unable to load client certificate')
+
+        if getattr(context, 'post_handshake_auth', None) is not None:
+            context.post_handshake_auth = True
+    return context
+
+
+class InstanceStoreMixin:
+
+    __instances = None
+
+    def _create_instance(self, **kwargs) -> Any:
+        raise NotImplementedError
+
+    def _get_instance(self, **kwargs):
+        if self.__instances is None:
+            self.__instances = []
+
+        for key, instance in self.__instances:
+            if key == kwargs:
+                return instance
+
+        instance = self._create_instance(**kwargs)
+        self.__instances.append((kwargs, instance))
+        return instance
+
+    def _close_instance(self, instance):
+        if callable(getattr(instance, 'close', None)):
+            instance.close()
+
+    def _clear_instances(self):
+        if self.__instances is None:
+            return
+        for _, instance in self.__instances:
+            self._close_instance(instance)
+        self.__instances = None
+
+
+def add_accept_encoding_header(headers: CaseInsensitiveDict, supported_encodings: Iterable[str]):
+    if supported_encodings and 'Accept-Encoding' not in headers:
+        headers['Accept-Encoding'] = ', '.join(supported_encodings)
+
+    elif 'Accept-Encoding' not in headers:
+        headers['Accept-Encoding'] = 'identity'

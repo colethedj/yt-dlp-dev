@@ -2,7 +2,7 @@ import json
 import uuid
 
 from .common import InfoExtractor
-from ..compat import compat_HTTPError
+from ..networking.exceptions import HTTPError
 from ..utils import (
     determine_ext,
     ExtractorError,
@@ -39,7 +39,7 @@ class DPlayBaseIE(InfoExtractor):
         return f'Bearer {token}'
 
     def _process_errors(self, e, geo_countries):
-        info = self._parse_json(e.cause.read().decode('utf-8'), None)
+        info = self._parse_json(e.cause.response.read().decode('utf-8'), None)
         error = info['errors'][0]
         error_code = error.get('code')
         if error_code == 'access.denied.geoblocked':
@@ -65,6 +65,7 @@ class DPlayBaseIE(InfoExtractor):
         return streaming_list
 
     def _get_disco_api_info(self, url, display_id, disco_host, realm, country, domain=''):
+        country = self.get_param('geo_bypass_country') or country
         geo_countries = [country.upper()]
         self._initialize_geo_bypass({
             'countries': geo_countries,
@@ -86,7 +87,7 @@ class DPlayBaseIE(InfoExtractor):
                     'include': 'images,primaryChannel,show,tags'
                 })
         except ExtractorError as e:
-            if isinstance(e.cause, compat_HTTPError) and e.cause.code == 400:
+            if isinstance(e.cause, HTTPError) and e.cause.status == 400:
                 self._process_errors(e, geo_countries)
             raise
         video_id = video['data']['id']
@@ -98,7 +99,7 @@ class DPlayBaseIE(InfoExtractor):
             streaming = self._download_video_playback_info(
                 disco_base, video_id, headers)
         except ExtractorError as e:
-            if isinstance(e.cause, compat_HTTPError) and e.cause.code == 403:
+            if isinstance(e.cause, HTTPError) and e.cause.status == 403:
                 self._process_errors(e, geo_countries)
             raise
         for format_dict in streaming:
@@ -1001,3 +1002,39 @@ class DiscoveryPlusIndiaShowIE(DiscoveryPlusShowBaseIE):
     _SHOW_STR = 'show'
     _INDEX = 4
     _VIDEO_IE = DiscoveryPlusIndiaIE
+
+
+class GlobalCyclingNetworkPlusIE(DiscoveryPlusBaseIE):
+    _VALID_URL = r'https?://plus\.globalcyclingnetwork\.com/watch/(?P<id>\d+)'
+    _TESTS = [{
+        'url': 'https://plus.globalcyclingnetwork.com/watch/1397691',
+        'info_dict': {
+            'id': '1397691',
+            'ext': 'mp4',
+            'title': 'The Athertons: Mountain Biking\'s Fastest Family',
+            'description': 'md5:75a81937fcd8b989eec6083a709cd837',
+            'thumbnail': 'https://us1-prod-images.disco-api.com/2021/03/04/eb9e3026-4849-3001-8281-9356466f0557.png',
+            'series': 'gcn',
+            'creator': 'Gcn',
+            'upload_date': '20210309',
+            'timestamp': 1615248000,
+            'duration': 2531.0,
+            'tags': [],
+        },
+        'skip': 'Subscription required',
+        'params': {'skip_download': 'm3u8'},
+    }]
+
+    _PRODUCT = 'web'
+    _DISCO_API_PARAMS = {
+        'disco_host': 'disco-api-prod.globalcyclingnetwork.com',
+        'realm': 'gcn',
+        'country': 'us',
+    }
+
+    def _update_disco_api_headers(self, headers, disco_base, display_id, realm):
+        headers.update({
+            'x-disco-params': f'realm={realm}',
+            'x-disco-client': f'WEB:UNKNOWN:{self._PRODUCT}:27.3.2',
+            'Authorization': self._get_auth(disco_base, display_id, realm),
+        })

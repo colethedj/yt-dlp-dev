@@ -1,6 +1,7 @@
 import re
 
 from .common import InfoExtractor
+from ..networking.common import HEADRequest
 from ..utils import (
     clean_html,
     determine_ext,
@@ -8,7 +9,6 @@ from ..utils import (
     extract_attributes,
     get_element_by_class,
     get_element_html_by_id,
-    HEADRequest,
     parse_qs,
     unescapeHTML,
     unified_timestamp,
@@ -160,5 +160,5 @@ class MegaTVComEmbedIE(MegaTVComBaseIE):
         canonical_url = self._request_webpage(
             HEADRequest(canonical_url), video_id,
             note='Resolve canonical URL',
-            errnote='Could not resolve canonical URL').geturl()
+            errnote='Could not resolve canonical URL').url
         return self.url_result(canonical_url, MegaTVComIE.ie_key(), video_id)

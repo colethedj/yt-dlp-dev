@@ -9,6 +9,7 @@ import uuid
 
 from .fragment import FragmentFD
 from ..compat import functools
+from ..networking.common import Request
 from ..postprocessor.ffmpeg import EXT_TO_OUT_FORMATS, FFmpegPostProcessor
 from ..utils import (
     Popen,
@@ -24,7 +25,6 @@ from ..utils import (
     encodeFilename,
     find_available_port,
     remove_end,
-    sanitized_Request,
     traverse_obj,
 )
 
@@ -271,7 +271,7 @@ class Aria2cFD(ExternalFD):
         return super()._call_downloader(tmpfilename, info_dict)
 
     def _make_cmd(self, tmpfilename, info_dict):
-        cmd = [self.exe, '-c',
+        cmd = [self.exe, '-c', '--no-conf',
                '--console-log-level=warn', '--summary-interval=0', '--download-result=hide',
                '--http-accept-gzip=true', '--file-allocation=none', '-x16', '-j16', '-s16']
         if 'fragments' in info_dict:
@@ -333,13 +333,12 @@ class Aria2cFD(ExternalFD):
             'method': method,
             'params': [f'token:{rpc_secret}', *params],
         }).encode('utf-8')
-        request = sanitized_Request(
+        request = Request(
             f'http://localhost:{rpc_port}/jsonrpc',
             data=d, headers={
                 'Content-Type': 'application/json',
                 'Content-Length': f'{len(d)}',
-                'Ytdl-request-proxy': '__noproxy__',
-            })
+            }, proxies={'all': None})
         with self.ydl.urlopen(request) as r:
             resp = json.load(r)
         assert resp.get('id') == sanitycheck, 'Something went wrong with RPC server'

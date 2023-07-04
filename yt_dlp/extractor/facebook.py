@@ -8,6 +8,8 @@ from ..compat import (
     compat_str,
     compat_urllib_parse_unquote,
 )
+from ..networking.exceptions import network_exceptions
+from ..networking.common import Request
 from ..utils import (
     ExtractorError,
     clean_html,
@@ -22,7 +24,6 @@ from ..utils import (
     parse_count,
     parse_qs,
     qualities,
-    sanitized_Request,
     traverse_obj,
     try_get,
     url_or_none,
@@ -30,7 +31,6 @@ from ..utils import (
     urljoin,
     variadic,
 )
-from ..networking.exceptions import network_exceptions
 
 
 class FacebookIE(InfoExtractor):
@@ -319,7 +319,7 @@ class FacebookIE(InfoExtractor):
     }
 
     def _perform_login(self, username, password):
-        login_page_req = sanitized_Request(self._LOGIN_URL)
+        login_page_req = Request(self._LOGIN_URL)
         self._set_cookie('facebook.com', 'locale', 'en_US')
         login_page = self._download_webpage(login_page_req, None,
                                             note='Downloading login page',
@@ -340,8 +340,8 @@ class FacebookIE(InfoExtractor):
             'timezone': '-60',
             'trynum': '1',
         }
-        request = sanitized_Request(self._LOGIN_URL, urlencode_postdata(login_form))
-        request.add_header('Content-Type', 'application/x-www-form-urlencoded')
+        request = Request(self._LOGIN_URL, urlencode_postdata(login_form))
+        request.headers['Content-Type'] = 'application/x-www-form-urlencoded'
         try:
             login_results = self._download_webpage(request, None,
                                                    note='Logging in', errnote='unable to fetch login page')
@@ -367,8 +367,8 @@ class FacebookIE(InfoExtractor):
                 'h': h,
                 'name_action_selected': 'dont_save',
             }
-            check_req = sanitized_Request(self._CHECKPOINT_URL, urlencode_postdata(check_form))
-            check_req.add_header('Content-Type', 'application/x-www-form-urlencoded')
+            check_req = Request(self._CHECKPOINT_URL, urlencode_postdata(check_form))
+            check_req.headers['Content-Type'] = 'application/x-www-form-urlencoded'
             check_response = self._download_webpage(check_req, None,
                                                     note='Confirming login')
             if re.search(r'id="checkpointSubmitButton"', check_response) is not None:
@@ -390,7 +390,10 @@ class FacebookIE(InfoExtractor):
                 k == 'media' and str(v['id']) == video_id and v['__typename'] == 'Video')), expected_type=dict)
             title = get_first(media, ('title', 'text'))
             description = get_first(media, ('creation_story', 'comet_sections', 'message', 'story', 'message', 'text'))
-            uploader_data = get_first(media, 'owner') or get_first(post, ('node', 'actors', ...)) or {}
+            uploader_data = (
+                get_first(media, ('owner', {dict}))
+                or get_first(post, (..., 'video', lambda k, v: k == 'owner' and v['name']))
+                or get_first(post, ('node', 'actors', ..., {dict})) or {})
 
             page_title = title or self._html_search_regex((
                 r'<h2\s+[^>]*class="uiHeaderTitle"[^>]*>(?P<content>[^<]*)</h2>',
@@ -415,16 +418,17 @@ class FacebookIE(InfoExtractor):
             # in https://www.facebook.com/yaroslav.korpan/videos/1417995061575415/
             if thumbnail and not re.search(r'\.(?:jpg|png)', thumbnail):
                 thumbnail = None
-            view_count = parse_count(self._search_regex(
-                r'\bviewCount\s*:\s*["\']([\d,.]+)', webpage, 'view count',
-                default=None))
             info_dict = {
                 'description': description,
                 'uploader': uploader,
                 'uploader_id': uploader_data.get('id'),
                 'timestamp': timestamp,
                 'thumbnail': thumbnail,
-                'view_count': view_count,
+                'view_count': parse_count(self._search_regex(
+                    (r'\bviewCount\s*:\s*["\']([\d,.]+)', r'video_view_count["\']\s*:\s*(\d+)',),
+                    webpage, 'view count', default=None)),
+                'concurrent_view_count': get_first(post, (
+                    ('video', (..., ..., 'attachments', ..., 'media')), 'liveViewerCount', {int_or_none})),
             }
 
             info_json_ld = self._search_json_ld(webpage, video_id, default={})

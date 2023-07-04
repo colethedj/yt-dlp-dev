@@ -3,13 +3,12 @@ import io
 import itertools
 import struct
 import time
-import urllib.error
 import urllib.parse
 
 from .fragment import FragmentFD
 from ..compat import compat_etree_fromstring
-from ..utils import fix_xml_ampersands, xpath_text
 from ..networking.exceptions import HTTPError
+from ..utils import fix_xml_ampersands, xpath_text
 
 
 class DataTruncatedError(Exception):
@@ -313,7 +312,7 @@ class F4mFD(FragmentFD):
         self.to_screen('[%s] Downloading f4m manifest' % self.FD_NAME)
 
         urlh = self.ydl.urlopen(self._prepare_url(info_dict, man_url))
-        man_url = urlh.geturl()
+        man_url = urlh.url
         # Some manifests may be malformed, e.g. prosiebensat1 generated manifests
         # (see https://github.com/ytdl-org/youtube-dl/issues/6215#issuecomment-121704244
         # and https://github.com/ytdl-org/youtube-dl/issues/7823)
@@ -409,7 +408,7 @@ class F4mFD(FragmentFD):
                         self._append_fragment(ctx, box_data)
                         break
             except HTTPError as err:
-                if live and (err.code == 404 or err.code == 410):
+                if live and (err.status == 404 or err.status == 410):
                     # We didn't keep up with the live window. Continue
                     # with the next available fragment.
                     msg = 'Fragment %d unavailable' % frag_i

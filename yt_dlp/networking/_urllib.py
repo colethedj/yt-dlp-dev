@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import errno
 import functools
 import gzip
 import http.client
@@ -12,38 +11,37 @@ import urllib.parse
 import urllib.request
 import urllib.response
 import zlib
-from typing import Union
 from urllib.request import (
+    DataHandler,
+    FileHandler,
     FTPHandler,
+    HTTPCookieProcessor,
     HTTPDefaultErrorHandler,
     HTTPErrorProcessor,
     UnknownHandler,
-    HTTPCookieProcessor,
-    DataHandler,
-    FileHandler
 )
 
-from .common import Response, RequestHandler, Features
-from .utils import (
-    get_redirect_method,
-    select_proxy,
-    make_socks_proxy_opts,
-)
-from ..dependencies import brotli
-from ..socks import (
-    sockssocket,
-    ProxyError as SocksProxyError,
-)
-from ..utils import escape_url, update_url_query
-
+from .common import Features, RequestHandler, Response
 from .exceptions import (
-    TransportError,
+    CertificateVerifyError,
     HTTPError,
     IncompleteRead,
-    SSLError,
     ProxyError,
-    UnsupportedRequest
+    RequestError,
+    SSLError,
+    TransportError,
 )
+from .utils import (
+    InstanceStoreMixin,
+    add_accept_encoding_header,
+    get_redirect_method,
+    make_socks_proxy_opts,
+    select_proxy,
+)
+from ..dependencies import brotli
+from ..socks import ProxyError as SocksProxyError
+from ..socks import sockssocket
+from ..utils import escape_url, update_url_query
 
 CONTENT_DECODE_ERRORS = [zlib.error, OSError]
 
@@ -56,9 +54,8 @@ if brotli:
     CONTENT_DECODE_ERRORS.append(brotli.error)
 
 
-def _create_http_connection(ydl_handler, http_class, is_https, *args, **kwargs):
+def _create_http_connection(http_class, source_address, *args, **kwargs):
     hc = http_class(*args, **kwargs)
-    source_address = ydl_handler._params.get('source_address')
 
     if source_address is not None:
         # This is to workaround _create_connection() from socket where it will try all
@@ -103,12 +100,12 @@ def _create_http_connection(ydl_handler, http_class, is_https, *args, **kwargs):
     return hc
 
 
-class YoutubeDLHandler(urllib.request.AbstractHTTPHandler):
+class HTTPHandler(urllib.request.AbstractHTTPHandler):
     """Handler for HTTP requests and responses.
 
     This class, when installed with an OpenerDirector, automatically adds
-    the standard headers to every HTTP request and handles gzipped and
-    deflated responses from web servers.
+    the standard headers to every HTTP request and handles gzipped, deflated and
+    brotli responses from web servers.
 
     Part of this code was copied from:
 
@@ -118,11 +115,10 @@ class YoutubeDLHandler(urllib.request.AbstractHTTPHandler):
     public domain.
     """
 
-    def __init__(self, params, context=None, check_hostname=None, *args, **kwargs):
+    def __init__(self, context=None, source_address=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._params = params
+        self._source_address = source_address
         self._context = context
-        self._check_hostname = check_hostname
 
     @staticmethod
     def _make_conn_class(base, req):
@@ -134,13 +130,15 @@ class YoutubeDLHandler(urllib.request.AbstractHTTPHandler):
 
     def http_open(self, req):
         conn_class = self._make_conn_class(http.client.HTTPConnection, req)
-        return self.do_open(functools.partial(_create_http_connection, self, conn_class, False), req)
+        return self.do_open(functools.partial(
+            _create_http_connection, conn_class, self._source_address,), req)
 
     def https_open(self, req):
         conn_class = self._make_conn_class(http.client.HTTPSConnection, req)
         return self.do_open(
-            functools.partial(_create_http_connection, self, conn_class, True),
-            req, check_hostname=self._check_hostname, context=self._context)
+            functools.partial(
+                _create_http_connection, conn_class, self._source_address),
+            req, context=self._context)
 
     @staticmethod
     def deflate(data):
@@ -156,6 +154,23 @@ class YoutubeDLHandler(urllib.request.AbstractHTTPHandler):
         if not data:
             return data
         return brotli.decompress(data)
+
+    @staticmethod
+    def gz(data):
+        gz = gzip.GzipFile(fileobj=io.BytesIO(data), mode='rb')
+        try:
+            return gz.read()
+        except OSError as original_oserror:
+            # There may be junk add the end of the file
+            # See http://stackoverflow.com/q/4928560/35070 for details
+            for i in range(1, 1024):
+                try:
+                    gz = gzip.GzipFile(fileobj=io.BytesIO(data[:-i]), mode='rb')
+                    return gz.read()
+                except OSError:
+                    continue
+            else:
+                raise original_oserror
 
     def http_request(self, req):
         # According to RFC 3986, URLs can not contain non-ASCII characters, however this is not
@@ -177,35 +192,21 @@ class YoutubeDLHandler(urllib.request.AbstractHTTPHandler):
 
     def http_response(self, req, resp):
         old_resp = resp
-        # gzip
-        if resp.headers.get('Content-encoding', '') == 'gzip':
-            content = resp.read()
-            gz = gzip.GzipFile(fileobj=io.BytesIO(content), mode='rb')
-            try:
-                uncompressed = io.BytesIO(gz.read())
-            except OSError as original_ioerror:
-                # There may be junk add the end of the file
-                # See http://stackoverflow.com/q/4928560/35070 for details
-                for i in range(1, 1024):
-                    try:
-                        gz = gzip.GzipFile(fileobj=io.BytesIO(content[:-i]), mode='rb')
-                        uncompressed = io.BytesIO(gz.read())
-                    except OSError:
-                        continue
-                    break
-                else:
-                    raise original_ioerror
-            resp = urllib.response.addinfourl(uncompressed, old_resp.headers, old_resp.url, old_resp.code)
-            resp.msg = old_resp.msg
-        # deflate
-        if resp.headers.get('Content-encoding', '') == 'deflate':
-            gz = io.BytesIO(self.deflate(resp.read()))
-            resp = urllib.response.addinfourl(gz, old_resp.headers, old_resp.url, old_resp.code)
-            resp.msg = old_resp.msg
-        # brotli
-        if resp.headers.get('Content-encoding', '') == 'br' and brotli is not None:
-            resp = urllib.response.addinfourl(
-                io.BytesIO(self.brotli(resp.read())), old_resp.headers, old_resp.url, old_resp.code)
+
+        # Content-Encoding header lists the encodings in order that they were applied [1].
+        # To decompress, we simply do the reverse.
+        # [1]: https://datatracker.ietf.org/doc/html/rfc9110#name-content-encoding
+        decoded_response = None
+        for encoding in (e.strip() for e in reversed(resp.headers.get('Content-encoding', '').split(','))):
+            if encoding == 'gzip':
+                decoded_response = self.gz(decoded_response or resp.read())
+            elif encoding == 'deflate':
+                decoded_response = self.deflate(decoded_response or resp.read())
+            elif encoding == 'br' and brotli:
+                decoded_response = self.brotli(decoded_response or resp.read())
+
+        if decoded_response is not None:
+            resp = urllib.request.addinfourl(io.BytesIO(decoded_response), old_resp.headers, old_resp.url, old_resp.code)
             resp.msg = old_resp.msg
         # Percent-encode redirect URL of Location HTTP header to satisfy RFC 3986 (see
         # https://github.com/ytdl-org/youtube-dl/issues/6457).
@@ -239,84 +240,47 @@ def make_socks_conn_class(base_class, socks_proxy):
             self.sock.connect((self.host, self.port))
 
             if isinstance(self, http.client.HTTPSConnection):
-                if hasattr(self, '_context'):  # Python > 2.6
-                    self.sock = self._context.wrap_socket(
-                        self.sock, server_hostname=self.host)
-                else:
-                    self.sock = ssl.wrap_socket(self.sock)
+                self.sock = self._context.wrap_socket(self.sock, server_hostname=self.host)
 
     return SocksConnection
 
 
-class YDLRedirectHandler(urllib.request.HTTPRedirectHandler):
+class RedirectHandler(urllib.request.HTTPRedirectHandler):
     """YoutubeDL redirect handler
 
     The code is based on HTTPRedirectHandler implementation from CPython [1].
 
-    This redirect handler has the following improvements:
-     - introduces support for HTTP response status code
-       308 Permanent Redirect [2] used by some sites [3]
-     - improved redirect method handling
-     - only strip payload/headers when method changes from POST to GET
-
+    This redirect handler fixes and improves the logic to better align with RFC7261
+     and what browsers tend to do [2][3]
 
     1. https://github.com/python/cpython/blob/master/Lib/urllib/request.py
-    2. https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/308
-    3. https://github.com/ytdl-org/youtube-dl/issues/28768
+    2. https://datatracker.ietf.org/doc/html/rfc7231
+    3. https://github.com/python/cpython/issues/91306
     """
 
     http_error_301 = http_error_303 = http_error_307 = http_error_308 = urllib.request.HTTPRedirectHandler.http_error_302
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
-        """Return a Request or None in response to a redirect.
-
-        This is called by the http_error_30x methods when a
-        redirection response is received.  If a redirection should
-        take place, return a new Request to allow http_error_30x to
-        perform the redirect.  Otherwise, raise HTTPError if no-one
-        else should try to handle this url.  Return None if you can't
-        but another Handler might.
-        """
-        m = req.get_method()
         if code not in (301, 302, 303, 307, 308):
             raise urllib.error.HTTPError(req.full_url, code, msg, headers, fp)
 
-        # Strictly (according to RFC 2616), 301 or 302 in response to
-        # a POST MUST NOT cause a redirection without confirmation
-        # from the user (of urllib.request, in this case).  In practice,
-        # essentially all clients do redirect in this case, so we do
-        # the same.
-
-        # Be conciliant with URIs containing a space.  This is mainly
-        # redundant with the more complete encoding done in http_error_302(),
-        # but it is kept for compatibility with other callers.
-        newurl = newurl.replace(' ', '%20')
-
         new_data = req.data
         remove_headers = []
-        new_method = get_redirect_method(m, code)
 
+        new_method = get_redirect_method(req.get_method(), code)
         # only remove payload if method changed (e.g. POST to GET)
-        if new_method != m:
+        if new_method != req.get_method():
             new_data = None
             remove_headers.extend(['Content-Length', 'Content-Type'])
 
-        new_headers = {k: v for k, v in req.headers.items() if k.lower() not in remove_headers}
+        new_headers = {k: v for k, v in req.headers.items() if k.title() not in remove_headers}
 
         return urllib.request.Request(
             newurl, headers=new_headers, origin_req_host=req.origin_req_host,
             unverifiable=True, method=new_method, data=new_data)
 
 
-class YDLNoRedirectHandler(urllib.request.BaseHandler):
-
-    def http_error_302(self, req, fp, code, msg, headers):
-        return fp
-
-    http_error_301 = http_error_303 = http_error_307 = http_error_308 = http_error_302
-
-
-class YDLProxyHandler(urllib.request.BaseHandler):
+class ProxyHandler(urllib.request.BaseHandler):
     handler_order = 100
 
     def __init__(self, proxies=None):
@@ -329,7 +293,7 @@ class YDLProxyHandler(urllib.request.BaseHandler):
         proxy = select_proxy(req.get_full_url(), self.proxies)
         if proxy is None:
             return
-        if urllib.parse.urlparse(proxy).scheme.lower() in ('socks', 'socks4', 'socks4a', 'socks5'):
+        if urllib.parse.urlparse(proxy).scheme.lower() in ('socks4', 'socks4a', 'socks5', 'socks5h'):
             req.add_header('Ytdl-socks-proxy', proxy)
             # yt-dlp's http/https handlers do wrapping the socket with socks
             return None
@@ -372,10 +336,10 @@ class UrllibResponseAdapter(Response):
     HTTP Response adapter class for urllib addinfourl and http.client.HTTPResponse
     """
 
-    def __init__(self, res: Union[http.client.HTTPResponse, urllib.response.addinfourl]):
+    def __init__(self, res: http.client.HTTPResponse | urllib.response.addinfourl):
         # addinfourl: In Python 3.9+, .status was introduced and .getcode() was deprecated [1]
         # HTTPResponse: .getcode() was deprecated, .status always existed [2]
-        # 1. https://docs.python.org/3/library/urllib.request.html#urllib.response.addinfourl.getstatus
+        # 1. https://docs.python.org/3/library/urllib.request.html#urllib.response.addinfourl.getcode
         # 2. https://docs.python.org/3.10/library/http.client.html#http.client.HTTPResponse.status
         super().__init__(
             raw=res, headers=res.headers, url=res.url,
@@ -392,9 +356,9 @@ class UrllibResponseAdapter(Response):
 def handle_sslerror(e: ssl.SSLError):
     if not isinstance(e, ssl.SSLError):
         return
-    if e.errno == errno.ETIMEDOUT:
-        raise TransportError(cause=e) from e
-    raise SSLError(msg=str(e.reason or e), cause=e) from e
+    if isinstance(e, ssl.SSLCertVerificationError):
+        raise CertificateVerifyError(cause=e) from e
+    raise SSLError(cause=e) from e
 
 
 def handle_response_read_exceptions(e):
@@ -407,33 +371,35 @@ def handle_response_read_exceptions(e):
         raise TransportError(cause=e) from e
 
 
-class UrllibRH(RequestHandler):
-    SUPPORTED_SCHEMES = ['http', 'https', 'data', 'ftp', 'file']
-    SUPPORTED_ENCODINGS = SUPPORTED_ENCODINGS
-    SUPPORTED_PROXY_SCHEMES = ['http', 'socks4', 'socks4a', 'socks5', 'socks4a', 'socks']
-    SUPPORTED_FEATURES = [Features.NO_PROXY, Features.ALL_PROXY]
+class UrllibRH(RequestHandler, InstanceStoreMixin):
+    _SUPPORTED_URL_SCHEMES = ('http', 'https', 'data', 'ftp')
+    _SUPPORTED_PROXY_SCHEMES = ('http', 'socks4', 'socks4a', 'socks5', 'socks5h')
+    _SUPPORTED_FEATURES = (Features.NO_PROXY, Features.ALL_PROXY)
     RH_NAME = 'urllib'
 
-    def __init__(self, ydl):
-        super().__init__(ydl)
-        self._openers = {}
+    def __init__(self, *, enable_file_urls: bool = False, **kwargs):
+        super().__init__(**kwargs)
+        self.enable_file_urls = enable_file_urls
+        if self.enable_file_urls:
+            self._SUPPORTED_URL_SCHEMES = (*self._SUPPORTED_URL_SCHEMES, 'file')
 
-    def _create_opener(self, proxies=None, allow_redirects=True):
+    def _create_instance(self, proxies, cookiejar):
         opener = urllib.request.OpenerDirector()
         handlers = [
-            YDLProxyHandler(proxies),
-            YoutubeDLHandler(
-                self.ydl.params, debuglevel=int(bool(self.ydl.params.get('debug_printtraffic'))),
-                context=self.make_sslcontext()),
-            HTTPCookieProcessor(self.cookiejar),
+            ProxyHandler(proxies),
+            HTTPHandler(
+                debuglevel=int(bool(self.verbose)),
+                context=self._make_sslcontext(),
+                source_address=self.source_address),
+            HTTPCookieProcessor(cookiejar),
             DataHandler(),
             UnknownHandler(),
             HTTPDefaultErrorHandler(),
             FTPHandler(),
             HTTPErrorProcessor(),
-            YDLRedirectHandler() if allow_redirects else YDLNoRedirectHandler()]
+            RedirectHandler()]
 
-        if self.ydl.params.get('enable_file_urls'):
+        if self.enable_file_urls:
             handlers.append(FileHandler())
 
         for handler in handlers:
@@ -445,27 +411,27 @@ class UrllibRH(RequestHandler):
         opener.addheaders = []
         return opener
 
-    def _prepare_request(self, request):
-        scheme = urllib.parse.urlparse(request.url).scheme.lower()
-        if scheme == 'file' and not self.ydl.params.get('enable_file_urls'):
-            raise UnsupportedRequest('file:// URLs are disabled by default in yt-dlp for security reasons. '
-                                     'Use --enable-file-urls to at your own risk.')
-        return request
-
-    def get_opener(self, request):
-        return self._openers.setdefault(
-            frozenset(list(request.proxies.items()) + [request.allow_redirects]),
-            self._create_opener(proxies=request.proxies, allow_redirects=request.allow_redirects))
-
-    def _real_handle(self, request):
+    def _send(self, request):
+        headers = self._merge_headers(request.headers)
+        add_accept_encoding_header(headers, SUPPORTED_ENCODINGS)
         urllib_req = urllib.request.Request(
-            url=request.url, data=request.data, headers=dict(request.headers), method=request.method)
+            url=request.url,
+            data=request.data,
+            headers=dict(headers),
+            method=request.method
+        )
 
+        opener = self._get_instance(
+            proxies=request.proxies or self.proxies,
+            cookiejar=request.extensions.get('cookiejar') or self.cookiejar
+        )
         try:
-            res = self.get_opener(request).open(urllib_req, timeout=request.timeout)
+            res = opener.open(urllib_req, timeout=float(request.extensions.get('timeout') or self.timeout))
         except urllib.error.HTTPError as e:
             if isinstance(e.fp, (http.client.HTTPResponse, urllib.response.addinfourl)):
-                raise HTTPError(UrllibResponseAdapter(e.fp), redirect_loop='redirect error' in str(e))
+                # Prevent file object from being closed when urllib.error.HTTPError is destroyed.
+                e._closer.file = None
+                raise HTTPError(UrllibResponseAdapter(e.fp), redirect_loop='redirect error' in str(e)) from e
             raise  # unexpected
         except urllib.error.URLError as e:
             cause = e.reason  # NOTE: cause may be a string
@@ -476,9 +442,14 @@ class UrllibRH(RequestHandler):
 
             handle_response_read_exceptions(cause)
             raise TransportError(cause=e) from e
-
+        except (http.client.InvalidURL, ValueError) as e:
+            # Validation errors
+            # http.client.HTTPConnection raises ValueError in some validation cases
+            # such as if request method contains illegal control characters [1]
+            # 1. https://github.com/python/cpython/blob/987b712b4aeeece336eed24fcc87a950a756c3e2/Lib/http/client.py#L1256
+            raise RequestError(cause=e) from e
         except Exception as e:
             handle_response_read_exceptions(e)
-            raise
+            raise  # unexpected
 
         return UrllibResponseAdapter(res)

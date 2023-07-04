@@ -1,132 +1,91 @@
-from __future__ import annotations
+from typing import Dict, List
 
-import traceback
-import urllib.request
-from typing import Union
-
-from ._urllib import UrllibRH  # noqa: F401
 import warnings
-
-from .common import (
-    Request,
-    RequestHandler,
-    Response,
-)
-from .exceptions import RequestError, UnsupportedRequest
-from ..utils import CaseInsensitiveDict, bug_reports_message
-
-
+import traceback
+from ._urllib import UrllibRH  # noqa: F401
+from .common import Request, RequestHandler, Response
+from .exceptions import NoSupportingHandlers, RequestError, UnsupportedRequest
+from ..utils import bug_reports_message
 from ..dependencies import OptionalDependencyWarning
-
-
-def make_unavailable_rh(name, reason):
-    class UnavailableRH(RequestHandler):
-        NAME = name
-
-        def prepare_request(self, request: Request):
-            raise UnsupportedRequest(reason)
-
-    return UnavailableRH
-
-
 try:
     from ._requests import RequestsRH
 except Exception as e:
     if not isinstance(e, ImportError):
         warnings.warn(
             f'Failed to import RequestsRH: {type(e).__name__}: {e}{bug_reports_message()}\n{traceback.format_exc()}', OptionalDependencyWarning)
-        RequestsRH = None
-    else:
-        RequestsRH = make_unavailable_rh('requests', str(e))
-
-_BASE_HANDLER_PRIORITY = ['Urllib']
-if RequestsRH is not None:
-    _BASE_HANDLER_PRIORITY.insert(0, RequestsRH.rh_key())
 
 
 class RequestDirector:
+    """RequestDirector class
 
-    def __init__(self, ydl):
-        self._handlers = []
-        self.ydl = ydl
+    Helper class that, when given a request, finds a RequestHandler that supports it.
+
+    @param logger: Logger instance.
+    @param verbose: Print debug request information to stdout.
+    """
+
+    def __init__(self, logger=None, verbose=False):
+        self._handlers: Dict[str, RequestHandler] = {}
+        self.logger = logger  # TODO(Grub4k): default logger
+        self.verbose = verbose
 
     def close(self):
-        for handler in self._handlers:
+        for handler in self._handlers.values():
             handler.close()
 
-    def add_handler(self, handler):
-        """Add a handler. It will be prioritized over existing handlers"""
+    def add_handler(self, handler: RequestHandler):
+        """Add a handler. If a handler of the same rh_key exists, it will overwrite it"""
         assert isinstance(handler, RequestHandler)
-        if handler not in self._handlers:
-            self._handlers.append(handler)
+        self._handlers[handler.rh_key()] = handler
 
-    def remove_handler(self, handler):
-        """
-        Remove a RequestHandler.
-        If a class is provided, all handlers of that class type are removed.
-        """
-        self._handlers = [h for h in self._handlers if not (type(h) == handler or h is handler)]
+    def remove_handler(self, rh_key):
+        self._handlers.pop(rh_key, None)
 
-    def get_handlers(self, handler=None):
-        """Get all handlers for a particular class type"""
-        return [h for h in self._handlers if (type(h) == handler or h is handler)]
+    def get_handler(self, rh_key):
+        """Get a handler instance by rh_key"""
+        return self._handlers.get(rh_key)
 
-    def replace_handler(self, handler):
-        self.remove_handler(handler)
-        self.add_handler(handler)
+    def get_handlers(self):
+        return list(self._handlers.values())
 
-    def is_supported(self, request: Request):
-        """Check if a request can be handled without making any requests"""
-        for handler in self._handlers:
-            if handler.can_handle(request):
-                return True
-        return False
+    def remove_handlers(self):
+        self._handlers.clear()
 
-    def send(self, request: Union[Request, str, urllib.request.Request]) -> Response:
+    def print_verbose(self, msg):
+        if self.verbose:
+            self.logger.to_stdout(f'director: {msg}')
+
+    def send(self, request: Request) -> Response:
         """
         Passes a request onto a suitable RequestHandler
         """
         if len(self._handlers) == 0:
             raise RequestError('No request handlers configured')
-        if isinstance(request, str):
-            request = Request(request)
-        elif isinstance(request, urllib.request.Request):
-            # compat
-            request = Request(
-                request.get_full_url(), data=request.data, method=request.get_method(),
-                headers=CaseInsensitiveDict(request.headers, request.unredirected_hdrs),
-                timeout=request.timeout if hasattr(request, 'timeout') else None)
 
         assert isinstance(request, Request)
 
-        request.preferred_handlers.extend(_BASE_HANDLER_PRIORITY)
-
         unexpected_errors = []
         unsupported_errors = []
-        for handler in sorted(
-            self._handlers,
-            key=(
-                lambda rh: -len(request.preferred_handlers) + request.preferred_handlers.index(rh.rh_key())
-                if rh.rh_key() in request.preferred_handlers else list(reversed(self._handlers)).index(rh)
-            ),
-        ):
-            handler_req = request.copy()
+        # TODO (future): add a per-request preference system
+        for handler in reversed(list(self._handlers.values())):
+            self.print_verbose(f'checking if "{handler.RH_NAME}" request handler supports this request.')
             try:
-                self.ydl.to_debugtraffic(f'Forwarding request to "{handler.RH_NAME}" request handler')
-                response = handler.handle(handler_req)
-
+                handler.validate(request)
             except UnsupportedRequest as e:
-                self.ydl.to_debugtraffic(
-                    f'"{handler.RH_NAME}" request handler cannot handle this request, trying another handler... (cause: {type(e).__name__}:{e})')
+                self.print_verbose(
+                    f'"{handler.RH_NAME}" request handler cannot handle this request (reason: {type(e).__name__}: {e})')
                 unsupported_errors.append(e)
                 continue
 
+            self.print_verbose(f'sending request via "{handler.RH_NAME}" request handler.')
+            try:
+                response = handler.send(request)
+            except RequestError:
+                raise
             except Exception as e:
-                if isinstance(e, RequestError):
-                    raise
                 # something went very wrong, try fallback to next handler
-                self.ydl.report_error(
-                    f'Unexpected error from "{handler.RH_NAME}" request handler: {type(e).__name__}:{e}' + bug_reports_message(),
+                self.logger.report_error(
+                    f'Unexpected error from "{handler.RH_NAME}" request handler: {type(e).__name__}: {e}' + bug_reports_message(),
                     is_error=False)
                 unexpected_errors.append(e)
                 continue
@@ -134,34 +93,21 @@ class RequestDirector:
             assert isinstance(response, Response)
             return response
 
-        # no handler was able to handle the request, try print some useful info
-        # FIXME: this is a bit ugly
-        err_handler_map = {}
-        for err in unsupported_errors:
-            err_handler_map.setdefault(err.msg, []).append(err.handler.RH_NAME)
-
-        reasons = [f'{msg} ({", ".join(handlers)})' for msg, handlers in err_handler_map.items()]
-        if unexpected_errors:
-            reasons.append(f'{len(unexpected_errors)} unexpected error(s)')
-
-        err_str = 'Unable to handle request'
-        if reasons:
-            err_str += ', possible reason(s): ' + ', '.join(reasons)
-
-        raise RequestError(err_str)
+        raise NoSupportingHandlers(unsupported_errors, unexpected_errors)
 
 
-def get_request_handler(key):
+# TODO(pukkandan): RequestHandler register system for importing
+def _get_request_handler(key):
     """Get a RequestHandler by its rh_key"""
     return globals()[key + 'RH']
 
 
-def list_request_handler_classes():
+def _list_request_handler_classes() -> List[RequestHandler]:
     """List all RequestHandler classes, sorted by name."""
     return sorted(
         (rh for name, rh in globals().items() if name.endswith('RH')),
         key=lambda x: x.RH_NAME.lower())
 
 
-__all__ = list_request_handler_classes()
-__all__.extend(['RequestDirector', 'list_request_handler_classes', 'get_request_handler'])
+__all__ = _list_request_handler_classes()
+__all__.extend(['RequestDirector'])

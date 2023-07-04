@@ -2,35 +2,70 @@
 
 # Allow direct execution
 import os
-import pathlib
+import random
 import sys
-import tempfile
-import unittest
-from contextlib import contextmanager
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import functools
 import gzip
 import http.client
+import http.cookiejar
 import http.server
+import inspect
 import io
+import pathlib
 import ssl
+import tempfile
 import threading
-import urllib.request
+import time
 import urllib.error
+import urllib.request
+import warnings
+import zlib
+from email.message import Message
+from http.cookiejar import CookieJar
 
-from http.cookiejar import Cookie
+import pytest
 
 from test.helper import FakeYDL, http_server_port
-from yt_dlp import YoutubeDL
-from yt_dlp.networking import Request, UrllibRH, list_request_handler_classes, RequestHandler, Response, RequestsRH
-from yt_dlp.utils import urlencode_postdata
-from yt_dlp.networking.exceptions import HTTPError, IncompleteRead, SSLError, UnsupportedRequest, RequestError
+from yt_dlp.dependencies import brotli
+from yt_dlp.networking import (
+    RequestDirector,
+    RequestHandler,
+    UrllibRH,
+    _get_request_handler,
+)
+from yt_dlp.networking.common import HEADRequest, PUTRequest, Request, Response
+from yt_dlp.networking.exceptions import (
+    CertificateVerifyError,
+    HTTPError,
+    IncompleteRead,
+    NoSupportingHandlers,
+    RequestError,
+    SSLError,
+    TransportError,
+    UnsupportedRequest,
+)
+from yt_dlp.networking.utils import std_headers
+from yt_dlp.utils import CaseInsensitiveDict
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 
-ALL_REQUEST_HANDLERS = list_request_handler_classes()
+
+def _build_proxy_handler(name):
+    class HTTPTestRequestHandler(http.server.BaseHTTPRequestHandler):
+        proxy_name = name
+
+        def log_message(self, format, *args):
+            pass
+
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/plain; charset=utf-8')
+            self.end_headers()
+            self.wfile.write('{self.proxy_name}: {self.path}'.format(self=self).encode('utf-8'))
+    return HTTPTestRequestHandler
 
 
 class FakeLogger:
@@ -43,9 +78,15 @@ class FakeLogger:
     def error(self, msg):
         pass
 
+    def to_debugtraffic(self, msg):
+        pass
 
-class HTTPServerRequestHandler(http.server.BaseHTTPRequestHandler):
-    protocol_version = 'HTTP/1.1'  # required for persistent connections
+    def report_error(self, *args, **kwargs):
+        pass
+
+
+class HTTPTestRequestHandler(http.server.BaseHTTPRequestHandler):
+    protocol_version = 'HTTP/1.1'
 
     def log_message(self, format, *args):
         pass
@@ -85,7 +126,7 @@ class HTTPServerRequestHandler(http.server.BaseHTTPRequestHandler):
             return self.rfile.read(int(self.headers['Content-Length']))
 
     def do_POST(self):
-        data = self._read_data()
+        data = self._read_data() + str(self.headers).encode('utf-8')
         if self.path.startswith('/redirect_'):
             self._redirect()
         elif self.path.startswith('/method'):
@@ -104,7 +145,7 @@ class HTTPServerRequestHandler(http.server.BaseHTTPRequestHandler):
             self._status(404)
 
     def do_PUT(self):
-        data = self._read_data()
+        data = self._read_data() + str(self.headers).encode('utf-8')
         if self.path.startswith('/redirect_'):
             self._redirect()
         elif self.path.startswith('/method'):
@@ -117,7 +158,7 @@ class HTTPServerRequestHandler(http.server.BaseHTTPRequestHandler):
             payload = b'<html><video src="/vid.mp4" /></html>'
             self.send_response(200)
             self.send_header('Content-Type', 'text/html; charset=utf-8')
-            self.send_header('Content-Length', str(len(payload)))  # required for persistent connections
+            self.send_header('Content-Length', str(len(payload)))
             self.end_headers()
             self.wfile.write(payload)
         elif self.path == '/vid.mp4':
@@ -141,13 +182,6 @@ class HTTPServerRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_header('Content-Length', str(len(payload)))
             self.end_headers()
             self.wfile.write(payload)
-        elif self.path.startswith('/gen_'):
-            payload = b'<html></html>'
-            self.send_response(int(self.path[len('/gen_'):]))
-            self.send_header('Content-Type', 'text/html; charset=utf-8')
-            self.send_header('Content-Length', str(len(payload)))
-            self.end_headers()
-            self.wfile.write(payload)
         elif self.path.startswith('/redirect_loop'):
             self.send_response(301)
             self.send_header('Location', self.path)
@@ -156,15 +190,7 @@ class HTTPServerRequestHandler(http.server.BaseHTTPRequestHandler):
         elif self.path.startswith('/redirect_'):
             self._redirect()
         elif self.path.startswith('/method'):
-            self._method('GET')
-        elif self.path.startswith('/incompleteread'):
-            payload = b'<html></html>'
-            self.send_response(200)
-            self.send_header('Content-Type', 'text/html; charset=utf-8')
-            self.send_header('Content-Length', '234234')
-            self.end_headers()
-            self.wfile.write(payload)
-            self.finish()
+            self._method('GET', str(self.headers).encode('utf-8'))
         elif self.path.startswith('/headers'):
             self._headers()
         elif self.path == '/trailing_garbage':
@@ -175,16 +201,66 @@ class HTTPServerRequestHandler(http.server.BaseHTTPRequestHandler):
             buf = io.BytesIO()
             with gzip.GzipFile(fileobj=buf, mode='wb') as f:
                 f.write(payload)
-            compressed = buf.getvalue()
-            self.send_header('Content-Length', str(len(compressed) + len(b'trailing garbage')))
+            compressed = buf.getvalue() + b'trailing garbage'
+            self.send_header('Content-Length', str(len(compressed)))
             self.end_headers()
-            self.wfile.write(compressed + b'trailing garbage')
+            self.wfile.write(compressed)
         elif self.path == '/302-non-ascii-redirect':
-            new_url = 'http://127.0.0.1:%d/中文.html' % http_server_port(self.server)
+            new_url = f'http://127.0.0.1:{http_server_port(self.server)}/中文.html'
             self.send_response(301)
             self.send_header('Location', new_url)
             self.send_header('Content-Length', '0')
             self.end_headers()
+        elif self.path == '/content-encoding':
+            encodings = self.headers.get('ytdl-encoding', '')
+            payload = b'<html><video src="/vid.mp4" /></html>'
+            for encoding in filter(None, (e.strip() for e in encodings.split(','))):
+                if encoding == 'br' and brotli:
+                    payload = brotli.compress(payload)
+                elif encoding == 'gzip':
+                    buf = io.BytesIO()
+                    with gzip.GzipFile(fileobj=buf, mode='wb') as f:
+                        f.write(payload)
+                    payload = buf.getvalue()
+                elif encoding == 'deflate':
+                    payload = zlib.compress(payload)
+                elif encoding == 'unsupported':
+                    payload = b'raw'
+                    break
+                else:
+                    self._status(415)
+                    return
+            self.send_response(200)
+            self.send_header('Content-Encoding', encodings)
+            self.send_header('Content-Length', str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+        elif self.path.startswith('/gen_'):
+            payload = b'<html></html>'
+            self.send_response(int(self.path[len('/gen_'):]))
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.send_header('Content-Length', str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+        elif self.path.startswith('/incompleteread'):
+            payload = b'<html></html>'
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.send_header('Content-Length', '234234')
+            self.end_headers()
+            self.wfile.write(payload)
+            self.finish()
+        elif self.path.startswith('/timeout_'):
+            time.sleep(int(self.path[len('/timeout_'):]))
+            self._headers()
+        elif self.path == '/source_address':
+            payload = str(self.client_address[0]).encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.send_header('Content-Length', str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+            self.finish()
         else:
             self._status(404)
 
@@ -203,442 +279,1088 @@ class HTTPServerRequestHandler(http.server.BaseHTTPRequestHandler):
         self._headers_buffer.append(f'{keyword}: {value}\r\n'.encode())
 
 
-def _build_proxy_handler(name):
-    class HTTPTestRequestHandler(http.server.BaseHTTPRequestHandler):
-        proxy_name = name
-
-        def log_message(self, format, *args):
-            pass
-
-        def do_GET(self):
-            self.send_response(200)
-            self.send_header('Content-Type', 'text/plain; charset=utf-8')
-            self.end_headers()
-            self.wfile.write('{self.proxy_name}: {self.path}'.format(self=self).encode('utf-8'))
-    return HTTPTestRequestHandler
+def validate_and_send(rh, req):
+    rh.validate(req)
+    return rh.send(req)
 
 
-def with_make_rh(handlers=None, ignore_handlers=None):
-    # XXX: it might be better/easier to use pytest
-    handlers = [h for h in (handlers or ALL_REQUEST_HANDLERS) if h not in (ignore_handlers or [])]
-
-    def make_ydl(handler, params=None, fake=True):
-        ydl = (FakeYDL if fake else YoutubeDL)(params)
-        ydl._request_director = ydl.build_request_director([handler])
-        return ydl
-
-    @contextmanager
-    def make_rh(handler, ydl_params=None, ydl_fake=True):
-        ydl = make_ydl(handler, ydl_params, ydl_fake)
-        try:
-            yield ydl._request_director.get_handlers(handler)[0]
-        finally:
-            ydl.close()
-
-    def inner_func(test):
-        @functools.wraps(test)
-        def wrapper(self, *args, **kwargs):
-            for handler in handlers:
-                if handler is None:  # TODO: should we show handler being skipped? how would we get name?
-                    continue
-                with self.subTest(handler=handler.RH_NAME):
-                    try:
-                        test(self, functools.partial(make_rh, handler), *args, **kwargs)
-                    except UnsupportedRequest as e:
-                        self.skipTest(f'Skipping, unsupported test for {handler.RH_NAME} handler: {e}')
-        return wrapper
-    return inner_func
-
-
-class RequestHandlerTestCase(unittest.TestCase):
-    def setUp(self):
-        # HTTP server
-        self.http_httpd = http.server.ThreadingHTTPServer(
-            ('127.0.0.1', 0), HTTPServerRequestHandler)
-        self.http_port = http_server_port(self.http_httpd)
-        self.http_server_thread = threading.Thread(target=self.http_httpd.serve_forever)
-        self.http_server_thread.daemon = True
-        self.http_server_thread.start()
+class TestRequestHandlerBase:
+    @classmethod
+    def setup_class(cls):
+        cls.http_httpd = http.server.ThreadingHTTPServer(
+            ('127.0.0.1', 0), HTTPTestRequestHandler)
+        cls.http_port = http_server_port(cls.http_httpd)
+        cls.http_server_thread = threading.Thread(target=cls.http_httpd.serve_forever)
+        # FIXME: we should probably stop the http server thread after each test
+        # See: https://github.com/yt-dlp/yt-dlp/pull/7094#discussion_r1199746041
+        cls.http_server_thread.daemon = True
+        cls.http_server_thread.start()
 
         # HTTPS server
         certfn = os.path.join(TEST_DIR, 'testcert.pem')
-        self.https_httpd = http.server.ThreadingHTTPServer(
-            ('127.0.0.1', 0), HTTPServerRequestHandler)
+        cls.https_httpd = http.server.ThreadingHTTPServer(
+            ('127.0.0.1', 0), HTTPTestRequestHandler)
         sslctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         sslctx.load_cert_chain(certfn, None)
-        self.https_httpd.socket = sslctx.wrap_socket(self.https_httpd.socket, server_side=True)
-        self.https_port = http_server_port(self.https_httpd)
-        self.https_server_thread = threading.Thread(target=self.https_httpd.serve_forever)
-        self.https_server_thread.daemon = True
-        self.https_server_thread.start()
-
-        # HTTP Proxy server
-        self.proxy = http.server.ThreadingHTTPServer(
-            ('127.0.0.1', 0), _build_proxy_handler('normal'))
-        self.proxy_port = http_server_port(self.proxy)
-        self.proxy_thread = threading.Thread(target=self.proxy.serve_forever)
-        self.proxy_thread.daemon = True
-        self.proxy_thread.start()
-
-        # Geo proxy server
-        self.geo_proxy = http.server.ThreadingHTTPServer(
-            ('127.0.0.1', 0), _build_proxy_handler('geo'))
-        self.geo_port = http_server_port(self.geo_proxy)
-        self.geo_proxy_thread = threading.Thread(target=self.geo_proxy.serve_forever)
-        self.geo_proxy_thread.daemon = True
-        self.geo_proxy_thread.start()
+        cls.https_httpd.socket = sslctx.wrap_socket(cls.https_httpd.socket, server_side=True)
+        cls.https_port = http_server_port(cls.https_httpd)
+        cls.https_server_thread = threading.Thread(target=cls.https_httpd.serve_forever)
+        cls.https_server_thread.daemon = True
+        cls.https_server_thread.start()
 
 
-class TestRequestHandler(RequestHandlerTestCase):
+@pytest.fixture
+def handler(request):
+    rh_key = request.param
+    if inspect.isclass(rh_key) and issubclass(rh_key, RequestHandler):
+        handler = rh_key
+    else:
+        try:
+            handler = _get_request_handler(rh_key)
+        except KeyError:
+            handler = None
+        if handler is None:
+            pytest.skip(f'{rh_key} request handler is not available')
 
-    @with_make_rh()
-    def test_raise(self, make_rh):
-        with make_rh() as rh:
-            for func in (rh.handle, rh.prepare_request, functools.partial(rh.can_handle, fatal=True)):
-                try:
-                    func(Request('bad123://'))
-                except RequestError as e:
-                    self.assertIs(e.handler, rh)
+    return functools.partial(handler, logger=FakeLogger)
 
-            with self.assertRaises(TypeError):
-                rh.handle(None)
 
-    @with_make_rh()
-    def test_nocheckcertificate(self, make_rh):
-        with make_rh({'logger': FakeLogger()}) as rh:
-            with self.assertRaises(SSLError):
-                rh.handle(Request('https://127.0.0.1:%d/headers' % self.https_port))
+class TestHTTPRequestHandler(TestRequestHandlerBase):
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_verify_cert(self, handler):
+        with handler() as rh:
+            with pytest.raises(CertificateVerifyError):
+                validate_and_send(rh, Request(f'https://127.0.0.1:{self.https_port}/headers'))
 
-        with make_rh({'logger': FakeLogger(), 'nocheckcertificate': True}) as rh:
-            r = rh.handle(Request('https://127.0.0.1:%d/headers' % self.https_port))
-            self.assertEqual(r.status, 200)
+        with handler(verify=False) as rh:
+            r = validate_and_send(rh, Request(f'https://127.0.0.1:{self.https_port}/headers'))
+            assert r.status == 200
             r.close()
 
-    @with_make_rh()
-    def test_percent_encode(self, make_rh):
-        with make_rh() as rh:
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_ssl_error(self, handler):
+        # HTTPS server with too old TLS version
+        # XXX: is there a better way to test this than to create a new server?
+        https_httpd = http.server.ThreadingHTTPServer(
+            ('127.0.0.1', 0), HTTPTestRequestHandler)
+        sslctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        https_httpd.socket = sslctx.wrap_socket(https_httpd.socket, server_side=True)
+        https_port = http_server_port(https_httpd)
+        https_server_thread = threading.Thread(target=https_httpd.serve_forever)
+        https_server_thread.daemon = True
+        https_server_thread.start()
+
+        with handler(verify=False) as rh:
+            with pytest.raises(SSLError, match='sslv3 alert handshake failure') as exc_info:
+                validate_and_send(rh, Request(f'https://127.0.0.1:{https_port}/headers'))
+            assert not issubclass(exc_info.type, CertificateVerifyError)
+
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_percent_encode(self, handler):
+        with handler() as rh:
             # Unicode characters should be encoded with uppercase percent-encoding
-            res = rh.handle(Request(f'http://127.0.0.1:{self.http_port}/中文.html'))
-            self.assertEqual(res.status, 200)
+            res = validate_and_send(rh, Request(f'http://127.0.0.1:{self.http_port}/中文.html'))
+            assert res.status == 200
             res.close()
             # don't normalize existing percent encodings
-            res = rh.handle(Request(f'http://127.0.0.1:{self.http_port}/%c7%9f'))
-            self.assertEqual(res.status, 200)
+            res = validate_and_send(rh, Request(f'http://127.0.0.1:{self.http_port}/%c7%9f'))
+            assert res.status == 200
             res.close()
 
-    @with_make_rh()
-    def test_unicode_path_redirection(self, make_rh):
-        with make_rh() as rh:
-            r = rh.handle(Request('http://127.0.0.1:%d/302-non-ascii-redirect' % self.http_port))
-            self.assertEqual(r.url, f'http://127.0.0.1:{self.http_port}/%E4%B8%AD%E6%96%87.html')
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_unicode_path_redirection(self, handler):
+        with handler() as rh:
+            r = validate_and_send(rh, Request(f'http://127.0.0.1:{self.http_port}/302-non-ascii-redirect'))
+            assert r.url == f'http://127.0.0.1:{self.http_port}/%E4%B8%AD%E6%96%87.html'
             r.close()
 
-    @with_make_rh()
-    def test_raise_http_error(self, make_rh):
-        with make_rh() as rh:
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_raise_http_error(self, handler):
+        with handler() as rh:
             for bad_status in (400, 500, 599, 302):
-                with self.assertRaises(HTTPError):
-                    rh.handle(Request('http://127.0.0.1:%d/gen_%d' % (self.http_port, bad_status)))
+                with pytest.raises(HTTPError):
+                    validate_and_send(rh, Request('http://127.0.0.1:%d/gen_%d' % (self.http_port, bad_status)))
 
             # Should not raise an error
-            rh.handle(Request('http://127.0.0.1:%d/gen_200' % self.http_port)).close()
+            validate_and_send(rh, Request('http://127.0.0.1:%d/gen_200' % self.http_port)).close()
 
-    @with_make_rh()
-    def test_redirect_loop(self, make_rh):
-        with make_rh() as rh:
-            with self.assertRaisesRegex(HTTPError, r'HTTP Error 301: Moved Permanently \(redirect loop detected\)'):
-                rh.handle(Request('http://127.0.0.1:%d/redirect_loop' % self.http_port))
-
-    @with_make_rh()
-    def test_get_url(self, make_rh):
-        with make_rh() as rh:
-            res = rh.handle(Request('http://127.0.0.1:%d/redirect_301' % self.http_port))
-            self.assertEqual(res.url, 'http://127.0.0.1:%d/method' % self.http_port)
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_response_url(self, handler):
+        with handler() as rh:
+            # Response url should be that of the last url in redirect chain
+            res = validate_and_send(rh, Request(f'http://127.0.0.1:{self.http_port}/redirect_301'))
+            assert res.url == f'http://127.0.0.1:{self.http_port}/method'
             res.close()
-            res2 = rh.handle(Request('http://127.0.0.1:%d/gen_200' % self.http_port))
-            self.assertEqual(res2.url, 'http://127.0.0.1:%d/gen_200' % self.http_port)
+            res2 = validate_and_send(rh, Request(f'http://127.0.0.1:{self.http_port}/gen_200'))
+            assert res2.url == f'http://127.0.0.1:{self.http_port}/gen_200'
             res2.close()
 
-    @with_make_rh()
-    def test_redirect(self, make_rh):
-        with make_rh() as rh:
-            def do_req(redirect_status, method):
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_redirect(self, handler):
+        with handler() as rh:
+            def do_req(redirect_status, method, assert_no_content=False):
                 data = b'testdata' if method in ('POST', 'PUT') else None
-                res = rh.handle(
-                    Request(f'http://127.0.0.1:%d/redirect_{redirect_status}' % self.http_port, method=method, data=data))
-                return res.read().decode('utf-8'), res.headers.get('method', '')
+                res = validate_and_send(
+                    rh, Request(f'http://127.0.0.1:{self.http_port}/redirect_{redirect_status}', method=method, data=data))
+
+                headers = b''
+                data_sent = b''
+                if data is not None:
+                    data_sent += res.read(len(data))
+                    if data_sent != data:
+                        headers += data_sent
+                        data_sent = b''
+
+                headers += res.read()
+
+                if assert_no_content or data is None:
+                    assert b'Content-Type' not in headers
+                    assert b'Content-Length' not in headers
+                else:
+                    assert b'Content-Type' in headers
+                    assert b'Content-Length' in headers
+
+                return data_sent.decode('utf-8'), res.headers.get('method', '')
 
             # A 303 must either use GET or HEAD for subsequent request
-            self.assertEqual(do_req(303, 'POST'), ('', 'GET'))
-            self.assertEqual(do_req(303, 'HEAD'), ('', 'HEAD'))
+            assert do_req(303, 'POST', True) == ('', 'GET')
+            assert do_req(303, 'HEAD') == ('', 'HEAD')
 
-            self.assertEqual(do_req(303, 'PUT'), ('', 'GET'))
+            assert do_req(303, 'PUT', True) == ('', 'GET')
 
             # 301 and 302 turn POST only into a GET
-            self.assertEqual(do_req(301, 'POST'), ('', 'GET'))
-            self.assertEqual(do_req(301, 'HEAD'), ('', 'HEAD'))
-            self.assertEqual(do_req(302, 'POST'), ('', 'GET'))
-            self.assertEqual(do_req(302, 'HEAD'), ('', 'HEAD'))
+            assert do_req(301, 'POST', True) == ('', 'GET')
+            assert do_req(301, 'HEAD') == ('', 'HEAD')
+            assert do_req(302, 'POST', True) == ('', 'GET')
+            assert do_req(302, 'HEAD') == ('', 'HEAD')
 
-            self.assertEqual(do_req(301, 'PUT'), ('testdata', 'PUT'))
-            self.assertEqual(do_req(302, 'PUT'), ('testdata', 'PUT'))
+            assert do_req(301, 'PUT') == ('testdata', 'PUT')
+            assert do_req(302, 'PUT') == ('testdata', 'PUT')
 
             # 307 and 308 should not change method
-            self.assertEqual(do_req(307, 'POST'), ('testdata', 'POST'))
-            self.assertEqual(do_req(308, 'POST'), ('testdata', 'POST'))
+            for m in ('POST', 'PUT'):
+                assert do_req(307, m) == ('testdata', m)
+                assert do_req(308, m) == ('testdata', m)
+
+            assert do_req(307, 'HEAD') == ('', 'HEAD')
+            assert do_req(308, 'HEAD') == ('', 'HEAD')
 
             # These should not redirect and instead raise an HTTPError
             for code in (300, 304, 305, 306):
-                with self.assertRaises(HTTPError):
+                with pytest.raises(HTTPError):
                     do_req(code, 'GET')
 
-    @with_make_rh()
-    def test_no_redirects(self, make_rh):
-        with make_rh() as rh:
-            res = rh.handle(Request('http://localhost:%d/redirect_302' % self.http_port, allow_redirects=False))
-            self.assertEqual(res.status, 302)
-            res.close()
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_redirect_loop(self, handler):
+        with handler() as rh:
+            with pytest.raises(HTTPError, match='redirect loop'):
+                validate_and_send(rh, Request(f'http://127.0.0.1:{self.http_port}/redirect_loop'))
 
-    @with_make_rh()
-    def test_content_type(self, make_rh):
-        with make_rh({'nocheckcertificate': True}) as rh:
-            # method should be auto-detected as POST
-            r = Request('https://localhost:%d/headers' % self.https_port, data=urlencode_postdata({'test': 'test'}))
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_incompleteread(self, handler):
+        with handler(timeout=2) as rh:  # TODO: add timeout test
+            with pytest.raises(IncompleteRead):
+                validate_and_send(rh, Request('http://127.0.0.1:%d/incompleteread' % self.http_port)).read()
 
-            headers = rh.handle(r).read().decode('utf-8')
-            self.assertIn('Content-Type: application/x-www-form-urlencoded', headers)
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_cookies(self, handler):
+        cookiejar = http.cookiejar.CookieJar()
+        cookiejar.set_cookie(http.cookiejar.Cookie(
+            0, 'test', 'ytdlp', None, False, '127.0.0.1', True,
+            False, '/headers', True, False, None, False, None, None, {}))
 
-            # test http
-            r.update(url='http://localhost:%d/headers' % self.http_port)
-            headers = rh.handle(r).read().decode('utf-8')
-            self.assertIn('Content-Type: application/x-www-form-urlencoded', headers)
+        with handler(cookiejar=cookiejar) as rh:
+            data = validate_and_send(rh, Request(f'http://127.0.0.1:{self.http_port}/headers')).read()
+            assert b'Cookie: test=ytdlp' in data
 
-    @with_make_rh()
-    def test_incompleteread(self, make_rh):
-        with make_rh({'socket_timeout': 2}) as rh:
-            with self.assertRaises(IncompleteRead):
-                rh.handle(Request('http://127.0.0.1:%d/incompleteread' % self.http_port)).read()
+        # Per request
+        with handler() as rh:
+            data = validate_and_send(
+                rh, Request(f'http://127.0.0.1:{self.http_port}/headers', extensions={'cookiejar': cookiejar})).read()
+            assert b'Cookie: test=ytdlp' in data
 
-    @with_make_rh()
-    def test_cookiejar(self, make_rh):
-        with make_rh() as rh:
-            rh.ydl.cookiejar.set_cookie(
-                Cookie(
-                    0, 'test', 'ytdlp', None, False, '127.0.0.1', True,
-                    False, '/headers', True, False, None, False, None, None, {}))
-            data = rh.handle(Request('http://127.0.0.1:%d/headers' % self.http_port)).read()
-            self.assertIn(b'Cookie: test=ytdlp', data)
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_headers(self, handler):
 
-    @with_make_rh()
-    def test_no_compression_compat(self, make_rh):
-        with make_rh() as rh:
-            data = rh.handle(
-                Request('http://127.0.0.1:%d/headers' % self.http_port, headers={'Youtubedl-no-compression': True})).read()
-            self.assertIn(b'Accept-Encoding: identity', data)
+        with handler(headers=CaseInsensitiveDict({'test1': 'test', 'test2': 'test2'})) as rh:
+            # Global Headers
+            data = validate_and_send(rh, Request(f'http://127.0.0.1:{self.http_port}/headers')).read()
+            assert b'Test1: test' in data
 
-    @with_make_rh()
-    def test_gzip_trailing_garbage(self, make_rh):
-        # https://github.com/ytdl-org/youtube-dl/commit/aa3e950764337ef9800c936f4de89b31c00dfcf5
-        # https://github.com/ytdl-org/youtube-dl/commit/6f2ec15cee79d35dba065677cad9da7491ec6e6f
-        with make_rh() as rh:
-            data = rh.handle(Request('http://localhost:%d/trailing_garbage' % self.http_port)).read().decode('utf-8')
-            self.assertEqual(data, '<html><video src="/vid.mp4" /></html>')
+            # Per request headers, merged with global
+            data = validate_and_send(rh, Request(
+                f'http://127.0.0.1:{self.http_port}/headers', headers={'test2': 'changed', 'test3': 'test3'})).read()
+            assert b'Test1: test' in data
+            assert b'Test2: changed' in data
+            assert b'Test2: test2' not in data
+            assert b'Test3: test3' in data
+
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_timeout(self, handler):
+        with handler() as rh:
+            # Default timeout is 20 seconds, so this should go through
+            validate_and_send(
+                rh, Request(f'http://127.0.0.1:{self.http_port}/timeout_3'))
+
+        with handler(timeout=0.5) as rh:
+            with pytest.raises(TransportError):
+                validate_and_send(
+                    rh, Request(f'http://127.0.0.1:{self.http_port}/timeout_1'))
+
+            # Per request timeout, should override handler timeout
+            validate_and_send(
+                rh, Request(f'http://127.0.0.1:{self.http_port}/timeout_1', extensions={'timeout': 4}))
+
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_source_address(self, handler):
+        source_address = f'127.0.0.{random.randint(5, 255)}'
+        with handler(source_address=source_address) as rh:
+            data = validate_and_send(
+                rh, Request(f'http://127.0.0.1:{self.http_port}/source_address')).read().decode('utf-8')
+            assert source_address == data
+
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_gzip_trailing_garbage(self, handler):
+        with handler() as rh:
+            data = validate_and_send(rh, Request(f'http://localhost:{self.http_port}/trailing_garbage')).read().decode('utf-8')
+            assert data == '<html><video src="/vid.mp4" /></html>'
+
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    @pytest.mark.skipif(not brotli, reason='brotli support is not installed')
+    def test_brotli(self, handler):
+        with handler() as rh:
+            res = validate_and_send(
+                rh, Request(
+                    f'http://127.0.0.1:{self.http_port}/content-encoding',
+                    headers={'ytdl-encoding': 'br'}))
+            assert res.headers.get('Content-Encoding') == 'br'
+            assert res.read() == b'<html><video src="/vid.mp4" /></html>'
+
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_deflate(self, handler):
+        with handler() as rh:
+            res = validate_and_send(
+                rh, Request(
+                    f'http://127.0.0.1:{self.http_port}/content-encoding',
+                    headers={'ytdl-encoding': 'deflate'}))
+            assert res.headers.get('Content-Encoding') == 'deflate'
+            assert res.read() == b'<html><video src="/vid.mp4" /></html>'
+
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_gzip(self, handler):
+        with handler() as rh:
+            res = validate_and_send(
+                rh, Request(
+                    f'http://127.0.0.1:{self.http_port}/content-encoding',
+                    headers={'ytdl-encoding': 'gzip'}))
+            assert res.headers.get('Content-Encoding') == 'gzip'
+            assert res.read() == b'<html><video src="/vid.mp4" /></html>'
+
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_multiple_encodings(self, handler):
+        with handler() as rh:
+            for pair in ('gzip,deflate', 'deflate, gzip', 'gzip, gzip', 'deflate, deflate'):
+                res = validate_and_send(
+                    rh, Request(
+                        f'http://127.0.0.1:{self.http_port}/content-encoding',
+                        headers={'ytdl-encoding': pair}))
+                assert res.headers.get('Content-Encoding') == pair
+                assert res.read() == b'<html><video src="/vid.mp4" /></html>'
+
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_unsupported_encoding(self, handler):
+        with handler() as rh:
+            res = validate_and_send(
+                rh, Request(
+                    f'http://127.0.0.1:{self.http_port}/content-encoding',
+                    headers={'ytdl-encoding': 'unsupported'}))
+            assert res.headers.get('Content-Encoding') == 'unsupported'
+            assert res.read() == b'raw'
+
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_read(self, handler):
+        with handler() as rh:
+            res = validate_and_send(
+                rh, Request(f'http://127.0.0.1:{self.http_port}/headers'))
+            assert res.readable()
+            assert res.read(1) == b'H'
+            assert res.read(3) == b'ost'
 
 
-class TestClientCert(unittest.TestCase):
-    def setUp(self):
+class TestHTTPProxy(TestRequestHandlerBase):
+    @classmethod
+    def setup_class(cls):
+        super().setup_class()
+        # HTTP Proxy server
+        cls.proxy = http.server.ThreadingHTTPServer(
+            ('127.0.0.1', 0), _build_proxy_handler('normal'))
+        cls.proxy_port = http_server_port(cls.proxy)
+        cls.proxy_thread = threading.Thread(target=cls.proxy.serve_forever)
+        cls.proxy_thread.daemon = True
+        cls.proxy_thread.start()
+
+        # Geo proxy server
+        cls.geo_proxy = http.server.ThreadingHTTPServer(
+            ('127.0.0.1', 0), _build_proxy_handler('geo'))
+        cls.geo_port = http_server_port(cls.geo_proxy)
+        cls.geo_proxy_thread = threading.Thread(target=cls.geo_proxy.serve_forever)
+        cls.geo_proxy_thread.daemon = True
+        cls.geo_proxy_thread.start()
+
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_http_proxy(self, handler):
+        http_proxy = f'http://127.0.0.1:{self.proxy_port}'
+        geo_proxy = f'http://127.0.0.1:{self.geo_port}'
+
+        # Test global http proxy
+        # Test per request http proxy
+        # Test per request http proxy disables proxy
+        url = 'http://foo.com/bar'
+
+        # Global HTTP proxy
+        with handler(proxies={'http': http_proxy}) as rh:
+            res = validate_and_send(rh, Request(url)).read().decode('utf-8')
+            assert res == f'normal: {url}'
+
+            # Per request proxy overrides global
+            res = validate_and_send(rh, Request(url, proxies={'http': geo_proxy})).read().decode('utf-8')
+            assert res == f'geo: {url}'
+
+            # and setting to None disables all proxies for that request
+            real_url = f'http://127.0.0.1:{self.http_port}/headers'
+            res = validate_and_send(
+                rh, Request(real_url, proxies={'http': None})).read().decode('utf-8')
+            assert res != f'normal: {real_url}'
+            assert 'Accept' in res
+
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_noproxy(self, handler):
+        with handler(proxies={'proxy': f'http://127.0.0.1:{self.proxy_port}'}) as rh:
+            # NO_PROXY
+            for no_proxy in (f'127.0.0.1:{self.http_port}', '127.0.0.1', 'localhost'):
+                nop_response = validate_and_send(
+                    rh, Request(f'http://127.0.0.1:{self.http_port}/headers', proxies={'no': no_proxy})).read().decode(
+                    'utf-8')
+                assert 'Accept' in nop_response
+
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_allproxy(self, handler):
+        url = 'http://foo.com/bar'
+        with handler() as rh:
+            response = validate_and_send(rh, Request(url, proxies={'all': f'http://127.0.0.1:{self.proxy_port}'})).read().decode(
+                'utf-8')
+            assert response == f'normal: {url}'
+
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_http_proxy_with_idn(self, handler):
+        with handler(proxies={
+            'http': f'http://127.0.0.1:{self.proxy_port}',
+        }) as rh:
+            url = 'http://中文.tw/'
+            response = rh.send(Request(url)).read().decode('utf-8')
+            # b'xn--fiq228c' is '中文'.encode('idna')
+            assert response == 'normal: http://xn--fiq228c.tw/'
+
+
+class TestClientCertificate:
+
+    @classmethod
+    def setup_class(cls):
         certfn = os.path.join(TEST_DIR, 'testcert.pem')
-        self.certdir = os.path.join(TEST_DIR, 'testdata', 'certificate')
-        cacertfn = os.path.join(self.certdir, 'ca.crt')
-        self.httpd = http.server.ThreadingHTTPServer(('127.0.0.1', 0), HTTPServerRequestHandler)
+        cls.certdir = os.path.join(TEST_DIR, 'testdata', 'certificate')
+        cacertfn = os.path.join(cls.certdir, 'ca.crt')
+        cls.httpd = http.server.ThreadingHTTPServer(('127.0.0.1', 0), HTTPTestRequestHandler)
         sslctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         sslctx.verify_mode = ssl.CERT_REQUIRED
         sslctx.load_verify_locations(cafile=cacertfn)
         sslctx.load_cert_chain(certfn, None)
-        self.httpd.socket = sslctx.wrap_socket(self.httpd.socket, server_side=True)
-        self.port = http_server_port(self.httpd)
-        self.server_thread = threading.Thread(target=self.httpd.serve_forever)
-        self.server_thread.daemon = True
-        self.server_thread.start()
+        cls.httpd.socket = sslctx.wrap_socket(cls.httpd.socket, server_side=True)
+        cls.port = http_server_port(cls.httpd)
+        cls.server_thread = threading.Thread(target=cls.httpd.serve_forever)
+        cls.server_thread.daemon = True
+        cls.server_thread.start()
 
-    @with_make_rh()
-    def _run_test(self, make_rh, **params):
-        with make_rh({
-            'logger': FakeLogger(),
+    def _run_test(self, handler, **handler_kwargs):
+        with handler(
             # Disable client-side validation of unacceptable self-signed testcert.pem
             # The test is of a check on the server side, so unaffected
-            'nocheckcertificate': True,
-            **params,
-        }, ydl_fake=False) as rh:
-            rh.handle(Request('https://127.0.0.1:%d/video.html' % self.port)).read().decode('utf-8')
+            verify=False,
+            **handler_kwargs,
+        ) as rh:
+            validate_and_send(rh, Request(f'https://127.0.0.1:{self.port}/video.html')).read().decode('utf-8')
 
-    def test_certificate_combined_nopass(self):
-        self._run_test(client_certificate=os.path.join(self.certdir, 'clientwithkey.crt'))
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_certificate_combined_nopass(self, handler):
+        self._run_test(handler, client_cert=(os.path.join(self.certdir, 'clientwithkey.crt'), None, None))
 
-    def test_certificate_nocombined_nopass(self):
-        self._run_test(client_certificate=os.path.join(self.certdir, 'client.crt'),
-                       client_certificate_key=os.path.join(self.certdir, 'client.key'))
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_certificate_nocombined_nopass(self, handler):
+        self._run_test(handler, client_cert=(os.path.join(self.certdir, 'client.crt'), os.path.join(self.certdir, 'client.key'), None))
 
-    def test_certificate_combined_pass(self):
-        self._run_test(client_certificate=os.path.join(self.certdir, 'clientwithencryptedkey.crt'),
-                       client_certificate_password='foobar')
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_certificate_combined_pass(self, handler):
+        self._run_test(handler, client_cert=(os.path.join(self.certdir, 'clientwithencryptedkey.crt'), None, 'foobar'))
 
-    def test_certificate_nocombined_pass(self):
-        self._run_test(client_certificate=os.path.join(self.certdir, 'client.crt'),
-                       client_certificate_key=os.path.join(self.certdir, 'clientencrypted.key'),
-                       client_certificate_password='foobar')
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_certificate_nocombined_pass(self, handler):
+        self._run_test(handler, client_cert=(os.path.join(self.certdir, 'client.crt'), os.path.join(self.certdir, 'clientencrypted.key'), 'foobar'))
 
 
-class TestUrllibRequestHandler(RequestHandlerTestCase):
-    @with_make_rh([UrllibRH])
-    def test_ydl_compat_opener(self, make_rh):
-        with make_rh() as rh:
-            res = rh.ydl._opener.open('http://127.0.0.1:%d/gen_200' % self.http_port)
-            self.assertIsInstance(res, http.client.HTTPResponse)
-
-    @with_make_rh([UrllibRH])
-    def test_file_urls(self, make_rh):
+class TestUrllibRequestHandler(TestRequestHandlerBase):
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_file_urls(self, handler):
+        # See https://github.com/ytdl-org/youtube-dl/issues/8227
         tf = tempfile.NamedTemporaryFile(delete=False)
         tf.write(b'foobar')
         tf.close()
         req = Request(pathlib.Path(tf.name).as_uri())
-        with make_rh() as rh:
-            self.assertRaises(UnsupportedRequest, rh.handle, req)
-            self.assertRaisesRegex(
-                urllib.error.URLError, 'urlopen error unknown url type: file', rh.ydl._opener.open, req.url)
-        with make_rh({'enable_file_urls': True}) as rh:
-            try:
-                res = rh.handle(req)
-                self.assertEqual(res.read(), b'foobar')
-                res.close()
-            except UnsupportedRequest:
-                self.fail('UnsupportedRequest raised')
+        with handler() as rh:
+            with pytest.raises(UnsupportedRequest):
+                rh.validate(req)
 
-            res = rh.ydl._opener.open(req.url)
-            self.assertEqual(res.read(), b'foobar')
+            # Test that urllib never loaded FileHandler
+            with pytest.raises(TransportError):
+                rh.send(req)
+
+        with handler(enable_file_urls=True) as rh:
+            res = validate_and_send(rh, req)
+            assert res.read() == b'foobar'
             res.close()
+
         os.unlink(tf.name)
 
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_http_error_returns_content(self, handler):
+        # urllib HTTPError will try close the underlying response if reference to the HTTPError object is lost
+        def get_response():
+            with handler() as rh:
+                # headers url
+                try:
+                    validate_and_send(rh, Request(f'http://127.0.0.1:{self.http_port}/gen_404'))
+                except HTTPError as e:
+                    return e.response
 
-class TestRequestDirector(RequestHandlerTestCase):
-    def test_request_types(self):
+        assert get_response().read() == b'<html></html>'
+
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_verify_cert_error_text(self, handler):
+        # Check the output of the error message
+        with handler() as rh:
+            with pytest.raises(
+                CertificateVerifyError,
+                match=r'\[SSL: CERTIFICATE_VERIFY_FAILED\] certificate verify failed: self.signed certificate'
+            ):
+                validate_and_send(rh, Request(f'https://127.0.0.1:{self.https_port}/headers'))
+
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_httplib_validation_errors(self, handler):
+        with handler() as rh:
+
+            # https://github.com/python/cpython/blob/987b712b4aeeece336eed24fcc87a950a756c3e2/Lib/http/client.py#L1256
+            with pytest.raises(RequestError, match='method can\'t contain control characters') as exc_info:
+                validate_and_send(rh, Request('http://127.0.0.1', method='GET\n'))
+            assert not isinstance(exc_info.value, TransportError)
+
+            # https://github.com/python/cpython/blob/987b712b4aeeece336eed24fcc87a950a756c3e2/Lib/http/client.py#L1265
+            with pytest.raises(RequestError, match='URL can\'t contain control characters') as exc_info:
+                validate_and_send(rh, Request('http://127.0.0. 1', method='GET\n'))
+            assert not isinstance(exc_info.value, TransportError)
+
+            # https://github.com/python/cpython/blob/987b712b4aeeece336eed24fcc87a950a756c3e2/Lib/http/client.py#L1288C31-L1288C50
+            with pytest.raises(RequestError, match='Invalid header name') as exc_info:
+                validate_and_send(rh, Request('http://127.0.0.1', headers={'foo\n': 'bar'}))
+            assert not isinstance(exc_info.value, TransportError)
+
+
+def run_validation(handler, fail, req, **handler_kwargs):
+    with handler(**handler_kwargs) as rh:
+        if fail:
+            with pytest.raises(UnsupportedRequest):
+                rh.validate(req)
+        else:
+            rh.validate(req)
+
+
+class TestRequestHandlerValidation:
+
+    class ValidationRH(RequestHandler):
+        def _send(self, request):
+            raise RequestError('test')
+
+    class NoCheckRH(ValidationRH):
+        _SUPPORTED_FEATURES = None
+        _SUPPORTED_PROXY_SCHEMES = None
+        _SUPPORTED_URL_SCHEMES = None
+
+    class HTTPSupportedRH(ValidationRH):
+        _SUPPORTED_URL_SCHEMES = ('http',)
+
+    URL_SCHEME_TESTS = [
+        # scheme, expected to fail, handler kwargs
+        ('Urllib', [
+            ('http', False, {}),
+            ('https', False, {}),
+            ('data', False, {}),
+            ('ftp', False, {}),
+            ('file', True, {}),
+            ('file', False, {'enable_file_urls': True}),
+        ]),
+        (NoCheckRH, [('http', False, {})]),
+        (ValidationRH, [('http', True, {})])
+    ]
+
+    PROXY_SCHEME_TESTS = [
+        # scheme, expected to fail
+        ('Urllib', [
+            ('http', False),
+            ('https', True),
+            ('socks4', False),
+            ('socks4a', False),
+            ('socks5', False),
+            ('socks5h', False),
+            ('socks', True),
+        ]),
+        (NoCheckRH, [('http', False)]),
+        (HTTPSupportedRH, [('http', True)]),
+    ]
+
+    PROXY_KEY_TESTS = [
+        # key, expected to fail
+        ('Urllib', [
+            ('all', False),
+            ('unrelated', False),
+        ]),
+        (NoCheckRH, [('all', False)]),
+        (HTTPSupportedRH, [('all', True)]),
+        (HTTPSupportedRH, [('no', True)]),
+    ]
+
+    @pytest.mark.parametrize('handler,scheme,fail,handler_kwargs', [
+        (handler_tests[0], scheme, fail, handler_kwargs)
+        for handler_tests in URL_SCHEME_TESTS
+        for scheme, fail, handler_kwargs in handler_tests[1]
+
+    ], indirect=['handler'])
+    def test_url_scheme(self, handler, scheme, fail, handler_kwargs):
+        run_validation(handler, fail, Request(f'{scheme}://'), **(handler_kwargs or {}))
+
+    @pytest.mark.parametrize('handler,fail', [('Urllib', False)], indirect=['handler'])
+    def test_no_proxy(self, handler, fail):
+        run_validation(handler, fail, Request('http://', proxies={'no': '127.0.0.1,github.com'}))
+        run_validation(handler, fail, Request('http://'), proxies={'no': '127.0.0.1,github.com'})
+
+    @pytest.mark.parametrize('handler,proxy_key,fail', [
+        (handler_tests[0], proxy_key, fail)
+        for handler_tests in PROXY_KEY_TESTS
+        for proxy_key, fail in handler_tests[1]
+    ], indirect=['handler'])
+    def test_proxy_key(self, handler, proxy_key, fail):
+        run_validation(handler, fail, Request('http://', proxies={proxy_key: 'http://example.com'}))
+        run_validation(handler, fail, Request('http://'), proxies={proxy_key: 'http://example.com'})
+
+    @pytest.mark.parametrize('handler,scheme,fail', [
+        (handler_tests[0], scheme, fail)
+        for handler_tests in PROXY_SCHEME_TESTS
+        for scheme, fail in handler_tests[1]
+    ], indirect=['handler'])
+    def test_proxy_scheme(self, handler, scheme, fail):
+        run_validation(handler, fail, Request('http://', proxies={'http': f'{scheme}://example.com'}))
+        run_validation(handler, fail, Request('http://'), proxies={'http': f'{scheme}://example.com'})
+
+    @pytest.mark.parametrize('handler', ['Urllib', HTTPSupportedRH], indirect=True)
+    def test_empty_proxy(self, handler):
+        run_validation(handler, False, Request('http://', proxies={'http': None}))
+        run_validation(handler, False, Request('http://'), proxies={'http': None})
+
+    @pytest.mark.parametrize('proxy_url', ['//example.com', 'example.com', '127.0.0.1'])
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_missing_proxy_scheme(self, handler, proxy_url):
+        run_validation(handler, True, Request('http://', proxies={'http': 'example.com'}))
+
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_cookiejar_extension(self, handler):
+        run_validation(handler, True, Request('http://', extensions={'cookiejar': 'notacookiejar'}))
+
+    @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
+    def test_timeout_extension(self, handler):
+        run_validation(handler, True, Request('http://', extensions={'timeout': 'notavalidtimeout'}))
+
+    def test_invalid_request_type(self):
+        rh = self.ValidationRH(logger=FakeLogger())
+        for method in (rh.validate, rh.send):
+            with pytest.raises(TypeError, match='Expected an instance of Request'):
+                method('not a request')
+
+
+class FakeResponse(Response):
+    def __init__(self, request):
+        # XXX: we could make request part of standard response interface
+        self.request = request
+        super().__init__(raw=io.BytesIO(b''), headers={}, url=request.url)
+
+
+class FakeRH(RequestHandler):
+
+    def _validate(self, request):
+        return
+
+    def _send(self, request: Request):
+        if request.url.startswith('ssl://'):
+            raise SSLError(request.url[len('ssl://'):])
+        return FakeResponse(request)
+
+
+class FakeRHYDL(FakeYDL):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._request_director = self.build_request_director([FakeRH])
+
+
+class TestRequestDirector:
+
+    def test_handler_operations(self):
+        director = RequestDirector(logger=FakeLogger())
+        handler = FakeRH(logger=FakeLogger())
+        director.add_handler(handler)
+        assert director.get_handler(FakeRH.rh_key()) is handler
+
+        # Handler should overwrite
+        handler2 = FakeRH(logger=FakeLogger())
+        director.add_handler(handler2)
+        assert director.get_handler(FakeRH.rh_key()) is not handler
+        assert director.get_handler(FakeRH.rh_key()) is handler2
+        assert len(director.get_handlers()) == 1
+
+        class AnotherFakeRH(FakeRH):
+            pass
+        director.add_handler(AnotherFakeRH(logger=FakeLogger()))
+        assert len(director.get_handlers()) == 2
+        assert director.get_handler(AnotherFakeRH.rh_key()).rh_key() == AnotherFakeRH.rh_key()
+
+        director.remove_handler(FakeRH.rh_key())
+        assert director.get_handler(FakeRH.rh_key()) is None
+        assert len(director.get_handlers()) == 1
+
+        # RequestErrors should passthrough
+        with pytest.raises(SSLError):
+            director.send(Request('ssl://something'))
+
+    def test_send(self):
+        director = RequestDirector(logger=FakeLogger())
+        with pytest.raises(RequestError):
+            director.send(Request('any://'))
+        director.add_handler(FakeRH(logger=FakeLogger()))
+        assert isinstance(director.send(Request('http://')), FakeResponse)
+
+    def test_unsupported_handlers(self):
+        director = RequestDirector(logger=FakeLogger())
+        director.add_handler(FakeRH(logger=FakeLogger()))
+
+        class SupportedRH(RequestHandler):
+            _SUPPORTED_URL_SCHEMES = ['http']
+
+            def _send(self, request: Request):
+                return Response(raw=io.BytesIO(b'supported'), headers={}, url=request.url)
+
+        # This handler should by default take preference over FakeRH
+        director.add_handler(SupportedRH(logger=FakeLogger()))
+        assert director.send(Request('http://')).read() == b'supported'
+        assert director.send(Request('any://')).read() == b''
+
+        director.remove_handler(FakeRH.rh_key())
+        with pytest.raises(NoSupportingHandlers):
+            director.send(Request('any://'))
+
+    def test_unexpected_error(self):
+        director = RequestDirector(logger=FakeLogger())
+
+        class UnexpectedRH(FakeRH):
+            def _send(self, request: Request):
+                raise TypeError('something')
+
+        director.add_handler(UnexpectedRH(logger=FakeLogger))
+        with pytest.raises(NoSupportingHandlers, match=r'1 unexpected error'):
+            director.send(Request('any://'))
+
+        director.remove_handlers()
+        assert len(director.get_handlers()) == 0
+
+        # Should not be fatal
+        director.add_handler(FakeRH(logger=FakeLogger()))
+        director.add_handler(UnexpectedRH(logger=FakeLogger))
+        assert director.send(Request('any://'))
+
+
+# XXX: do we want to move this to test_YoutubeDL.py?
+class TestYoutubeDLNetworking:
+
+    @staticmethod
+    def build_handler(ydl, handler: RequestHandler = FakeRH):
+        return ydl.build_request_director([handler]).get_handler(rh_key=handler.rh_key())
+
+    def test_compat_opener(self):
         with FakeYDL() as ydl:
-            rd = ydl._request_director
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', category=DeprecationWarning)
+                assert isinstance(ydl._opener, urllib.request.OpenerDirector)
 
-            url = 'http://127.0.0.1:%d/headers' % self.http_port
-            test_header = {'X-ydl-test': '1'}
-            # by url
-            self.assertTrue(rd.send(url).read())
+    @pytest.mark.parametrize('proxy,expected', [
+        ('http://127.0.0.1:8080', {'all': 'http://127.0.0.1:8080'}),
+        ('', {'all': '__noproxy__'}),
+        (None, {'http': 'http://127.0.0.1:8081', 'https': 'http://127.0.0.1:8081'})  # env, set https
+    ])
+    def test_proxy(self, proxy, expected):
+        old_http_proxy = os.environ.get('HTTP_PROXY')
+        try:
+            os.environ['HTTP_PROXY'] = 'http://127.0.0.1:8081'  # ensure that provided proxies override env
+            with FakeYDL({'proxy': proxy}) as ydl:
+                assert ydl.proxies == expected
+        finally:
+            if old_http_proxy:
+                os.environ['HTTP_PROXY'] = old_http_proxy
 
-            # urllib Request compat and ydl Request
-            for request in (urllib.request.Request(url, headers=test_header), Request(url, headers=test_header)):
-                data = rd.send(request).read()
-                self.assertIn(b'X-Ydl-Test: 1', data)
+    def test_compat_request(self):
+        with FakeRHYDL() as ydl:
+            assert ydl.urlopen('test://')
+            urllib_req = urllib.request.Request('http://foo.bar', data=b'test', method='PUT', headers={'X-Test': '1'})
+            urllib_req.add_unredirected_header('Cookie', 'bob=bob')
+            urllib_req.timeout = 2
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', category=DeprecationWarning)
+                req = ydl.urlopen(urllib_req).request
+                assert req.url == urllib_req.get_full_url()
+                assert req.data == urllib_req.data
+                assert req.method == urllib_req.get_method()
+                assert 'X-Test' in req.headers
+                assert 'Cookie' in req.headers
+                assert req.extensions.get('timeout') == 2
 
-            with self.assertRaises(AssertionError):
-                rd.send(None)
+            with pytest.raises(AssertionError):
+                ydl.urlopen(None)
 
-    def test_handler_preference(self):
-        class MockHandlerRH(RequestHandler):
-            def handle(self, request: Request):
-                return Response(io.BytesIO(self.rh_key().encode('utf-8')), url=request.url, headers={})
+    def test_extract_basic_auth(self):
+        with FakeRHYDL() as ydl:
+            res = ydl.urlopen(Request('http://user:pass@foo.bar'))
+            assert res.request.headers['Authorization'] == 'Basic dXNlcjpwYXNz'
 
-        class MockHandler2RH(MockHandlerRH):
+    def test_sanitize_url(self):
+        with FakeRHYDL() as ydl:
+            res = ydl.urlopen(Request('httpss://foo.bar'))
+            assert res.request.url == 'https://foo.bar'
+
+    def test_file_urls_error(self):
+        # use urllib handler
+        with FakeYDL() as ydl:
+            with pytest.raises(RequestError, match=r'file:// URLs are disabled by default'):
+                ydl.urlopen('file://')
+
+    def test_legacy_server_connect_error(self):
+        with FakeRHYDL() as ydl:
+            for error in ('UNSAFE_LEGACY_RENEGOTIATION_DISABLED', 'SSLV3_ALERT_HANDSHAKE_FAILURE'):
+                with pytest.raises(RequestError, match=r'Try using --legacy-server-connect'):
+                    ydl.urlopen(f'ssl://{error}')
+
+            with pytest.raises(SSLError, match='testerror'):
+                ydl.urlopen('ssl://testerror')
+
+    @pytest.mark.parametrize('proxy_key,proxy_url,expected', [
+        ('http', '__noproxy__', None),
+        ('no', '127.0.0.1,foo.bar', '127.0.0.1,foo.bar'),
+        ('https', 'example.com', 'http://example.com'),
+        ('https', 'socks5://example.com', 'socks5h://example.com'),
+        ('http', 'socks://example.com', 'socks4://example.com'),
+        ('http', 'socks4://example.com', 'socks4://example.com'),
+    ])
+    def test_clean_proxy(self, proxy_key, proxy_url, expected):
+        # proxies should be cleaned in urlopen()
+        with FakeRHYDL() as ydl:
+            req = ydl.urlopen(Request('test://', proxies={proxy_key: proxy_url})).request
+            assert req.proxies[proxy_key] == expected
+
+        # and should also be cleaned when building the handler
+        env_key = f'{proxy_key.upper()}_PROXY'
+        old_env_proxy = os.environ.get(env_key)
+        try:
+            os.environ[env_key] = proxy_url  # ensure that provided proxies override env
+            with FakeYDL() as ydl:
+                rh = self.build_handler(ydl)
+                assert rh.proxies[proxy_key] == expected
+        finally:
+            if old_env_proxy:
+                os.environ[env_key] = old_env_proxy
+
+    def test_clean_proxy_header(self):
+        with FakeRHYDL() as ydl:
+            req = ydl.urlopen(Request('test://', headers={'ytdl-request-proxy': '//foo.bar'})).request
+            assert 'ytdl-request-proxy' not in req.headers
+            assert req.proxies == {'all': 'http://foo.bar'}
+
+        with FakeYDL({'http_headers': {'ytdl-request-proxy': '//foo.bar'}}) as ydl:
+            rh = self.build_handler(ydl)
+            assert 'ytdl-request-proxy' not in rh.headers
+            assert rh.proxies == {'all': 'http://foo.bar'}
+
+    def test_clean_header(self):
+        with FakeRHYDL() as ydl:
+            res = ydl.urlopen(Request('test://', headers={'Youtubedl-no-compression': True}))
+            assert 'Youtubedl-no-compression' not in res.request.headers
+            assert res.request.headers.get('Accept-Encoding') == 'identity'
+
+        with FakeYDL({'http_headers': {'Youtubedl-no-compression': True}}) as ydl:
+            rh = self.build_handler(ydl)
+            assert 'Youtubedl-no-compression' not in rh.headers
+            assert rh.headers.get('Accept-Encoding') == 'identity'
+
+    def test_build_handler_default_params(self):
+        with FakeYDL() as ydl:
+            rh = self.build_handler(ydl)
+            assert rh.headers.items() == std_headers.items()
+            assert rh.timeout == 20.0
+            assert rh.source_address is None
+            assert rh.verbose is False
+            assert rh.prefer_system_certs is False
+            assert rh.verify is True
+            assert rh.legacy_ssl_support is False
+            assert rh.client_cert is None
+            assert rh.cookiejar is ydl.cookiejar
+
+    def test_build_handler_params(self):
+        with FakeYDL({
+            'http_headers': {'test': 'testtest'},
+            'socket_timeout': 2,
+            'proxy': 'http://127.0.0.1:8080',
+            'source_address': '127.0.0.45',
+            'debug_printtraffic': True,
+            'compat_opts': ['no-certifi'],
+            'nocheckcertificate': True,
+            'legacy_server_connect': True,
+        }) as ydl:
+            rh = self.build_handler(ydl)
+            assert rh.headers.get('test') == 'testtest'
+            assert 'Accept' in rh.headers  # ensure std_headers are still there
+            assert rh.timeout == 2
+            assert rh.proxies.get('all') == 'http://127.0.0.1:8080'
+            assert rh.source_address == '127.0.0.45'
+            assert rh.verbose is True
+            assert rh.prefer_system_certs is True
+            assert rh.verify is False
+            assert rh.legacy_ssl_support is True
+
+    @pytest.mark.parametrize('ydl_params,expected', [
+        ({'client_certificate': 'fakecert.crt'}, ('fakecert.crt', None, None)),
+        ({'client_certificate': 'fakecert.crt', 'client_certificate_key': 'fakekey.key'}, ('fakecert.crt', 'fakekey.key', None)),
+        ({'client_certificate': 'fakecert.crt', 'client_certificate_key': 'fakekey.key',
+          'client_certificate_password': 'foobar'}, ('fakecert.crt', 'fakekey.key', 'foobar')),
+        ({'client_certificate_key': 'fakekey.key', 'client_certificate_password': 'foobar'}, None),
+    ])
+    def test_client_certificate(self, ydl_params, expected):
+        with FakeYDL(ydl_params) as ydl:
+            rh = self.build_handler(ydl)
+            assert rh.client_cert == expected
+
+    def test_urllib_file_urls(self):
+        with FakeYDL({'enable_file_urls': False}) as ydl:
+            rh = self.build_handler(ydl, UrllibRH)
+            assert rh.enable_file_urls is False
+
+        with FakeYDL({'enable_file_urls': True}) as ydl:
+            rh = self.build_handler(ydl, UrllibRH)
+            assert rh.enable_file_urls is True
+
+
+class TestRequest:
+
+    def test_query(self):
+        req = Request('http://example.com?q=something', query={'v': 'xyz'})
+        assert req.url == 'http://example.com?q=something&v=xyz'
+
+        req.update(query={'v': '123'})
+        assert req.url == 'http://example.com?q=something&v=123'
+        req.update(url='http://example.com', query={'v': 'xyz'})
+        assert req.url == 'http://example.com?v=xyz'
+
+    def test_method(self):
+        req = Request('http://example.com')
+        assert req.method == 'GET'
+        req.data = b'test'
+        assert req.method == 'POST'
+        req.data = None
+        assert req.method == 'GET'
+        req.data = b'test2'
+        req.method = 'PUT'
+        assert req.method == 'PUT'
+        req.data = None
+        assert req.method == 'PUT'
+        with pytest.raises(TypeError):
+            req.method = 1
+
+    def test_request_helpers(self):
+        assert HEADRequest('http://example.com').method == 'HEAD'
+        assert PUTRequest('http://example.com').method == 'PUT'
+
+    def test_headers(self):
+        req = Request('http://example.com', headers={'tesT': 'test'})
+        assert req.headers == CaseInsensitiveDict({'test': 'test'})
+        req.update(headers={'teSt2': 'test2'})
+        assert req.headers == CaseInsensitiveDict({'test': 'test', 'test2': 'test2'})
+
+        req.headers = new_headers = CaseInsensitiveDict({'test': 'test'})
+        assert req.headers == CaseInsensitiveDict({'test': 'test'})
+        assert req.headers is new_headers
+
+        # test converts dict to case insensitive dict
+        req.headers = new_headers = {'test2': 'test2'}
+        assert isinstance(req.headers, CaseInsensitiveDict)
+        assert req.headers is not new_headers
+
+        with pytest.raises(TypeError):
+            req.headers = None
+
+    def test_data_type(self):
+        req = Request('http://example.com')
+        assert req.data is None
+        # test bytes is allowed
+        req.data = b'test'
+        assert req.data == b'test'
+        # test iterable of bytes is allowed
+        i = [b'test', b'test2']
+        req.data = i
+        assert req.data == i
+
+        # test file-like object is allowed
+        f = io.BytesIO(b'test')
+        req.data = f
+        assert req.data == f
+
+        # common mistake: test str not allowed
+        with pytest.raises(TypeError):
+            req.data = 'test'
+        assert req.data != 'test'
+
+        # common mistake: test dict is not allowed
+        with pytest.raises(TypeError):
+            req.data = {'test': 'test'}
+        assert req.data != {'test': 'test'}
+
+    def test_content_length_header(self):
+        req = Request('http://example.com', headers={'Content-Length': '0'}, data=b'')
+        assert req.headers.get('Content-Length') == '0'
+
+        req.data = b'test'
+        assert 'Content-Length' not in req.headers
+
+        req = Request('http://example.com', headers={'Content-Length': '10'})
+        assert 'Content-Length' not in req.headers
+
+    def test_content_type_header(self):
+        req = Request('http://example.com', headers={'Content-Type': 'test'}, data=b'test')
+        assert req.headers.get('Content-Type') == 'test'
+        req.data = b'test2'
+        assert req.headers.get('Content-Type') == 'test'
+        req.data = None
+        assert 'Content-Type' not in req.headers
+        req.data = b'test3'
+        assert req.headers.get('Content-Type') == 'application/x-www-form-urlencoded'
+
+    def test_proxies(self):
+        req = Request(url='http://example.com', proxies={'http': 'http://127.0.0.1:8080'})
+        assert req.proxies == {'http': 'http://127.0.0.1:8080'}
+        with pytest.raises(TypeError):
+            req.proxies = None
+
+        req.proxies = {}
+        assert req.proxies == {}
+
+    def test_extensions(self):
+        req = Request(url='http://example.com', extensions={'timeout': 2})
+        assert req.extensions == {'timeout': 2}
+        with pytest.raises(TypeError):
+            req.extensions = None
+
+        req.extensions = {}
+        assert req.extensions == {}
+
+        req.extensions['something'] = 'something'
+        assert req.extensions == {'something': 'something'}
+
+    def test_copy(self):
+        req = Request(
+            url='http://example.com',
+            extensions={'cookiejar': CookieJar()},
+            headers={'Accept-Encoding': 'br'},
+            proxies={'http': 'http://127.0.0.1'},
+            data=[b'123']
+        )
+        req_copy = req.copy()
+        assert req_copy is not req
+        assert req_copy.url == req.url
+        assert req_copy.headers == req.headers
+        assert req_copy.headers is not req.headers
+        assert req_copy.proxies == req.proxies
+        assert req_copy.proxies is not req.proxies
+
+        # Data is not able to be copied
+        assert req_copy.data == req.data
+        assert req_copy.data is req.data
+
+        # Shallow copy extensions
+        assert req_copy.extensions is not req.extensions
+        assert req_copy.extensions['cookiejar'] == req.extensions['cookiejar']
+
+        # Subclasses are copied by default
+        class AnotherRequest(Request):
             pass
 
-        class MockHandlerFallbackRH(RequestHandler):
-            def prepare_request(self, request: Request):
-                raise UnsupportedRequest('no support')
+        req = AnotherRequest(url='http://127.0.0.1')
+        assert isinstance(req.copy(), AnotherRequest)
 
-        with FakeYDL() as ydl:
-            rd = ydl.build_request_director([MockHandlerFallbackRH, MockHandler2RH, MockHandlerRH, UrllibRH, ])
+    def test_url(self):
+        req = Request(url='https://фtest.example.com/ some spaceв?ä=c',)
+        assert req.url == 'https://xn--test-z6d.example.com/%20some%20space%D0%B2?%C3%A4=c'
 
-            req = Request(url='http://127.0.0.1:%d/headers' % self.http_port)
-            self.assertNotIn(b'MockHandler', rd.send(req).read())
+        assert Request(url='//example.com').url == 'http://example.com'
 
-            req.preferred_handlers.insert(0, MockHandlerRH.rh_key())
-            self.assertEqual(rd.send(req).read(), b'MockHandler')
-            req.preferred_handlers.insert(0, MockHandler2RH.rh_key())
-            self.assertEqual(rd.send(req).read(), b'MockHandler2')
-            req.preferred_handlers.insert(0, MockHandlerFallbackRH.rh_key())
-            self.assertEqual(rd.send(req).read(), b'MockHandler2')
-            req.preferred_handlers.insert(0, 'I do not exist')
-            self.assertEqual(rd.send(req).read(), b'MockHandler2')
-            req.preferred_handlers.insert(0, 'Urllib')
-            self.assertNotIn(b'MockHandler', rd.send(req).read())
+        with pytest.raises(TypeError):
+            Request(url='https://').url = None
 
 
-class TestHTTPProxy(RequestHandlerTestCase):
-    @with_make_rh()
-    def test_http_proxy(self, make_rh):
-        geo_proxy = f'127.0.0.1:{self.geo_port}'
-        geo_proxy2 = f'localhost:{self.geo_port}'  # tests no scheme handling
+class TestResponse:
 
-        url = 'http://foo.com/bar'
-        with make_rh({
-            'proxy': f'//127.0.0.1:{self.proxy_port}',
-            'geo_verification_proxy': geo_proxy,
-        }) as rh:
-            response = rh.handle(Request(url)).read().decode('utf-8')
-            self.assertEqual(response, f'normal: {url}')
+    @pytest.mark.parametrize('reason,status,expected', [
+        ('custom', 200, 'custom'),
+        (None, 404, 'Not Found'),  # fallback status
+        ('', 403, 'Forbidden'),
+        (None, 999, None)
+    ])
+    def test_reason(self, reason, status, expected):
+        res = Response(io.BytesIO(b''), url='test://', headers={}, status=status, reason=reason)
+        assert res.reason == expected
 
-            # Test Ytdl-request-proxy header
-            req = Request(url, headers={'Ytdl-request-proxy': geo_proxy2})
-            response1 = rh.handle(req).read().decode('utf-8')
-            self.assertEqual(response1, f'geo: {url}')
+    def test_headers(self):
+        headers = Message()
+        headers.add_header('Test', 'test')
+        headers.add_header('Test', 'test2')
+        headers.add_header('content-encoding', 'br')
+        res = Response(io.BytesIO(b''), headers=headers, url='test://')
+        assert res.headers.get_all('test') == ['test', 'test2']
+        assert 'Content-Encoding' in res.headers
 
-            # Test proxies dict in request
-            response2 = rh.handle(Request(url, proxies={'http': geo_proxy})).read().decode('utf-8')
-            self.assertEqual(response2, f'geo: {url}')
+    def test_get_header(self):
+        headers = Message()
+        headers.add_header('Set-Cookie', 'cookie1')
+        headers.add_header('Set-cookie', 'cookie2')
+        headers.add_header('Test', 'test')
+        headers.add_header('Test', 'test2')
+        res = Response(io.BytesIO(b''), headers=headers, url='test://')
+        assert res.get_header('test') == 'test, test2'
+        assert res.get_header('set-Cookie') == 'cookie1'
+        assert res.get_header('notexist', 'default') == 'default'
 
-            # test that __noproxy__ disables all proxies for that request
-            real_url = 'http://127.0.0.1:%d/headers' % self.http_port
-            response3 = rh.handle(
-                Request(real_url, headers={'Ytdl-request-proxy': '__noproxy__'})).read().decode('utf-8')
-            self.assertNotEqual(response3, f'normal: {real_url}')
-            self.assertNotIn('Ytdl-request-proxy', response3)
-            self.assertIn('Accept', response3)
-
-            # test unrelated proxy is ignored (would cause all handlers to be unsupported otherwise)
-            response4 = rh.handle(
-                Request('http://localhost:%d/headers' % self.http_port,
-                        proxies={'unrelated': 'unrelated://example.com'})).read().decode('utf-8')
-            self.assertIn('Accept', response4)
-
-    @with_make_rh()
-    def test_no_proxy(self, make_rh):
-        with make_rh({'proxy': f'http://127.0.0.1:{self.proxy_port}'}) as rh:
-            # NO_PROXY
-            for no_proxy in (f'127.0.0.1:{self.http_port}', '127.0.0.1', 'localhost'):
-                nop_response = rh.handle(Request(f'http://127.0.0.1:{self.http_port}/headers', proxies={'no': no_proxy})).read().decode('utf-8')
-                self.assertIn('Accept', nop_response)
-
-    @with_make_rh()
-    def test_all_proxy(self, make_rh):
-        # test all proxy
-        url = 'http://foo.com/bar'
-        with make_rh() as rh:
-            response = rh.handle(Request(url, proxies={'all': f'http://127.0.0.1:{self.proxy_port}'})).read().decode('utf-8')
-            self.assertEqual(response, f'normal: {url}')
-
-    @with_make_rh()
-    def test_http_proxy_with_idn(self, make_rh):
-        with make_rh({
-            'proxy': f'127.0.0.1:{self.proxy_port}',
-        }) as rh:
-            url = 'http://中文.tw/'
-            response = rh.handle(Request(url)).read().decode('utf-8')
-            # b'xn--fiq228c' is '中文'.encode('idna')
-            self.assertEqual(response, 'normal: http://xn--fiq228c.tw/')
-
-
-class TestRequestsRH(RequestHandlerTestCase):
-    @with_make_rh([RequestsRH])
-    def test_no_persistent_connections(self, make_rh):
-        with make_rh({'no_persistent_connections': True}) as rh:
-            content = str(rh.handle(Request('http://127.0.0.1:%d/headers' % self.http_port)).read().decode('utf-8'))
-            self.assertIn('Connection: close', content)
-
-
-if __name__ == '__main__':
-    unittest.main()
+    def test_compat(self):
+        res = Response(io.BytesIO(b''), url='test://', status=404, headers={'test': 'test'})
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', category=DeprecationWarning)
+            assert res.code == res.getcode() == res.status
+            assert res.geturl() == res.url
+            assert res.info() is res.headers
+            assert res.getheader('test') == res.get_header('test')

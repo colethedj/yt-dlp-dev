@@ -13,6 +13,7 @@ import netrc
 import os
 import random
 import re
+import subprocess
 import sys
 import time
 import types
@@ -20,11 +21,16 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree
 
-from ..compat import functools  # isort: split
+from ..compat import functools, urllib_req_to_req  # isort: split
 from ..compat import compat_etree_fromstring, compat_expanduser, compat_os_name
 from ..cookies import LenientSimpleCookie
 from ..downloader.f4m import get_base_url, remove_encrypted_media
-from ..networking import Request
+from ..networking.exceptions import (
+    HTTPError,
+    IncompleteRead,
+    network_exceptions,
+)
+from ..networking.common import Request, HEADRequest
 from ..utils import (
     IDENTITY,
     JSON_LD_RE,
@@ -33,12 +39,11 @@ from ..utils import (
     FormatSorter,
     GeoRestrictedError,
     GeoUtils,
-    HEADRequest,
     LenientJSONDecoder,
+    Popen,
     RegexNotFoundError,
     RetryManager,
     UnsupportedError,
-    update_Request,
     age_restricted,
     base_url,
     bug_reports_message,
@@ -58,6 +63,7 @@ from ..utils import (
     join_nonempty,
     js_to_json,
     mimetype2ext,
+    netrc_from_content,
     orderedSet,
     parse_bitrate,
     parse_codecs,
@@ -87,7 +93,6 @@ from ..utils import (
     xpath_text,
     xpath_with_ns,
 )
-from ..networking.exceptions import HTTPError, IncompleteRead, network_exceptions
 
 
 class InfoExtractor:
@@ -285,6 +290,7 @@ class InfoExtractor:
     channel_id:     Id of the channel.
     channel_url:    Full URL to a channel webpage.
     channel_follower_count: Number of followers of the channel.
+    channel_is_verified: Whether the channel is verified on the platform.
     location:       Physical location where the video was filmed.
     subtitles:      The available subtitles as a dictionary in the format
                     {tag: subformats}. "tag" is usually a language code, and
@@ -313,6 +319,11 @@ class InfoExtractor:
                         * "author" - human-readable name of the comment author
                         * "author_id" - user ID of the comment author
                         * "author_thumbnail" - The thumbnail of the comment author
+                        * "author_url" - The url to the comment author's page
+                        * "author_is_verified" - Whether the author is verified
+                                                 on the platform
+                        * "author_is_uploader" - Whether the comment is made by
+                                                 the video uploader
                         * "id" - Comment ID
                         * "html" - Comment as HTML
                         * "text" - Plain text of the comment
@@ -324,8 +335,8 @@ class InfoExtractor:
                         * "dislike_count" - Number of negative ratings of the comment
                         * "is_favorited" - Whether the comment is marked as
                                            favorite by the video uploader
-                        * "author_is_uploader" - Whether the comment is made by
-                                                 the video uploader
+                        * "is_pinned" - Whether the comment is pinned to
+                                        the top of the comments
     age_limit:      Age restriction for the video, as an integer (years)
     webpage_url:    The URL to the video webpage, if given to yt-dlp it
                     should allow to get the same result again. (It will be set
@@ -349,6 +360,10 @@ class InfoExtractor:
                         * "start_time" - The start time of the chapter in seconds
                         * "end_time" - The end time of the chapter in seconds
                         * "title" (optional, string)
+    heatmap:        A list of dictionaries, with the following entries:
+                        * "start_time" - The start time of the data point in seconds
+                        * "end_time" - The end time of the data point in seconds
+                        * "value" - The normalized value of the data point (float between 0 and 1)
     playable_in_embed: Whether this video is allowed to play in embedded
                     players on other sites. Can be True (=always allowed),
                     False (=never allowed), None (=unknown), or a string
@@ -460,8 +475,8 @@ class InfoExtractor:
 
 
     Subclasses of this should also be added to the list of extractors and
-    should define a _VALID_URL regexp and, re-define the _real_extract() and
-    (optionally) _real_initialize() methods.
+    should define _VALID_URL as a regexp or a Sequence of regexps, and
+    re-define the _real_extract() and (optionally) _real_initialize() methods.
 
     Subclasses may also override suitable() if necessary, but ensure the function
     signature is preserved and that this function imports everything it needs
@@ -524,7 +539,7 @@ class InfoExtractor:
     _EMBED_REGEX = []
 
     def _login_hint(self, method=NO_DEFAULT, netrc=None):
-        password_hint = f'--username and --password, or --netrc ({netrc or self._NETRC_MACHINE}) to provide account credentials'
+        password_hint = f'--username and --password, --netrc-cmd, or --netrc ({netrc or self._NETRC_MACHINE}) to provide account credentials'
         return {
             None: '',
             'any': f'Use --cookies, --cookies-from-browser, {password_hint}',
@@ -551,8 +566,8 @@ class InfoExtractor:
         # we have cached the regexp for *this* class, whereas getattr would also
         # match the superclass
         if '_VALID_URL_RE' not in cls.__dict__:
-            cls._VALID_URL_RE = re.compile(cls._VALID_URL)
-        return cls._VALID_URL_RE.match(url)
+            cls._VALID_URL_RE = tuple(map(re.compile, variadic(cls._VALID_URL)))
+        return next(filter(None, (regex.match(url) for regex in cls._VALID_URL_RE)), None)
 
     @classmethod
     def suitable(cls, url):
@@ -774,17 +789,21 @@ class InfoExtractor:
         if expected_status is None:
             return False
         elif callable(expected_status):
-            return expected_status(err.code) is True
+            return expected_status(err.status) is True
         else:
-            return err.code in variadic(expected_status)
+            return err.status in variadic(expected_status)
 
     def _create_request(self, url_or_request, data=None, headers=None, query=None):
         if isinstance(url_or_request, urllib.request.Request):
-            return update_Request(url_or_request, data=data, headers=headers, query=query)
-        elif isinstance(url_or_request, Request):
-            url_or_request.update(data=data, headers=headers, query=query)
-            return url_or_request
-        return Request(url_or_request, data, headers, query=query)
+            self._downloader.deprecation_warning(
+                'Passing a urllib.request.Request to _create_request() is deprecated. '
+                'Use yt_dlp.networking.common.Request instead.')
+            url_or_request = urllib_req_to_req(url_or_request)
+        elif not isinstance(url_or_request, Request):
+            url_or_request = Request(url_or_request)
+
+        url_or_request.update(data=data, headers=headers, query=query)
+        return url_or_request
 
     def _request_webpage(self, url_or_request, video_id, note=None, errnote=None, fatal=True, data=None, headers=None, query=None, expected_status=None):
         """
@@ -822,12 +841,7 @@ class InfoExtractor:
         except network_exceptions as err:
             if isinstance(err, HTTPError):
                 if self.__can_accept_status_code(err, expected_status):
-                    # Retain reference to error to prevent file object from
-                    # being closed before it can be read. Works around the
-                    # effects of <https://bugs.python.org/issue15002>
-                    # introduced in Python 3.4.1.
-                    err.fp._error = err
-                    return err.fp
+                    return err.response
 
             if errnote is False:
                 return False
@@ -959,11 +973,11 @@ class InfoExtractor:
         if prefix is not None:
             webpage_bytes = prefix + webpage_bytes
         if self.get_param('dump_intermediate_pages', False):
-            self.to_screen('Dumping request to ' + urlh.geturl())
+            self.to_screen('Dumping request to ' + urlh.url)
             dump = base64.b64encode(webpage_bytes).decode('ascii')
             self._downloader.to_screen(dump)
         if self.get_param('write_pages'):
-            filename = self._request_dump_filename(urlh.geturl(), video_id)
+            filename = self._request_dump_filename(urlh.url, video_id)
             self.to_screen(f'Saving request to {filename}')
             with open(filename, 'wb') as outf:
                 outf.write(webpage_bytes)
@@ -1281,45 +1295,48 @@ class InfoExtractor:
         return clean_html(res)
 
     def _get_netrc_login_info(self, netrc_machine=None):
-        username = None
-        password = None
         netrc_machine = netrc_machine or self._NETRC_MACHINE
 
-        if self.get_param('usenetrc', False):
-            try:
-                netrc_file = compat_expanduser(self.get_param('netrc_location') or '~')
-                if os.path.isdir(netrc_file):
-                    netrc_file = os.path.join(netrc_file, '.netrc')
-                info = netrc.netrc(file=netrc_file).authenticators(netrc_machine)
-                if info is not None:
-                    username = info[0]
-                    password = info[2]
-                else:
-                    raise netrc.NetrcParseError(
-                        'No authenticators for %s' % netrc_machine)
-            except (OSError, netrc.NetrcParseError) as err:
-                self.report_warning(
-                    'parsing .netrc: %s' % error_to_compat_str(err))
+        cmd = self.get_param('netrc_cmd')
+        if cmd:
+            cmd = cmd.replace('{}', netrc_machine)
+            self.to_screen(f'Executing command: {cmd}')
+            stdout, _, ret = Popen.run(cmd, text=True, shell=True, stdout=subprocess.PIPE)
+            if ret != 0:
+                raise OSError(f'Command returned error code {ret}')
+            info = netrc_from_content(stdout).authenticators(netrc_machine)
 
-        return username, password
+        elif self.get_param('usenetrc', False):
+            netrc_file = compat_expanduser(self.get_param('netrc_location') or '~')
+            if os.path.isdir(netrc_file):
+                netrc_file = os.path.join(netrc_file, '.netrc')
+            info = netrc.netrc(netrc_file).authenticators(netrc_machine)
+
+        else:
+            return None, None
+        if not info:
+            raise netrc.NetrcParseError(f'No authenticators for {netrc_machine}')
+        return info[0], info[2]
 
     def _get_login_info(self, username_option='username', password_option='password', netrc_machine=None):
         """
         Get the login info as (username, password)
         First look for the manually specified credentials using username_option
         and password_option as keys in params dictionary. If no such credentials
-        available look in the netrc file using the netrc_machine or _NETRC_MACHINE
-        value.
+        are available try the netrc_cmd if it is defined or look in the
+        netrc file using the netrc_machine or _NETRC_MACHINE value.
         If there's no info available, return (None, None)
         """
 
-        # Attempt to use provided username and password or .netrc data
         username = self.get_param(username_option)
         if username is not None:
             password = self.get_param(password_option)
         else:
-            username, password = self._get_netrc_login_info(netrc_machine)
-
+            try:
+                username, password = self._get_netrc_login_info(netrc_machine)
+            except (OSError, netrc.NetrcParseError) as err:
+                self.report_warning(f'Failed to parse .netrc: {err}')
+                return None, None
         return username, password
 
     def _get_tfa_info(self, note='two-factor verification code'):
@@ -1789,7 +1806,7 @@ class InfoExtractor:
             return []
 
         manifest, urlh = res
-        manifest_url = urlh.geturl()
+        manifest_url = urlh.url
 
         return self._parse_f4m_formats(
             manifest, manifest_url, video_id, preference=preference, quality=quality, f4m_id=f4m_id,
@@ -1948,7 +1965,7 @@ class InfoExtractor:
             return [], {}
 
         m3u8_doc, urlh = res
-        m3u8_url = urlh.geturl()
+        m3u8_url = urlh.url
 
         return self._parse_m3u8_formats_and_subtitles(
             m3u8_doc, m3u8_url, ext=ext, entry_protocol=entry_protocol,
@@ -2230,7 +2247,7 @@ class InfoExtractor:
             return [], {}
 
         smil, urlh = res
-        smil_url = urlh.geturl()
+        smil_url = urlh.url
 
         namespace = self._parse_smil_namespace(smil)
 
@@ -2253,7 +2270,7 @@ class InfoExtractor:
             return {}
 
         smil, urlh = res
-        smil_url = urlh.geturl()
+        smil_url = urlh.url
 
         return self._parse_smil(smil, smil_url, video_id, f4m_params=f4m_params)
 
@@ -2445,7 +2462,7 @@ class InfoExtractor:
             return []
 
         xspf, urlh = res
-        xspf_url = urlh.geturl()
+        xspf_url = urlh.url
 
         return self._parse_xspf(
             xspf, playlist_id, xspf_url=xspf_url,
@@ -2516,7 +2533,7 @@ class InfoExtractor:
             return [], {}
 
         # We could have been redirected to a new url when we retrieved our mpd file.
-        mpd_url = urlh.geturl()
+        mpd_url = urlh.url
         mpd_base_url = base_url(mpd_url)
 
         return self._parse_mpd_formats_and_subtitles(
@@ -2887,7 +2904,7 @@ class InfoExtractor:
         if ism_doc is None:
             return [], {}
 
-        return self._parse_ism_formats_and_subtitles(ism_doc, urlh.geturl(), ism_id)
+        return self._parse_ism_formats_and_subtitles(ism_doc, urlh.url, ism_id)
 
     def _parse_ism_formats_and_subtitles(self, ism_doc, ism_url, ism_id=None):
         """
@@ -3440,7 +3457,7 @@ class InfoExtractor:
 
     def _get_cookies(self, url):
         """ Return a http.cookies.SimpleCookie with the cookies for the url """
-        return LenientSimpleCookie(self._downloader._calc_cookies(url))
+        return LenientSimpleCookie(self._downloader.cookiejar.get_cookie_header(url))
 
     def _apply_first_set_cookie_header(self, url_handle, cookie):
         """

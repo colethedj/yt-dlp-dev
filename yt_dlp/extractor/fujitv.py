@@ -1,5 +1,5 @@
-from ..utils import HEADRequest
 from .common import InfoExtractor
+from ..networking.common import HEADRequest
 
 
 class FujiTVFODPlus7IE(InfoExtractor):
