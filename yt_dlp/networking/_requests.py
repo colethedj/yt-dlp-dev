@@ -7,12 +7,7 @@ import socket
 import sys
 import warnings
 
-from ..dependencies import (
-    urllib3,
-    requests,
-    brotli,
-    OptionalDependencyWarning
-)
+from ..dependencies import OptionalDependencyWarning, brotli, requests, urllib3
 
 if requests is None:
     raise ImportError('requests module is not installed')
@@ -20,40 +15,32 @@ if requests is None:
 if urllib3 is None:
     raise ImportError('urllib3 module is not installed')
 
+from http.client import HTTPConnection
+
+import requests.adapters
+import requests.utils
 import urllib3.connection
 import urllib3.exceptions
 
-import requests.utils
-import requests.adapters
-
-
-from .common import (
-    Response,
-    RequestHandler,
-    Features
-)
-from ..socks import (
-    sockssocket,
-    ProxyError as SocksProxyError
-)
-from .utils import (
-    make_socks_proxy_opts,
-    select_proxy,
-    get_redirect_method,
-)
-
-from ..utils import int_or_none
-
+from .common import Features, RequestHandler, Response
 from .exceptions import (
-    IncompleteRead,
-    TransportError,
-    SSLError,
     HTTPError,
+    IncompleteRead,
     ProxyError,
     RequestError,
+    SSLError,
+    TransportError,
 )
-
-from http.client import HTTPConnection
+from .utils import (
+    InstanceStoreMixin,
+    add_accept_encoding_header,
+    get_redirect_method,
+    make_socks_proxy_opts,
+    select_proxy,
+)
+from ..socks import ProxyError as SocksProxyError
+from ..socks import sockssocket
+from ..utils import int_or_none
 
 SUPPORTED_ENCODINGS = [
     'gzip', 'deflate'
@@ -241,25 +228,25 @@ class YDLUrllib3LoggingFilter(logging.Filter):
         return True
 
 
-class RequestsRH(RequestHandler):
-    SUPPORTED_SCHEMES = ['http', 'https']
-    SUPPORTED_ENCODINGS = SUPPORTED_ENCODINGS
-    SUPPORTED_PROXY_SCHEMES = ['http', 'socks4', 'socks5', 'socks4a', 'socks']
+class RequestsRH(RequestHandler, InstanceStoreMixin):
+    _SUPPORTED_URL_SCHEMES = ('http', 'https')
+    _SUPPORTED_ENCODINGS = tuple(SUPPORTED_ENCODINGS)
+    _SUPPORTED_PROXY_SCHEMES = ('http', 'socks4', 'socks4a', 'socks5', 'socks5h')
     if urllib3_version >= (1, 26, 0):
-        SUPPORTED_PROXY_SCHEMES.append('https')
-    SUPPORTED_FEATURES = [Features.NO_PROXY, Features.ALL_PROXY]
+        _SUPPORTED_PROXY_SCHEMES = (_SUPPORTED_PROXY_SCHEMES, 'https')
+    SUPPORTED_FEATURES = (Features.NO_PROXY, Features.ALL_PROXY)
     RH_NAME = 'requests'
 
-    def __init__(self, ydl):
-        super().__init__(ydl)
-        self._session = None
-        if self.ydl.params.get('debug_printtraffic'):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.verbose:
             # Setting this globally is not ideal, but is easier than hacking with urllib3.
             # It could technically be problematic for scripts embedding yt-dlp.
             # However, it is unlikely debug traffic is used in that context in a way this will cause problems.
             HTTPConnection.debuglevel = 1
 
             # Print urllib3 debug messages
+            # TODO: Redirect to our logger
             logger = logging.getLogger('urllib3')
             handler = logging.StreamHandler(stream=sys.stdout)
             handler.setFormatter(logging.Formatter("%(message)s"))
@@ -269,53 +256,43 @@ class RequestsRH(RequestHandler):
         # this is expected if we are using --no-check-certificate
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-    @property
-    def session(self):
-        if self._session is None:
-            self._session = self._create_session()
-        return self._session
-
     def close(self):
-        if self._session:
-            self.session.close()
+        self._clear_instances()
 
-    def _create_session(self):
+    def _create_instance(self, cookiejar):
         session = YDLRequestsSession()
         _http_adapter = YDLRequestsHTTPAdapter(
             ssl_context=self.make_sslcontext(),
-            source_address=self.ydl.params.get('source_address'),
+            source_address=self.source_address,
             max_retries=urllib3.util.retry.Retry(False))
         session.adapters.clear()
         session.headers = requests.models.CaseInsensitiveDict({'Connection': 'keep-alive'})
         session.mount('https://', _http_adapter)
         session.mount('http://', _http_adapter)
-        session.cookies = self.cookiejar
+        session.cookies = cookiejar
         session.trust_env = False  # no need, we already load proxies from env
         return session
 
-    def _prepare_request(self, request):
-        # Requests doesn't set content-type if we have already encoded the data, while urllib does.
-        # We need to manually set it in this case as many extractors do not.
-        if 'content-type' not in request.headers:
-            if isinstance(request.data, (str, bytes)) or hasattr(request.data, 'read'):
-                request.headers['Content-Type'] = 'application/x-www-form-urlencoded'
+    def _send(self, request):
 
-        if self.ydl.params.get('no_persistent_connections', False) is True:
-            request.headers['Connection'] = 'close'
-        return request
+        headers = self._merge_headers(request.headers)
+        add_accept_encoding_header(headers, SUPPORTED_ENCODINGS)
 
-    def _real_handle(self, request):
         max_redirects_exceeded = False
 
+        session = self._get_instance(
+            cookiejar=request.extensions.get('cookiejar') or self.cookiejar
+        )
+
         try:
-            res = self.session.request(
+            res = session.request(
                 method=request.method,
                 url=request.url,
                 data=request.data,
-                headers=request.headers,
-                timeout=request.timeout,
-                proxies=request.proxies,
-                allow_redirects=request.allow_redirects,
+                headers=headers,
+                timeout=float(request.extensions.get('timeout') or self.timeout),
+                proxies=request.proxies or self.proxies,
+                allow_redirects=True,  # TODO(future): add extension to enable/disable redirects
                 stream=True
             )
 
@@ -337,10 +314,8 @@ class RequestsRH(RequestHandler):
         # Any misc Requests exception. May not necessary be network related e.g. InvalidURL
         except requests.exceptions.RequestException as e:
             raise RequestError(cause=e) from e
-        requests_res = RequestsHTTPResponseAdapter(res)
 
-        if requests_res.get_redirect_url() and not request.allow_redirects:
-            return requests_res
+        requests_res = RequestsHTTPResponseAdapter(res)
 
         if not 200 <= requests_res.status < 300:
             raise HTTPError(requests_res, redirect_loop=max_redirects_exceeded)

@@ -1,14 +1,17 @@
+import traceback
+import warnings
 from typing import Dict, List
 
-import warnings
-import traceback
-from ._urllib import UrllibRH  # noqa: F401
 from .common import Request, RequestHandler, Response
 from .exceptions import NoSupportingHandlers, RequestError, UnsupportedRequest
-from ..utils import bug_reports_message
 from ..dependencies import OptionalDependencyWarning
+from ..utils import bug_reports_message
+
+# isort: split
+from ._urllib import UrllibRH  # noqa: F401
+
 try:
-    from ._requests import RequestsRH
+    from ._requests import RequestsRH  # noqa: F401
 except Exception as e:
     if not isinstance(e, ImportError):
         warnings.warn(
