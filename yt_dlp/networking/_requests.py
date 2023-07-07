@@ -141,7 +141,7 @@ if urllib3_version < (2, 0, 0):
 class RequestsResponse(Response):
     def __init__(self, res: requests.models.Response):
         super().__init__(
-            raw=res.raw, headers=res.headers, url=res.url,
+            fp=res.raw, headers=res.headers, url=res.url,
             status=res.status_code, reason=res.reason)
 
         self.requests_response = res
