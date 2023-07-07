@@ -21,7 +21,7 @@ except Exception as e:
 class RequestDirector:
     """RequestDirector class
 
-    Helper class that, when given a request, finds a RequestHandler that supports it.
+    Helper class that, when given a request, forward it to a RequestHandler that supports it.
 
     @param logger: Logger instance.
     @param verbose: Print debug request information to stdout.

@@ -265,7 +265,10 @@ class RedirectHandler(urllib.request.HTTPRedirectHandler):
             raise urllib.error.HTTPError(req.full_url, code, msg, headers, fp)
 
         new_data = req.data
-        remove_headers = []
+        # Technically the Cookie header should be in unredirected_hdrs,
+        # however in practice some may set it in normal headers anyway.
+        # We will remove it here to prevent any leaks.
+        remove_headers = ['Cookie']
 
         new_method = get_redirect_method(req.get_method(), code)
         # only remove payload if method changed (e.g. POST to GET)
@@ -342,7 +345,7 @@ class UrllibResponseAdapter(Response):
         # 1. https://docs.python.org/3/library/urllib.request.html#urllib.response.addinfourl.getcode
         # 2. https://docs.python.org/3.10/library/http.client.html#http.client.HTTPResponse.status
         super().__init__(
-            raw=res, headers=res.headers, url=res.url,
+            fp=res, headers=res.headers, url=res.url,
             status=getattr(res, 'status', None) or res.getcode(), reason=getattr(res, 'reason', None))
 
     def read(self, amt=None):

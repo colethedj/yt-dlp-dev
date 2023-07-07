@@ -13,12 +13,11 @@ import warnings
 from email.message import Message
 from http import HTTPStatus
 from http.cookiejar import CookieJar
-from typing import Iterable, Mapping, Union
+from typing import Iterable, Mapping, Union, IO
 
-from .exceptions import UnsupportedRequest
+from .exceptions import UnsupportedRequest, TransportError
 from .utils import make_ssl_context
 from ..utils import (
-    AutoCloseMixin,
     CaseInsensitiveDict,
     classproperty,
     escape_url,
@@ -397,13 +396,15 @@ HEADRequest = functools.partial(Request, method='HEAD')
 PUTRequest = functools.partial(Request, method='PUT')
 
 
-class Response(io.IOBase, AutoCloseMixin):
+class Response(io.IOBase):
     """
-    Abstract base class for HTTP response adapters.
+    Base class for HTTP response adapters.
+
+    By default, it provides a basic wrapper for a file-like response object.
 
     Interface partially backwards-compatible with addinfourl and http.client.HTTPResponse.
 
-    @param raw: Original response.
+    @param fp: Original, file-like, response.
     @param url: URL that this is a response of.
     @param headers: response headers.
     @param status: Response HTTP status code. Default is 200 OK.
@@ -412,14 +413,14 @@ class Response(io.IOBase, AutoCloseMixin):
 
     def __init__(
             self,
-            raw,
+            fp: IO,
             url: str,
             headers: Mapping[str, str],
             status: int = 200,
             reason: str = None):
 
-        self.raw = raw
-        self.headers: Message = Message()
+        self.raw = fp
+        self.headers = Message()
         for name, value in headers.items():
             self.headers.add_header(name, value)
         self.status = status
@@ -435,7 +436,12 @@ class Response(io.IOBase, AutoCloseMixin):
         return self.raw.readable()
 
     def read(self, amt: int = None) -> bytes:
-        return self.raw.read(amt)
+        # Expected errors raised here should be of type RequestError or subclasses.
+        # Subclasses should redefine this method with more precise error handling.
+        try:
+            return self.raw.read(amt)
+        except Exception as e:
+            raise TransportError(cause=e) from e
 
     def close(self):
         self.raw.close()

@@ -193,6 +193,11 @@ class HTTPTestRequestHandler(http.server.BaseHTTPRequestHandler):
             self._method('GET', str(self.headers).encode('utf-8'))
         elif self.path.startswith('/headers'):
             self._headers()
+        elif self.path.startswith('/308-to-headers'):
+            self.send_response(308)
+            self.send_header('Location', '/headers')
+            self.send_header('Content-Length', '0')
+            self.end_headers()
         elif self.path == '/trailing_garbage':
             payload = b'<html><video src="/vid.mp4" /></html>'
             self.send_response(200)
@@ -468,6 +473,38 @@ class TestHTTPRequestHandler(TestRequestHandlerBase):
                     do_req(code, 'GET')
 
     @pytest.mark.parametrize('handler', ['Urllib', 'Requests'], indirect=True)
+    def test_request_cookie_header(self, handler):
+        # We should accept a Cookie header being passed as in normal headers and handle it appropriately.
+        with handler() as rh:
+            # Specified Cookie header should be used
+            res = validate_and_send(
+                rh, Request(
+                    f'http://127.0.0.1:{self.http_port}/headers',
+                    headers={'Cookie': 'test=test'})).read().decode('utf-8')
+            assert 'Cookie: test=test' in res
+
+            # Specified Cookie header should be removed on any redirect
+            res = validate_and_send(
+                rh, Request(
+                    f'http://127.0.0.1:{self.http_port}/308-to-headers',
+                    headers={'Cookie': 'test=test'})).read().decode('utf-8')
+            assert 'Cookie: test=test' not in res
+
+        # Specified Cookie header should override global cookiejar for that request
+        cookiejar = http.cookiejar.CookieJar()
+        cookiejar.set_cookie(http.cookiejar.Cookie(
+            version=0, name='test', value='ytdlp', port=None, port_specified=False,
+            domain='127.0.0.1', domain_specified=True, domain_initial_dot=False, path='/',
+            path_specified=True, secure=False, expires=None, discard=False, comment=None,
+            comment_url=None, rest={}))
+
+        with handler(cookiejar=cookiejar) as rh:
+            data = validate_and_send(
+                rh, Request(f'http://127.0.0.1:{self.http_port}/headers', headers={'cookie': 'test=test'})).read()
+            assert b'Cookie: test=ytdlp' not in data
+            assert b'Cookie: test=test' in data
+
+    @pytest.mark.parametrize('handler', ['Urllib', 'Requests'], indirect=True)
     def test_redirect_loop(self, handler):
         with handler() as rh:
             with pytest.raises(HTTPError, match='redirect loop'):
@@ -475,7 +512,7 @@ class TestHTTPRequestHandler(TestRequestHandlerBase):
 
     @pytest.mark.parametrize('handler', ['Urllib', 'Requests'], indirect=True)
     def test_incompleteread(self, handler):
-        with handler(timeout=2) as rh:  # TODO: add timeout test
+        with handler(timeout=2) as rh:
             with pytest.raises(IncompleteRead):
                 validate_and_send(rh, Request('http://127.0.0.1:%d/incompleteread' % self.http_port)).read()
 
@@ -929,7 +966,7 @@ class FakeResponse(Response):
     def __init__(self, request):
         # XXX: we could make request part of standard response interface
         self.request = request
-        super().__init__(raw=io.BytesIO(b''), headers={}, url=request.url)
+        super().__init__(fp=io.BytesIO(b''), headers={}, url=request.url)
 
 
 class FakeRH(RequestHandler):
@@ -993,7 +1030,7 @@ class TestRequestDirector:
             _SUPPORTED_URL_SCHEMES = ['http']
 
             def _send(self, request: Request):
-                return Response(raw=io.BytesIO(b'supported'), headers={}, url=request.url)
+                return Response(fp=io.BytesIO(b'supported'), headers={}, url=request.url)
 
         # This handler should by default take preference over FakeRH
         director.add_handler(SupportedRH(logger=FakeLogger()))
