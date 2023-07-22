@@ -885,6 +885,7 @@ def parse_options(argv=None):
         'cookiefile': opts.cookiefile,
         'cookiesfrombrowser': opts.cookiesfrombrowser,
         'legacyserverconnect': opts.legacy_server_connect,
+        'legacy_tls_support': opts.legacy_tls_support,
         'nocheckcertificate': opts.no_check_certificate,
         'prefer_insecure': opts.prefer_insecure,
         'enable_file_urls': opts.enable_file_urls,

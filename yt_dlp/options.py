@@ -1054,9 +1054,14 @@ def create_parser():
         dest='encoding', metavar='ENCODING',
         help='Force the specified encoding (experimental)')
     workarounds.add_option(
+        '--legacy-tls-support',
+        action='store_true', dest='legacy_tls_support', default=False,
+        help='Explicitly allow HTTPS connection to servers that do not support RFC 5746 secure renegotiation'
+             ' and enable use of older, less secure OpenSSL ciphers.')
+    workarounds.add_option(
         '--legacy-server-connect',
         action='store_true', dest='legacy_server_connect', default=False,
-        help='Explicitly allow HTTPS connection to servers that do not support RFC 5746 secure renegotiation')
+        help=optparse.SUPPRESS_HELP)
     workarounds.add_option(
         '--no-check-certificates',
         action='store_true', dest='no_check_certificate', default=False,

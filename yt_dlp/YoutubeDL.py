@@ -317,8 +317,8 @@ class YoutubeDL:
                        name/path from where cookies are loaded, the name of the keyring,
                        and the container name, e.g. ('chrome', ) or
                        ('vivaldi', 'default', 'BASICTEXT') or ('firefox', 'default', None, 'Meta')
-    legacyserverconnect: Explicitly allow HTTPS connection to servers that do not
-                       support RFC 5746 secure renegotiation
+    legacy_tls_support: Explicitly allow HTTPS connection to servers that do not support
+                          RFC 5746 secure renegotiation and enable use of older, less secure OpenSSL ciphers.
     nocheckcertificate:  Do not verify SSL certificates
     client_certificate:  Path to client certificate file in PEM format. May include the private key
     client_certificate_key:  Path to private key file for client certificate
@@ -698,6 +698,10 @@ class YoutubeDL:
         if check_deprecated('cn_verification_proxy', '--cn-verification-proxy', '--geo-verification-proxy'):
             if self.params.get('geo_verification_proxy') is None:
                 self.params['geo_verification_proxy'] = self.params['cn_verification_proxy']
+
+        if check_deprecated('legacyserverconnect', '--legacy-server-connect', '--legacy-tls-support'):
+            if self.params.get('legacy_tls_support') is None:
+                self.params['legacy_tls_support'] = self.params['legacyserverconnect']
 
         check_deprecated('autonumber', '--auto-number', '-o "%(autonumber)s-%(title)s.%(ext)s"')
         check_deprecated('usetitle', '--title', '-o "%(title)s-%(id)s.%(ext)s"')
@@ -4097,7 +4101,7 @@ class YoutubeDL:
                     'verbose': 'debug_printtraffic',
                     'source_address': 'source_address',
                     'timeout': 'socket_timeout',
-                    'legacy_ssl_support': 'legacyserverconnect',
+                    'legacy_ssl_support': 'legacy_tls_support',
                     'enable_file_urls': 'enable_file_urls',
                     'client_cert': {
                         'client_certificate': 'client_certificate',
