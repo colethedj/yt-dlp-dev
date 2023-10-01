@@ -80,24 +80,16 @@ class GloboIE(InfoExtractor):
         },
     }]
 
-    def _real_extract(self, url):
-        video_id = self._match_id(url)
-
-        self._request_webpage(
-            HEADRequest('https://globo-ab.globo.com/v2/selected-alternatives?experiments=player-isolated-experiment-02&skipImpressions=true'),
-            video_id, 'Getting cookies')
-
-        video = self._download_json(
-            'http://api.globovideos.com/videos/%s/playlist' % video_id,
-            video_id)['videos'][0]
-        if not self.get_param('allow_unplayable_formats') and video.get('encrypted') is True:
-            self.report_drm(video_id)
-
-        title = video['title']
-
+    def get_formats_and_subtitles(self, video_id, video):
         formats = []
+
+        if video.get('encrypted') is True:
+            self.report_drm(video_id)
+            return formats, {}
+
         security = self._download_json(
-            'https://playback.video.globo.com/v2/video-session', video_id, 'Downloading security hash for %s' % video_id,
+            'https://playback.video.globo.com/v2/video-session', video_id,
+            'Downloading security hash for %s' % video_id,
             headers={'content-type': 'application/json'}, data=json.dumps({
                 "player_type": "desktop",
                 "video_id": video_id,
@@ -107,7 +99,8 @@ class GloboIE(InfoExtractor):
                 "tz": "-3.0:00"
             }).encode())
 
-        self._request_webpage(HEADRequest(security['sources'][0]['url_template']), video_id, 'Getting locksession cookie')
+        self._request_webpage(HEADRequest(security['sources'][0]['url_template']), video_id,
+                              'Getting locksession cookie')
 
         security_hash = security['sources'][0]['token']
         if not security_hash:
@@ -157,7 +150,21 @@ class GloboIE(InfoExtractor):
                 subtitles.setdefault(sub_lang or 'por', []).append({
                     'url': sub_url,
                 })
+        return formats, subs
 
+    def _real_extract(self, url):
+        video_id = self._match_id(url)
+
+        self._request_webpage(
+            HEADRequest('https://globo-ab.globo.com/v2/selected-alternatives?experiments=player-isolated-experiment-02&skipImpressions=true'),
+            video_id, 'Getting cookies')
+
+        video = self._download_json(
+            'http://api.globovideos.com/videos/%s/playlist' % video_id,
+            video_id)['videos'][0]
+
+        formats, subtitles = self.get_formats_and_subtitles(video_id, video)
+        title = video['title']
         duration = float_or_none(video.get('duration'), 1000)
         uploader = video.get('channel')
         uploader_id = str_or_none(video.get('channel_id'))
