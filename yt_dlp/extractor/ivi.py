@@ -140,20 +140,25 @@ class IviIE(InfoExtractor):
         quality = qualities(self._KNOWN_FORMATS)
 
         formats = []
+        has_drm_formats = False
         for f in result.get('files', []):
             f_url = f.get('url')
             content_format = f.get('content_format')
             if not f_url:
                 continue
-            if (not self.get_param('allow_unplayable_formats')
-                    and ('-MDRM-' in content_format or '-FPS-' in content_format)):
+            if '-MDRM-' in content_format or '-FPS-' in content_format:
+                has_drm_formats = True
                 continue
+
             formats.append({
                 'url': f_url,
                 'format_id': content_format,
                 'quality': quality(content_format),
                 'filesize': int_or_none(f.get('size_in_bytes')),
             })
+
+        if not formats and has_drm_formats:
+            self.report_drm(video_id)
 
         compilation = result.get('compilation')
         episode = title if compilation else None

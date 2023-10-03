@@ -228,25 +228,19 @@ class HotStarIE(HotStarBaseIE):
             root = join_nonempty(cls._BASE_URL, video_type, delim='/')
         return f'{root}/{slug}/{video_id}'
 
-    def _real_extract(self, url):
-        video_id, video_type = self._match_valid_url(url).group('id', 'type')
-        video_type = self._TYPE.get(video_type, video_type)
-        cookies = self._get_cookies(url)  # Cookies before any request
+    def _extract_formats_and_subtitles(self, video_data, video_id, cookies):
+        formats, subs = [], {}
 
-        video_data = traverse_obj(
-            self._call_api_v1(
-                f'{video_type}/detail', video_id, fatal=False, query={'tas': 10000, 'contentId': video_id}),
-            ('body', 'results', 'item', {dict})) or {}
-        if not self.get_param('allow_unplayable_formats') and video_data.get('drmProtected'):
+        if video_data.get('drmProtected'):
             self.report_drm(video_id)
+            return formats, subs
 
         # See https://github.com/yt-dlp/yt-dlp/issues/396
         st = self._download_webpage_handle(f'{self._BASE_URL}/in', video_id)[1].headers.get('x-origin-date')
 
         geo_restricted = False
-        formats, subs = [], {}
         headers = {'Referer': f'{self._BASE_URL}/in'}
-
+        has_drm_formats = False
         # change to v2 in the future
         playback_sets = self._call_api_v2('play/v1/playback', video_id, st=st, cookies=cookies)['playBackSets']
         for playback_set in playback_sets:
@@ -287,8 +281,8 @@ class HotStarIE(HotStarBaseIE):
                 continue
 
             if tag_dict.get('encryption') not in ('plain', None):
-                for f in current_formats:
-                    f['has_drm'] = True
+                has_drm_formats = True
+                continue
             for f in current_formats:
                 for k, v in self._TAG_FIELDS.items():
                     if not f.get(k):
@@ -311,9 +305,27 @@ class HotStarIE(HotStarBaseIE):
 
         if not formats and geo_restricted:
             self.raise_geo_restricted(countries=['IN'], metadata_available=True)
+
+        if not formats and has_drm_formats:
+            self.report_drm(video_id)
+
         self._remove_duplicate_formats(formats)
         for f in formats:
             f.setdefault('http_headers', {}).update(headers)
+
+        return formats, subs
+
+    def _real_extract(self, url):
+        video_id, video_type = self._match_valid_url(url).group('id', 'type')
+        video_type = self._TYPE.get(video_type, video_type)
+        cookies = self._get_cookies(url)  # Cookies before any request
+
+        video_data = traverse_obj(
+            self._call_api_v1(
+                f'{video_type}/detail', video_id, fatal=False, query={'tas': 10000, 'contentId': video_id}),
+            ('body', 'results', 'item', {dict})) or {}
+
+        formats, subs = self._extract_formats_and_subtitles(video_data, video_id, cookies)
 
         return {
             'id': video_id,

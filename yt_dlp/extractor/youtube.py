@@ -4044,8 +4044,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
         *formats, subtitles = self._extract_formats_and_subtitles(streaming_data, video_id, player_url, live_status, duration)
         if all(f.get('has_drm') for f in formats):
             # If there are no formats that definitely don't have DRM, all have DRM
-            for f in formats:
-                f['has_drm'] = True
+            formats = []
 
         return live_broadcast_details, live_status, streaming_data, formats, subtitles
 
@@ -4143,7 +4142,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
             self.write_debug(f'{video_id}: Video is in Post-Live Manifestless mode')
 
         if not formats:
-            if not self.get_param('allow_unplayable_formats') and traverse_obj(streaming_data, (..., 'licenseInfos')):
+            if traverse_obj(streaming_data, (..., 'licenseInfos')):
                 self.report_drm(video_id)
             pemr = get_first(
                 playability_statuses,

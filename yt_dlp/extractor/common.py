@@ -1146,7 +1146,11 @@ class InfoExtractor:
     def report_drm(self, video_id, partial=NO_DEFAULT):
         if partial is not NO_DEFAULT:
             self._downloader.deprecation_warning('InfoExtractor.report_drm no longer accepts the argument partial')
-        self.raise_no_formats('This video is DRM protected', expected=True, video_id=video_id)
+        msg = 'This video is DRM protected'
+        if self.get_param('allow_unplayable_formats'):
+            self.report_warning(msg, video_id=video_id)
+        else:
+            self.raise_no_formats(msg, expected=True, video_id=video_id)
 
     def report_extraction(self, id_or_name):
         """Report information extraction."""

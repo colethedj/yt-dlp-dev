@@ -103,6 +103,16 @@ class ShahidIE(ShahidBaseIE):
                 'sessionId': user_data['sessionId'],
             }))
 
+    def _extract_formats(self, video_id, playout):
+        if playout.get('drm'):
+            self.report_drm(video_id)
+            return []
+
+        return self._extract_m3u8_formats(re.sub(
+            # https://docs.aws.amazon.com/mediapackage/latest/ug/manifest-filtering.html
+            r'aws\.manifestfilter=[\w:;,-]+&?',
+            '', playout['url']), video_id, 'mp4')
+
     def _real_extract(self, url):
         page_type, video_id = self._match_valid_url(url).groups()
         if page_type == 'clip':
@@ -111,14 +121,7 @@ class ShahidIE(ShahidBaseIE):
         playout = self._call_api(
             'playout/new/url/' + video_id, video_id)['playout']
 
-        if not self.get_param('allow_unplayable_formats') and playout.get('drm'):
-            self.report_drm(video_id)
-
-        formats = self._extract_m3u8_formats(re.sub(
-            # https://docs.aws.amazon.com/mediapackage/latest/ug/manifest-filtering.html
-            r'aws\.manifestfilter=[\w:;,-]+&?',
-            '', playout['url']), video_id, 'mp4')
-
+        formats = self._extract_formats(video_id, playout)
         # video = self._call_api(
         #     'product/id', video_id, {
         #         'id': video_id,

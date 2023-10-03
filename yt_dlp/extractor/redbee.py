@@ -337,7 +337,7 @@ class RTBFIE(RedBeeBaseIE):
                 })
 
         mpd_url = None if data.get('isLive') else data.get('urlDash')
-        if mpd_url and (self.get_param('allow_unplayable_formats') or not data.get('drm')):
+        if mpd_url and not data.get('drm'):  # TODO
             fmts, subs = self._extract_mpd_formats_and_subtitles(
                 mpd_url, media_id, mpd_id='dash', fatal=False)
             formats.extend(fmts)

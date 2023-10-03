@@ -137,28 +137,22 @@ class SonyLIVIE(InfoExtractor):
     def _initialize_pre_login(self):
         self._HEADERS['security_token'] = self._call_api('1.4', 'ALL/GETTOKEN', None)
 
-    def _real_extract(self, url):
-        video_id = self._match_id(url)
-        content = self._call_api(
-            '1.5', 'IN/CONTENT/VIDEOURL/VOD/' + video_id, video_id)
-        if not self.get_param('allow_unplayable_formats') and content.get('isEncrypted'):
+    def _extract_formats_and_subtitles(self, video_id, content):
+        formats, subtitles = [], {}
+        if content.get('isEncrypted'):
             self.report_drm(video_id)
+            return formats
         dash_url = content['videoURL']
         headers = {
             'x-playback-session-id': '%s-%d' % (uuid.uuid4().hex, time.time() * 1000)
         }
-        formats = self._extract_mpd_formats(
-            dash_url, video_id, mpd_id='dash', headers=headers, fatal=False)
+        formats.extend(self._extract_mpd_formats(
+            dash_url, video_id, mpd_id='dash', headers=headers, fatal=False))
         formats.extend(self._extract_m3u8_formats(
             dash_url.replace('.mpd', '.m3u8').replace('/DASH/', '/HLS/'),
             video_id, 'mp4', m3u8_id='hls', headers=headers, fatal=False))
         for f in formats:
             f.setdefault('http_headers', {}).update(headers)
-
-        metadata = self._call_api(
-            '1.6', 'IN/DETAIL/' + video_id, video_id)['containers'][0]['metadata']
-        title = metadata['episodeTitle']
-        subtitles = {}
         for sub in content.get('subtitle', []):
             sub_url = sub.get('subtitleUrl')
             if not sub_url:
@@ -166,6 +160,19 @@ class SonyLIVIE(InfoExtractor):
             subtitles.setdefault(sub.get('subtitleLanguageName', 'ENG'), []).append({
                 'url': sub_url,
             })
+        return formats, subtitles
+
+    def _real_extract(self, url):
+        video_id = self._match_id(url)
+        content = self._call_api(
+            '1.5', 'IN/CONTENT/VIDEOURL/VOD/' + video_id, video_id)
+
+        formats, subtitles = self._extract_formats_and_subtitles(video_id, content)
+
+        metadata = self._call_api(
+            '1.6', 'IN/DETAIL/' + video_id, video_id)['containers'][0]['metadata']
+        title = metadata['episodeTitle']
+
         return {
             'id': video_id,
             'title': title,

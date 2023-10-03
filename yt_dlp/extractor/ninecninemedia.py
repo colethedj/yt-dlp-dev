@@ -13,6 +13,36 @@ class NineCNineMediaIE(InfoExtractor):
     _VALID_URL = r'9c9media:(?P<destination_code>[^:]+):(?P<id>\d+)'
     _API_BASE_TEMPLATE = 'http://capi.9c9media.com/destinations/%s/platforms/desktop/contents/%s/'
 
+    def _extract_formats_and_subtitles(self, content_id, content_package, content_package_url):
+        formats, subtitles = [], {}
+        if try_get(content_package, lambda x: x['Constraints']['Security']['Type']):
+            self.report_drm(content_id)
+            return formats, subtitles
+
+        manifest_base_url = content_package_url + 'manifest.'
+        formats.extend(self._extract_m3u8_formats(
+            manifest_base_url + 'm3u8', content_id, 'mp4',
+            'm3u8_native', m3u8_id='hls', fatal=False))
+        formats.extend(self._extract_f4m_formats(
+            manifest_base_url + 'f4m', content_id,
+            f4m_id='hds', fatal=False))
+        formats.extend(self._extract_mpd_formats(
+            manifest_base_url + 'mpd', content_id,
+            mpd_id='dash', fatal=False))
+
+        if content_package.get('HasClosedCaptions'):
+            subtitles = {
+                'en': [{
+                    'url': manifest_base_url + 'vtt',
+                    'ext': 'vtt',
+                }, {
+                    'url': manifest_base_url + 'srt',
+                    'ext': 'srt',
+                }]
+            }
+
+        return formats, subtitles
+
     def _real_extract(self, url):
         destination_code, content_id = self._match_valid_url(url).groups()
         api_base_url = self._API_BASE_TEMPLATE % (destination_code, content_id)
@@ -28,21 +58,7 @@ class NineCNineMediaIE(InfoExtractor):
                 '$include': '[HasClosedCaptions]',
             })
 
-        if (not self.get_param('allow_unplayable_formats')
-                and try_get(content_package, lambda x: x['Constraints']['Security']['Type'])):
-            self.report_drm(content_id)
-
-        manifest_base_url = content_package_url + 'manifest.'
-        formats = []
-        formats.extend(self._extract_m3u8_formats(
-            manifest_base_url + 'm3u8', content_id, 'mp4',
-            'm3u8_native', m3u8_id='hls', fatal=False))
-        formats.extend(self._extract_f4m_formats(
-            manifest_base_url + 'f4m', content_id,
-            f4m_id='hds', fatal=False))
-        formats.extend(self._extract_mpd_formats(
-            manifest_base_url + 'mpd', content_id,
-            mpd_id='dash', fatal=False))
+        formats, subtitles = self._extract_formats_and_subtitles(content_id, content_package, content_package_url)
 
         thumbnails = []
         for image in (content.get('Images') or []):
@@ -79,19 +95,9 @@ class NineCNineMediaIE(InfoExtractor):
             'categories': categories,
             'duration': float_or_none(content_package.get('Duration')),
             'formats': formats,
+            'subtitles': subtitles,
             'thumbnails': thumbnails,
         }
-
-        if content_package.get('HasClosedCaptions'):
-            info['subtitles'] = {
-                'en': [{
-                    'url': manifest_base_url + 'vtt',
-                    'ext': 'vtt',
-                }, {
-                    'url': manifest_base_url + 'srt',
-                    'ext': 'srt',
-                }]
-            }
 
         return info
 

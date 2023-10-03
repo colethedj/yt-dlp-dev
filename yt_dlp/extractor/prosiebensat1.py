@@ -19,22 +19,12 @@ class ProSiebenSat1BaseIE(InfoExtractor):
     _SUPPORTED_PROTOCOLS = 'dash:clear,hls:clear,progressive:clear'
     _V4_BASE_URL = 'https://vas-v4.p7s1video.net/4.0/get'
 
-    def _extract_video_info(self, url, clip_id):
-        client_location = url
-
-        video = self._download_json(
-            'http://vas.sim-technik.de/vas/live/v2/videos',
-            clip_id, 'Downloading videos JSON', query={
-                'access_token': self._TOKEN,
-                'client_location': client_location,
-                'client_name': self._CLIENT_NAME,
-                'ids': clip_id,
-            })[0]
-
-        if not self.get_param('allow_unplayable_formats') and video.get('is_protected') is True:
-            self.report_drm(clip_id)
-
+    def _extract_formats(self, clip_id, video, client_location):
         formats = []
+        if video.get('is_protected') is True:
+            self.report_drm(clip_id)
+            return formats
+
         if self._ACCESS_ID:
             raw_ct = self._ENCRYPTION_KEY + clip_id + self._IV + self._ACCESS_ID
             protocols = self._download_json(
@@ -77,7 +67,9 @@ class ProSiebenSat1BaseIE(InfoExtractor):
         if not formats:
             source_ids = [compat_str(source['id']) for source in video['sources']]
 
-            client_id = self._SALT[:2] + sha1(''.join([clip_id, self._SALT, self._TOKEN, client_location, self._SALT, self._CLIENT_NAME]).encode('utf-8')).hexdigest()
+            client_id = self._SALT[:2] + sha1(
+                ''.join([clip_id, self._SALT, self._TOKEN, client_location, self._SALT, self._CLIENT_NAME]).encode(
+                    'utf-8')).hexdigest()
 
             sources = self._download_json(
                 'http://vas.sim-technik.de/vas/live/v2/videos/%s/sources' % clip_id,
@@ -96,7 +88,9 @@ class ProSiebenSat1BaseIE(InfoExtractor):
                 return (bitrate // 1000) if bitrate % 1000 == 0 else bitrate
 
             for source_id in source_ids:
-                client_id = self._SALT[:2] + sha1(''.join([self._SALT, clip_id, self._TOKEN, server_id, client_location, source_id, self._SALT, self._CLIENT_NAME]).encode('utf-8')).hexdigest()
+                client_id = self._SALT[:2] + sha1(''.join(
+                    [self._SALT, clip_id, self._TOKEN, server_id, client_location, source_id, self._SALT,
+                     self._CLIENT_NAME]).encode('utf-8')).hexdigest()
                 urls = self._download_json(
                     'http://vas.sim-technik.de/vas/live/v2/videos/%s/sources/url' % clip_id,
                     clip_id, 'Downloading urls JSON', fatal=False, query={
@@ -120,7 +114,8 @@ class ProSiebenSat1BaseIE(InfoExtractor):
                         continue
                     protocol = source.get('protocol')
                     mimetype = source.get('mimetype')
-                    if mimetype == 'application/f4m+xml' or 'f4mgenerator' in source_url or determine_ext(source_url) == 'f4m':
+                    if mimetype == 'application/f4m+xml' or 'f4mgenerator' in source_url or determine_ext(
+                        source_url) == 'f4m':
                         formats.extend(self._extract_f4m_formats(
                             source_url, clip_id, f4m_id='hds', fatal=False))
                     elif mimetype == 'application/x-mpegURL':
@@ -156,10 +151,23 @@ class ProSiebenSat1BaseIE(InfoExtractor):
                                 'tbr': tbr,
                                 'format_id': 'http%s' % ('-%d' % tbr if tbr else ''),
                             })
+        return formats
+
+    def _extract_video_info(self, url, clip_id):
+        client_location = url
+
+        video = self._download_json(
+            'http://vas.sim-technik.de/vas/live/v2/videos',
+            clip_id, 'Downloading videos JSON', query={
+                'access_token': self._TOKEN,
+                'client_location': client_location,
+                'client_name': self._CLIENT_NAME,
+                'ids': clip_id,
+            })[0]
 
         return {
             'duration': float_or_none(video.get('duration')),
-            'formats': formats,
+            'formats': self._extract_formats(clip_id, video, client_location)
         }
 
 

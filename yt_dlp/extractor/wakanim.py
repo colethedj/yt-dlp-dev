@@ -45,15 +45,14 @@ class WakanimIE(InfoExtractor):
         manifest_url = urljoin(url, self._search_regex(
             r'file\s*:\s*(["\'])(?P<url>(?:(?!\1).)+)\1', webpage, 'manifest url',
             group='url'))
-        if not self.get_param('allow_unplayable_formats'):
-            # https://docs.microsoft.com/en-us/azure/media-services/previous/media-services-content-protection-overview#streaming-urls
-            encryption = self._search_regex(
-                r'encryption%3D(c(?:enc|bc(?:s-aapl)?))',
-                manifest_url, 'encryption', default=None)
-            if encryption in ('cenc', 'cbcs-aapl'):
-                self.report_drm(video_id)
-
-        if 'format=mpd-time-cmaf' in unquote(manifest_url):
+        # https://docs.microsoft.com/en-us/azure/media-services/previous/media-services-content-protection-overview#streaming-urls
+        encryption = self._search_regex(
+            r'encryption%3D(c(?:enc|bc(?:s-aapl)?))',
+            manifest_url, 'encryption', default=None)
+        if encryption in ('cenc', 'cbcs-aapl'):
+            self.report_drm(video_id)
+            formats = []
+        elif 'format=mpd-time-cmaf' in unquote(manifest_url):
             formats = self._extract_mpd_formats(
                 manifest_url, video_id, mpd_id='dash')
         else:

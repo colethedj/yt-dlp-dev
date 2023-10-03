@@ -80,22 +80,12 @@ class GloboIE(InfoExtractor):
         },
     }]
 
-    def _real_extract(self, url):
-        video_id = self._match_id(url)
-
-        self._request_webpage(
-            HEADRequest('https://globo-ab.globo.com/v2/selected-alternatives?experiments=player-isolated-experiment-02&skipImpressions=true'),
-            video_id, 'Getting cookies')
-
-        video = self._download_json(
-            'http://api.globovideos.com/videos/%s/playlist' % video_id,
-            video_id)['videos'][0]
-        if not self.get_param('allow_unplayable_formats') and video.get('encrypted') is True:
-            self.report_drm(video_id)
-
-        title = video['title']
-
+    def _extract_formats_and_subs(self, video_id, video):
         formats = []
+        if video.get('encrypted') is True:
+            self.report_drm(video_id)
+            return formats, {}
+
         security = self._download_json(
             'https://playback.video.globo.com/v2/video-session', video_id, 'Downloading security hash for %s' % video_id,
             headers={'content-type': 'application/json'}, data=json.dumps({
@@ -157,7 +147,22 @@ class GloboIE(InfoExtractor):
                 subtitles.setdefault(sub_lang or 'por', []).append({
                     'url': sub_url,
                 })
+        return formats, subtitles
 
+    def _real_extract(self, url):
+        video_id = self._match_id(url)
+
+        self._request_webpage(
+            HEADRequest('https://globo-ab.globo.com/v2/selected-alternatives?experiments=player-isolated-experiment-02&skipImpressions=true'),
+            video_id, 'Getting cookies')
+
+        video = self._download_json(
+            'http://api.globovideos.com/videos/%s/playlist' % video_id,
+            video_id)['videos'][0]
+
+        title = video['title']
+
+        formats, subtitles = self._extract_formats_and_subs(video_id, video)
         duration = float_or_none(video.get('duration'), 1000)
         uploader = video.get('channel')
         uploader_id = str_or_none(video.get('channel_id'))
