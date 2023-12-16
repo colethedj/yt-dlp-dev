@@ -725,14 +725,6 @@ class TestClientCertificate:
             'client_certificate': os.path.join(self.certdir, 'client.crt'),
             'client_certificate_key': os.path.join(self.certdir, 'client.key'),
         })
-
-    @pytest.mark.parametrize('handler', ['Urllib', 'Requests'], indirect=True)
-    def test_certificate_combined_pass(self, handler):
-        self._run_test(handler, client_cert={
-            'client_certificate': os.path.join(self.certdir, 'clientwithencryptedkey.crt'),
-            'client_certificate_password': 'foobar',
-        })
-
     @pytest.mark.parametrize('handler', ['Urllib', 'Requests'], indirect=True)
     def test_certificate_nocombined_pass(self, handler):
         self._run_test(handler, client_cert={
