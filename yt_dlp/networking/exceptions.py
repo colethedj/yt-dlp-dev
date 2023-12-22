@@ -75,13 +75,16 @@ class HTTPError(RequestError):
 
 
 class IncompleteRead(TransportError):
-    def __init__(self, partial: int, expected: int | None = None, **kwargs):
+    def __init__(self, partial: int | None = None, expected: int | None = None, **kwargs):
         self.partial = partial
         self.expected = expected
-        msg = f'{partial} bytes read'
-        if expected is not None:
-            msg += f', {expected} more expected'
 
+        if partial is not None:
+            msg = f'{partial} bytes read'
+            if expected is not None:
+                msg += f', {expected} more expected'
+        else:
+            msg = f'Expected more bytes'
         super().__init__(msg=msg, **kwargs)
 
     def __repr__(self):

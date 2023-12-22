@@ -36,3 +36,10 @@ except ImportError:
     pass
 except Exception as e:
     warnings.warn(f'Failed to import "curl_cffi" request handler: {e}' + bug_reports_message())
+
+try:
+    from . import _tlsclient
+except ImportError:
+    pass
+except Exception as e:
+    warnings.warn(f'Failed to import "tls_client" request handler: {e}' + bug_reports_message())
