@@ -105,6 +105,9 @@ class TLSClientRH(ImpersonateRequestHandler):
     def _validate(self, request):
         if self._client_cert:
             raise UnsupportedRequest('Client certificates are not supported by tls-client')
+        accept_encoding_header = self._merge_headers(request.headers).get('accept-encoding')
+        if accept_encoding_header == 'identity':
+            raise UnsupportedRequest('tls-client does not support streaming and this request may have a large response')
         super()._validate(request)
 
     @staticmethod
