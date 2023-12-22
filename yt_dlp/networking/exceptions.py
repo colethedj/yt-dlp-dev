@@ -84,7 +84,7 @@ class IncompleteRead(TransportError):
             if expected is not None:
                 msg += f', {expected} more expected'
         else:
-            msg = f'Expected more bytes'
+            msg = 'Expected more bytes but did not get any'
         super().__init__(msg=msg, **kwargs)
 
     def __repr__(self):

@@ -6,6 +6,7 @@ import uuid
 import warnings
 from collections.abc import Iterable
 import re
+import urllib.parse
 
 from . import Request
 from ._helper import select_proxy
@@ -91,7 +92,7 @@ class TLSClientRH(ImpersonateRequestHandler):
     }
 
     _SUPPORTED_URL_SCHEMES = ('http', 'https')
-    _SUPPORTED_PROXY_SCHEMES = ('http',)
+    _SUPPORTED_PROXY_SCHEMES = ('http', 'https', 'socks5h')
     _SUPPORTED_FEATURES = (Features.ALL_PROXY, Features.NO_PROXY)
 
     RH_NAME = 'tls_client'
@@ -136,6 +137,16 @@ class TLSClientRH(ImpersonateRequestHandler):
         # Session per request. This will not have persistent connections.
         session_id = str(uuid.uuid4())
 
+        # go http client supports socks5h, but treats socks5 the same as socks5h [1].
+        # However, tls-client does not accept socks5h and only socks5 (which is treated as socks5h) [2].
+        # 1: https://github.com/golang/net/commit/395948e2f546cb82afa9e1f6d1a6e87849b9af1d
+        # 2: https://github.com/bogdanfinn/tls-client/issues/67
+        proxy = select_proxy(request.url, self._get_proxies(request))
+        if proxy:
+            proxy_parsed = urllib.parse.urlparse(proxy)
+            if proxy_parsed.scheme == 'socks5h':
+                proxy = proxy_parsed._replace(scheme='socks5').geturl()
+
         request_payload = (
             {
                 **copy.deepcopy(self._get_mapped_request_target(request) or next(iter(self._SUPPORTED_IMPERSONATE_TARGET_MAP.values()))),
@@ -144,11 +155,10 @@ class TLSClientRH(ImpersonateRequestHandler):
                 'withDebug': self.verbose,
                 'requestMethod': request.method,
                 'requestUrl': request.url,
-                'timeoutMilliseconds': int(self._calculate_timeout(request)*1000),
-                "sessionId": session_id,
-                "certificatePinningHosts": {},
-                "isByteResponse": True,
-                'proxyUrl': select_proxy(request.url, self.proxies),
+                'timeoutMilliseconds': int(self._calculate_timeout(request) * 1000),
+                'sessionId': session_id,
+                'isByteResponse': True,
+                'proxyUrl': proxy,
                 'isRotatingProxy': True,  # ?
                 'localAddress': f'{self.source_address}:0' if self.source_address else None,
 
@@ -182,7 +192,7 @@ class TLSClientRH(ImpersonateRequestHandler):
                 raise CertificateVerifyError(request_error)
             elif 'tls:' in request_error:
                 raise SSLError(request_error)
-            elif 'proxy responded' in request_error:
+            elif re.match(r'proxy responded|socks connect', request_error):
                 raise ProxyError(request_error)
             elif re.match(r'stopped after \d+ redirects', request_error):
                 # no information about response available
@@ -191,7 +201,7 @@ class TLSClientRH(ImpersonateRequestHandler):
                 raise IncompleteRead()
             raise TransportError(error)
 
-        response_data = base64.urlsafe_b64decode(response['body'].split(",", 1)[1])
+        response_data = base64.urlsafe_b64decode(response['body'].split(',', 1)[1])
 
         self._destroy_session(session_id)
 

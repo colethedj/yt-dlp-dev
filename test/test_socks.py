@@ -291,23 +291,27 @@ def ctx(request):
         ('Urllib', 'http'),
         ('Requests', 'http'),
         ('Websockets', 'ws'),
-        ('CurlCFFI', 'http')
+        ('CurlCFFI', 'http'),
     ], indirect=True)
 class TestSocks4Proxy:
-    def test_socks4_no_auth(self, handler, ctx):
+
+    @pytest.mark.parametrize('scheme', ['socks4', 'socks4a'])
+    @pytest.mark.skipif()
+    def test_socks4_no_auth(self, handler, ctx, scheme):
         with handler() as rh:
             with ctx.socks_server(Socks4ProxyHandler) as server_address:
                 response = ctx.socks_info_request(
-                    rh, proxies={'all': f'socks4://{server_address}'})
+                    rh, proxies={'all': f'{scheme}://{server_address}'})
                 assert response['version'] == 4
 
-    def test_socks4_auth(self, handler, ctx):
+    @pytest.mark.parametrize('scheme', ['socks4', 'socks4a'])
+    def test_socks4_auth(self, handler, ctx, scheme):
         with handler() as rh:
             with ctx.socks_server(Socks4ProxyHandler, user_id='user') as server_address:
                 with pytest.raises(ProxyError):
-                    ctx.socks_info_request(rh, proxies={'all': f'socks4://{server_address}'})
+                    ctx.socks_info_request(rh, proxies={'all': f'{scheme}://{server_address}'})
                 response = ctx.socks_info_request(
-                    rh, proxies={'all': f'socks4://user:@{server_address}'})
+                    rh, proxies={'all': f'{scheme}://user:@{server_address}'})
                 assert response['version'] == 4
 
     def test_socks4a_ipv4_target(self, handler, ctx):
@@ -325,10 +329,11 @@ class TestSocks4Proxy:
                 assert response['ipv4_address'] is None
                 assert response['domain_address'] == 'localhost'
 
-    def test_ipv4_client_source_address(self, handler, ctx):
+    @pytest.mark.parametrize('scheme', ['socks4', 'socks4a'])
+    def test_ipv4_client_source_address(self, handler, ctx, scheme):
         with ctx.socks_server(Socks4ProxyHandler) as server_address:
             source_address = f'127.0.0.{random.randint(5, 255)}'
-            with handler(proxies={'all': f'socks4://{server_address}'},
+            with handler(proxies={'all': f'{scheme}://{server_address}'},
                          source_address=source_address) as rh:
                 response = ctx.socks_info_request(rh)
                 assert response['client_address'][0] == source_address
@@ -339,23 +344,26 @@ class TestSocks4Proxy:
         Socks4CD.REQUEST_REJECTED_CANNOT_CONNECT_TO_IDENTD,
         Socks4CD.REQUEST_REJECTED_DIFFERENT_USERID,
     ])
-    def test_socks4_errors(self, handler, ctx, reply_code):
+    @pytest.mark.parametrize('scheme', ['socks4', 'socks4a'])
+    def test_socks4_errors(self, handler, ctx, reply_code, scheme):
         with ctx.socks_server(Socks4ProxyHandler, cd_reply=reply_code) as server_address:
-            with handler(proxies={'all': f'socks4://{server_address}'}) as rh:
+            with handler(proxies={'all': f'{scheme}://{server_address}'}) as rh:
                 with pytest.raises(ProxyError):
                     ctx.socks_info_request(rh)
 
-    def test_ipv6_socks4_proxy(self, handler, ctx):
+    @pytest.mark.parametrize('scheme', ['socks4', 'socks4a'])
+    def test_ipv6_socks4_proxy(self, handler, ctx, scheme):
         with ctx.socks_server(Socks4ProxyHandler, bind_ip='::1') as server_address:
-            with handler(proxies={'all': f'socks4://{server_address}'}) as rh:
+            with handler(proxies={'all': f'{scheme}://{server_address}'}) as rh:
                 response = ctx.socks_info_request(rh, target_domain='127.0.0.1')
                 assert response['client_address'][0] == '::1'
                 assert response['ipv4_address'] == '127.0.0.1'
                 assert response['version'] == 4
 
-    def test_timeout(self, handler, ctx):
+    @pytest.mark.parametrize('scheme', ['socks4', 'socks4a'])
+    def test_timeout(self, handler, ctx, scheme):
         with ctx.socks_server(Socks4ProxyHandler, sleep=2) as server_address:
-            with handler(proxies={'all': f'socks4://{server_address}'}, timeout=0.5) as rh:
+            with handler(proxies={'all': f'{scheme}://{server_address}'}, timeout=0.5) as rh:
                 with pytest.raises(TransportError):
                     ctx.socks_info_request(rh)
 
@@ -365,29 +373,37 @@ class TestSocks4Proxy:
         ('Urllib', 'http'),
         ('Requests', 'http'),
         ('Websockets', 'ws'),
-        ('CurlCFFI', 'http')
+        ('CurlCFFI', 'http'),
+        ('TLSClient', 'http'),
     ], indirect=True)
 class TestSocks5Proxy:
 
-    def test_socks5_no_auth(self, handler, ctx):
+    @pytest.mark.parametrize('scheme', ['socks5', 'socks5h'])
+    @pytest.mark.skip_handler_if(
+        'TLSClient', lambda r: r.getfixturevalue('scheme') == 'socks5', 'TLSClient does not support socks5')
+    def test_socks5_no_auth(self, handler, ctx, scheme):
         with ctx.socks_server(Socks5ProxyHandler) as server_address:
-            with handler(proxies={'all': f'socks5://{server_address}'}) as rh:
+            with handler(proxies={'all': f'{scheme}://{server_address}'}) as rh:
                 response = ctx.socks_info_request(rh)
                 assert response['auth_methods'] == [0x0]
                 assert response['version'] == 5
 
-    def test_socks5_user_pass(self, handler, ctx):
+    @pytest.mark.parametrize('scheme', ['socks5', 'socks5h'])
+    @pytest.mark.skip_handler_if(
+        'TLSClient', lambda r: r.getfixturevalue('scheme') == 'socks5', 'TLSClient does not support socks5')
+    def test_socks5_user_pass(self, handler, ctx, scheme):
         with ctx.socks_server(Socks5ProxyHandler, auth=('test', 'testpass')) as server_address:
             with handler() as rh:
                 with pytest.raises(ProxyError):
-                    ctx.socks_info_request(rh, proxies={'all': f'socks5://{server_address}'})
+                    ctx.socks_info_request(rh, proxies={'all': f'{scheme}://{server_address}'})
 
                 response = ctx.socks_info_request(
-                    rh, proxies={'all': f'socks5://test:testpass@{server_address}'})
+                    rh, proxies={'all': f'{scheme}://test:testpass@{server_address}'})
 
                 assert response['auth_methods'] == [Socks5Auth.AUTH_NONE, Socks5Auth.AUTH_USER_PASS]
                 assert response['version'] == 5
 
+    @pytest.mark.skip_handler('TLSClient', 'TLSClient does not support socks5')
     def test_socks5_ipv4_target(self, handler, ctx):
         with ctx.socks_server(Socks5ProxyHandler) as server_address:
             with handler(proxies={'all': f'socks5://{server_address}'}) as rh:
@@ -395,6 +411,7 @@ class TestSocks5Proxy:
                 assert response['ipv4_address'] == '127.0.0.1'
                 assert response['version'] == 5
 
+    @pytest.mark.skip_handler('TLSClient', 'TLSClient does not support socks5')
     def test_socks5_domain_target(self, handler, ctx):
         with ctx.socks_server(Socks5ProxyHandler) as server_address:
             with handler(proxies={'all': f'socks5://{server_address}'}) as rh:
@@ -418,16 +435,22 @@ class TestSocks5Proxy:
                 assert response['domain_address'] is None
                 assert response['version'] == 5
 
-    def test_socks5_ipv6_destination(self, handler, ctx):
+    @pytest.mark.parametrize('scheme', ['socks5', 'socks5h'])
+    @pytest.mark.skip_handler_if(
+        'TLSClient', lambda r: r.getfixturevalue('scheme') == 'socks5', 'TLSClient does not support socks5')
+    def test_socks5_ipv6_destination(self, handler, ctx, scheme):
         with ctx.socks_server(Socks5ProxyHandler) as server_address:
-            with handler(proxies={'all': f'socks5://{server_address}'}) as rh:
+            with handler(proxies={'all': f'{scheme}://{server_address}'}) as rh:
                 response = ctx.socks_info_request(rh, target_domain='[::1]')
                 assert response['ipv6_address'] == '::1'
                 assert response['version'] == 5
 
-    def test_ipv6_socks5_proxy(self, handler, ctx):
+    @pytest.mark.parametrize('scheme', ['socks5', 'socks5h'])
+    @pytest.mark.skip_handler_if(
+        'TLSClient', lambda r: r.getfixturevalue('scheme') == 'socks5', 'TLSClient does not support socks5')
+    def test_ipv6_socks5_proxy(self, handler, ctx, scheme):
         with ctx.socks_server(Socks5ProxyHandler, bind_ip='::1') as server_address:
-            with handler(proxies={'all': f'socks5://{server_address}'}) as rh:
+            with handler(proxies={'all': f'{scheme}://{server_address}'}) as rh:
                 response = ctx.socks_info_request(rh, target_domain='127.0.0.1')
                 assert response['client_address'][0] == '::1'
                 assert response['ipv4_address'] == '127.0.0.1'
@@ -435,10 +458,13 @@ class TestSocks5Proxy:
 
     # XXX: is there any feasible way of testing IPv6 source addresses?
     # Same would go for non-proxy source_address test...
-    def test_ipv4_client_source_address(self, handler, ctx):
+    @pytest.mark.parametrize('scheme', ['socks5', 'socks5h'])
+    @pytest.mark.skip_handler_if(
+        'TLSClient', lambda r: r.getfixturevalue('scheme') == 'socks5', 'TLSClient does not support socks5')
+    def test_ipv4_client_source_address(self, handler, ctx, scheme):
         with ctx.socks_server(Socks5ProxyHandler) as server_address:
             source_address = f'127.0.0.{random.randint(5, 255)}'
-            with handler(proxies={'all': f'socks5://{server_address}'}, source_address=source_address) as rh:
+            with handler(proxies={'all': f'{scheme}://{server_address}'}, source_address=source_address) as rh:
                 response = ctx.socks_info_request(rh)
                 assert response['client_address'][0] == source_address
                 assert response['version'] == 5
@@ -453,15 +479,21 @@ class TestSocks5Proxy:
         Socks5Reply.COMMAND_NOT_SUPPORTED,
         Socks5Reply.ADDRESS_TYPE_NOT_SUPPORTED,
     ])
-    def test_socks5_errors(self, handler, ctx, reply_code):
+    @pytest.mark.parametrize('scheme', ['socks5', 'socks5h'])
+    @pytest.mark.skip_handler_if(
+        'TLSClient', lambda r: r.getfixturevalue('scheme') == 'socks5', 'TLSClient does not support socks5')
+    def test_socks5_errors(self, handler, ctx, reply_code, scheme):
         with ctx.socks_server(Socks5ProxyHandler, reply=reply_code) as server_address:
-            with handler(proxies={'all': f'socks5://{server_address}'}) as rh:
+            with handler(proxies={'all': f'{scheme}://{server_address}'}) as rh:
                 with pytest.raises(ProxyError):
                     ctx.socks_info_request(rh)
 
-    def test_timeout(self, handler, ctx):
+    @pytest.mark.parametrize('scheme', ['socks5', 'socks5h'])
+    @pytest.mark.skip_handler_if(
+        'TLSClient', lambda r: r.getfixturevalue('scheme') == 'socks5', 'TLSClient does not support socks5')
+    def test_timeout(self, handler, ctx, scheme):
         with ctx.socks_server(Socks5ProxyHandler, sleep=2) as server_address:
-            with handler(proxies={'all': f'socks5://{server_address}'}, timeout=1) as rh:
+            with handler(proxies={'all': f'{scheme}://{server_address}'}, timeout=1) as rh:
                 with pytest.raises(TransportError):
                     ctx.socks_info_request(rh)
 
