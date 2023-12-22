@@ -9,7 +9,9 @@ from yt_dlp.utils._utils import _YDLLogger as FakeLogger
 
 @pytest.fixture
 def handler(request):
-    RH_KEY = request.param
+    RH_KEY = getattr(request, 'param', None)
+    if not RH_KEY:
+        return
     if inspect.isclass(RH_KEY) and issubclass(RH_KEY, RequestHandler):
         handler = RH_KEY
     elif RH_KEY in _REQUEST_HANDLERS:
@@ -28,18 +30,16 @@ def handler(request):
 
 @pytest.fixture(autouse=True)
 def skip_handler(request, handler):
-    if request.node.get_closest_marker('skip_handler'):
-        args = request.node.get_closest_marker('skip_handler').args
-        if args[0] == handler.RH_KEY:
-            pytest.skip(args[1] if len(args) > 1 else '')
+    for marker in request.node.iter_markers('skip_handler'):
+        if marker.args[0] == handler.RH_KEY:
+            pytest.skip(marker.args[1] if len(marker.args) > 1 else '')
 
 
 @pytest.fixture(autouse=True)
 def skip_handler_if(request, handler):
-    if request.node.get_closest_marker('skip_handler_if'):
-        args = request.node.get_closest_marker('skip_handler_if').args
-        if args[0] == handler.RH_KEY and args[1](request):
-            pytest.skip(args[2] if len(args) > 2 else '')
+    for marker in request.node.iter_markers('skip_handler_if'):
+        if marker.args[0] == handler.RH_KEY and marker.args[1](request):
+            pytest.skip(marker.args[2] if len(marker.args) > 2 else '')
 
 
 def validate_and_send(rh, req):
