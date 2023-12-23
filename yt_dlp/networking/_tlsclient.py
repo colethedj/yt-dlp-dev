@@ -2,48 +2,98 @@ import base64
 import copy
 import io
 import json
+import re
+import urllib.parse
 import uuid
 import warnings
 from collections.abc import Iterable
-import re
-import urllib.parse
+from pathlib import Path
+from platform import platform
 
-from . import Request
 from ._helper import select_proxy
-from .common import register_rh, register_preference, Response, Features
-from .exceptions import RequestError, CertificateVerifyError, TransportError, SSLError, ProxyError, HTTPError, \
-    IncompleteRead, UnsupportedRequest
+from .common import (
+    Features,
+    Request,
+    Response,
+    register_preference,
+    register_rh,
+)
+from .exceptions import (
+    CertificateVerifyError,
+    HTTPError,
+    IncompleteRead,
+    ProxyError,
+    RequestError,
+    SSLError,
+    TransportError,
+    UnsupportedRequest,
+)
 from .impersonate import ImpersonateRequestHandler, ImpersonateTarget
+from ..utils import get_executable_path
 
-try:
-    import ctypes
-    import os
-    tls_client = ctypes.cdll.LoadLibrary(os.getenv('YT_DLP_TLS_CLIENT_PATH'))
-    tc_request = tls_client.request
-    tc_request.argtypes = [ctypes.c_char_p]
-    tc_request.restype = ctypes.c_char_p
 
-    tc_getCookiesFromSession = tls_client.getCookiesFromSession
-    tc_getCookiesFromSession.argtypes = [ctypes.c_char_p]
-    tc_getCookiesFromSession.restype = ctypes.c_char_p
+def get_tls_client_lib_paths():
+    paths = []
 
-    tc_addCookiesToSession = tls_client.addCookiesToSession
-    tc_addCookiesToSession.argtypes = [ctypes.c_char_p]
-    tc_addCookiesToSession.restype = ctypes.c_char_p
+    env_path = Path(os.getenv('YT_DLP_LIB_TLS_CLIENT_PATH', ''))
+    if env_path.is_file():
+        paths.append(env_path)
 
-    tc_freeMemory = tls_client.freeMemory
-    tc_freeMemory.argtypes = [ctypes.c_char_p]
+    if os.name == 'nt':
+        exec_dll_path = Path(get_executable_path(), 'tls-client.dll')
+        if exec_dll_path.is_file():
+            paths.append(str(exec_dll_path))
+        paths.append('tls-client.dll')
+    elif platform == 'darwin':
+        exec_dylib_path = Path(get_executable_path(), 'libtls-client.dylib')
+        if exec_dylib_path.is_file():
+            paths.append(str(exec_dylib_path))
+        paths.append('libtls-client.dylib')
+    else:
+        exec_so_path = Path(get_executable_path(), 'libtls-client.so')
+        if exec_so_path.is_file():
+            paths.append(str(exec_so_path))
+        paths.append('libtls-client.so')
+    return paths
 
-    tc_destroySession = tls_client.destroySession
-    tc_destroySession.argtypes = [ctypes.c_char_p]
-    tc_destroySession.restype = ctypes.c_char_p
 
-    destroyAll = tls_client.destroyAll
-    destroyAll.restype = ctypes.c_char_p
+import ctypes
+import os
 
-except Exception as e:
-    warnings.warn(f'Failed to load tls-client: {e}')
-    raise ImportError('tls-client unavailable')
+tls_client = None
+for path in get_tls_client_lib_paths():
+    try:
+        tls_client = ctypes.cdll.LoadLibrary(path)
+        break
+    except OSError:
+        continue
+
+if not tls_client:
+    warnings.warn('tls-client shared library not found')
+    raise ImportError('tls-client shared library not found')
+
+
+tc_request = tls_client.request
+tc_request.argtypes = [ctypes.c_char_p]
+tc_request.restype = ctypes.c_char_p
+
+tc_getCookiesFromSession = tls_client.getCookiesFromSession
+tc_getCookiesFromSession.argtypes = [ctypes.c_char_p]
+tc_getCookiesFromSession.restype = ctypes.c_char_p
+
+tc_addCookiesToSession = tls_client.addCookiesToSession
+tc_addCookiesToSession.argtypes = [ctypes.c_char_p]
+tc_addCookiesToSession.restype = ctypes.c_char_p
+
+tc_freeMemory = tls_client.freeMemory
+tc_freeMemory.argtypes = [ctypes.c_char_p]
+
+tc_destroySession = tls_client.destroySession
+tc_destroySession.argtypes = [ctypes.c_char_p]
+tc_destroySession.restype = ctypes.c_char_p
+
+destroyAll = tls_client.destroyAll
+destroyAll.restype = ctypes.c_char_p
 
 
 @register_rh
@@ -100,7 +150,7 @@ class TLSClientRH(ImpersonateRequestHandler):
     def _check_extensions(self, extensions):
         super()._check_extensions(extensions)
         extensions.pop('impersonate', None)
-       # extensions.pop('cookiejar', None)
+        # extensions.pop('cookiejar', None)
         extensions.pop('timeout', None)
 
     def _validate(self, request):
