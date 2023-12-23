@@ -614,6 +614,7 @@ class TestHTTPRequestHandler(TestRequestHandlerBase):
             assert res.read() == b''
 
 
+@pytest.mark.parametrize('handler', ['Urllib', 'Requests', 'CurlCFFI', 'TLSClient'], indirect=True)
 class TestHTTPProxy(TestRequestHandlerBase):
     # Note: this only tests http urls over non-CONNECT proxy
     @classmethod
@@ -635,7 +636,10 @@ class TestHTTPProxy(TestRequestHandlerBase):
         cls.geo_proxy_thread.daemon = True
         cls.geo_proxy_thread.start()
 
-    @pytest.mark.parametrize('handler', ['Urllib', 'Requests', 'CurlCFFI'], indirect=True)
+    @pytest.mark.skip_handler(
+        'TLSClient',
+        'TLSClient uses CONNECT on http proxies, which our test proxy does not support'
+    )
     def test_http_proxy(self, handler):
         http_proxy = f'http://127.0.0.1:{self.proxy_port}'
         geo_proxy = f'http://127.0.0.1:{self.geo_port}'
@@ -661,7 +665,6 @@ class TestHTTPProxy(TestRequestHandlerBase):
             assert res != f'normal: {real_url}'
             assert 'Accept' in res
 
-    @pytest.mark.parametrize('handler', ['Urllib', 'Requests', 'CurlCFFI', 'TLSClient'], indirect=True)
     def test_noproxy(self, handler):
         with handler(proxies={'proxy': f'http://127.0.0.1:{self.proxy_port}'}) as rh:
             # NO_PROXY
@@ -671,7 +674,10 @@ class TestHTTPProxy(TestRequestHandlerBase):
                     'utf-8')
                 assert 'Accept' in nop_response
 
-    @pytest.mark.parametrize('handler', ['Urllib', 'Requests', 'CurlCFFI', 'TLSClient'], indirect=True)
+    @pytest.mark.skip_handler(
+        'TLSClient',
+        'TLSClient uses CONNECT on http proxies, which our test proxy does not support'
+    )
     def test_allproxy(self, handler):
         url = 'http://foo.com/bar'
         with handler() as rh:
@@ -679,7 +685,10 @@ class TestHTTPProxy(TestRequestHandlerBase):
                 'utf-8')
             assert response == f'normal: {url}'
 
-    @pytest.mark.parametrize('handler', ['Urllib', 'Requests', 'CurlCFFI', 'TLSClient'], indirect=True)
+    @pytest.mark.skip_handler(
+        'TLSClient',
+        'TLSClient uses CONNECT on http proxies, which our test proxy does not support'
+    )
     def test_http_proxy_with_idn(self, handler):
         with handler(proxies={
             'http': f'http://127.0.0.1:{self.proxy_port}',

@@ -265,9 +265,6 @@ class TLSClientRH(ImpersonateRequestHandler):
         for header, values in response['headers'].items():
             for value in values:
                 res.headers.add_header(header, value)
-        if ',' in res.headers.get('content-encoding', ''):
-            # what do we want to do in this situation?
-            raise ValueError('Multiple content encodings are not supported')
 
         if not 200 <= res.status < 300:
             raise HTTPError(res, redirect_loop=False)
