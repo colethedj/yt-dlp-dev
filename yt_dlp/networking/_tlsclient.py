@@ -124,6 +124,7 @@ class TLSClientRH(ImpersonateRequestHandler):
                 'Accept-Language': 'en-US,en;q=0.9'
             },
             'headerOrder': [
+                'cookie',
                 'sec-ch-ua',
                 'sec-ch-ua-mobile',
                 'sec-ch-ua-platform',
@@ -150,7 +151,6 @@ class TLSClientRH(ImpersonateRequestHandler):
     def _check_extensions(self, extensions):
         super()._check_extensions(extensions)
         extensions.pop('impersonate', None)
-        # extensions.pop('cookiejar', None)
         extensions.pop('timeout', None)
 
     def _validate(self, request):
@@ -159,6 +159,9 @@ class TLSClientRH(ImpersonateRequestHandler):
         accept_encoding_header = self._merge_headers(request.headers).get('accept-encoding')
         if accept_encoding_header == 'identity':
             raise UnsupportedRequest('tls-client does not support streaming and this request may have a large response')
+
+        if len(self.cookiejar):
+            raise UnsupportedRequest('cookies are not supported by tls-client')
         super()._validate(request)
 
     @staticmethod
@@ -274,4 +277,4 @@ class TLSClientRH(ImpersonateRequestHandler):
 
 @register_preference(TLSClientRH)
 def tls_client_preference(rh, request):
-    return 100
+    return -99
