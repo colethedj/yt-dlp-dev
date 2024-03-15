@@ -4,6 +4,27 @@
 # To create a release, dispatch the https://github.com/yt-dlp/yt-dlp/actions/workflows/release.yml workflow on master
 -->
 
+### 2024.03.15.205633
+
+#### Core changes
+- [Improve --impersonate option description](https://github.com/yt-dlp/yt-dlp/commit/9a9032059f547ff88b0051ca89a9a60ffb11040c) by [pukkandan](https://github.com/pukkandan)
+- [Merge branch 'yt-dlp:master' into networking/curl-impersonate](https://github.com/yt-dlp/yt-dlp/commit/e4a72b774ec34d82d61f18f96bd5bb7f67f88503) by [pukkandan](https://github.com/pukkandan)
+- [Only support curl_cffi 0.5.10](https://github.com/yt-dlp/yt-dlp/commit/d2ecc83ace11d5bffeae66f9a26125421510b923) by [pukkandan](https://github.com/pukkandan)
+- [Update README notes about curl_cffi dep](https://github.com/yt-dlp/yt-dlp/commit/fbafe3d8f00e1ddfa78837fe8820148fd51e51ea) by [pukkandan](https://github.com/pukkandan)
+- [Update README.md](https://github.com/yt-dlp/yt-dlp/commit/79a6999bb4f46c371657582a43f4cd6f9c274bd4) by [pukkandan](https://github.com/pukkandan)
+- [fix options.py](https://github.com/yt-dlp/yt-dlp/commit/077203db82021cf039d9f525bdc0066018e9a32c) by [pukkandan](https://github.com/pukkandan)
+- [make `impersonate_target_available` and `get_available_impersonate_targets` internal only](https://github.com/yt-dlp/yt-dlp/commit/7bf1abb874e663562e888674f0962ad6f435f907) by [pukkandan](https://github.com/pukkandan)
+- [misc cleanup](https://github.com/yt-dlp/yt-dlp/commit/eb76328c631cd20e414eb1a935e341871ec91ccb) by [pukkandan](https://github.com/pukkandan)
+
+#### Extractor changes
+- **crunchyroll**: [Extract `vo_adaptive_hls` formats by default](https://github.com/yt-dlp/yt-dlp/commit/be77923ffe842f667971019460f6005f3cad01eb) ([#9447](https://github.com/yt-dlp/yt-dlp/issues/9447)) by [bashonly](https://github.com/bashonly)
+- **gofile**: [Fix extractor](https://github.com/yt-dlp/yt-dlp/commit/0da66980d3193cad3dae0120cddddbfcabddf7a1) ([#9446](https://github.com/yt-dlp/yt-dlp/issues/9446)) by [jazz1611](https://github.com/jazz1611)
+- **sonylivseries**: [Fix season extraction](https://github.com/yt-dlp/yt-dlp/commit/f2868b26e917354203f82a370ad2396646edb813) ([#9423](https://github.com/yt-dlp/yt-dlp/issues/9423)) by [bashonly](https://github.com/bashonly)
+- **tiktok**: [Update API hostname](https://github.com/yt-dlp/yt-dlp/commit/8c05b3ebae23c5b444857549a85b84004c01a536) ([#9444](https://github.com/yt-dlp/yt-dlp/issues/9444)) by [bashonly](https://github.com/bashonly)
+
+#### Misc. changes
+- **build**: [Update changelog for tarball and sdist](https://github.com/yt-dlp/yt-dlp/commit/17b96974a334688f76b57d350e07cae8cda46877) ([#9425](https://github.com/yt-dlp/yt-dlp/issues/9425)) by [bashonly](https://github.com/bashonly)
+
 ### 2024.03.10
 
 #### Core changes
