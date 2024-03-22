@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import math
+import re
 import urllib.parse
 
 from ._helper import InstanceStoreMixin, select_proxy
@@ -27,11 +28,17 @@ from ..utils import int_or_none
 if curl_cffi is None:
     raise ImportError('curl_cffi is not installed')
 
-curl_cffi_version = tuple(int_or_none(x, default=0) for x in curl_cffi.__version__.split('.'))
 
-if curl_cffi_version != (0, 5, 10):
+def group_or_none(n):
+    r = re.match(r'\d+', n)
+    if r:
+        return r.group()
+
+curl_cffi_version = tuple(int_or_none(group_or_none(n), default=0) for n in curl_cffi.__version__.split('.'))
+
+if not ((0, 6, 2) <= curl_cffi_version < (0, 7, 0)):
     curl_cffi._yt_dlp__version = f'{curl_cffi.__version__} (unsupported)'
-    raise ImportError('Only curl_cffi 0.5.10 is supported')
+    raise ImportError('Only curl_cffi >= 0.6.2 is supported')
 
 import curl_cffi.requests
 from curl_cffi.const import CurlECode, CurlOpt
@@ -110,6 +117,9 @@ class CurlCFFIRH(ImpersonateRequestHandler, InstanceStoreMixin):
     _SUPPORTED_FEATURES = (Features.NO_PROXY, Features.ALL_PROXY)
     _SUPPORTED_PROXY_SCHEMES = ('http', 'https', 'socks4', 'socks4a', 'socks5', 'socks5h')
     _SUPPORTED_IMPERSONATE_TARGET_MAP = {
+        ImpersonateTarget('chrome', '120', 'macos', '14'): curl_cffi.requests.BrowserType.chrome120,
+        ImpersonateTarget('chrome', '119', 'macos', '14'): curl_cffi.requests.BrowserType.chrome119,
+        ImpersonateTarget('chrome', '116', 'windows', '10'): curl_cffi.requests.BrowserType.chrome116,
         ImpersonateTarget('chrome', '110', 'windows', '10'): curl_cffi.requests.BrowserType.chrome110,
         ImpersonateTarget('chrome', '107', 'windows', '10'): curl_cffi.requests.BrowserType.chrome107,
         ImpersonateTarget('chrome', '104', 'windows', '10'): curl_cffi.requests.BrowserType.chrome104,
@@ -118,9 +128,11 @@ class CurlCFFIRH(ImpersonateRequestHandler, InstanceStoreMixin):
         ImpersonateTarget('chrome', '99', 'windows', '10'): curl_cffi.requests.BrowserType.chrome99,
         ImpersonateTarget('edge', '101', 'windows', '10'): curl_cffi.requests.BrowserType.edge101,
         ImpersonateTarget('edge', '99', 'windows', '10'): curl_cffi.requests.BrowserType.edge99,
+        ImpersonateTarget('safari', '17.0', 'macos', '14'): curl_cffi.requests.BrowserType.safari17_0,
         ImpersonateTarget('safari', '15.5', 'macos', '12'): curl_cffi.requests.BrowserType.safari15_5,
         ImpersonateTarget('safari', '15.3', 'macos', '11'): curl_cffi.requests.BrowserType.safari15_3,
         ImpersonateTarget('chrome', '99', 'android', '12'): curl_cffi.requests.BrowserType.chrome99_android,
+        ImpersonateTarget('safari', '17.2', 'ios', '17.2'): curl_cffi.requests.BrowserType.safari17_2_ios,
     }
 
     def _create_instance(self, cookiejar=None):
