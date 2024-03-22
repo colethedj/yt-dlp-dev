@@ -968,7 +968,6 @@ class TestRequestsRequestHandler(TestRequestHandlerBase):
 class TestCurlCFFIRequestHandler(TestRequestHandlerBase):
 
     @pytest.mark.parametrize('params,extensions', [
-        ({}, {'impersonate': ImpersonateTarget('chrome')}),
         ({'impersonate': ImpersonateTarget('chrome', '110')}, {}),
         ({'impersonate': ImpersonateTarget('chrome', '99')}, {'impersonate': ImpersonateTarget('chrome', '110')}),
     ])

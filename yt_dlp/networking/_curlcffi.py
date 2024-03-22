@@ -181,15 +181,6 @@ class CurlCFFIRH(ImpersonateRequestHandler, InstanceStoreMixin):
 
         timeout = self._calculate_timeout(request)
 
-        # set CURLOPT_LOW_SPEED_LIMIT and CURLOPT_LOW_SPEED_TIME to act as a read timeout. [1]
-        # curl_cffi does not currently do this. [2]
-        # Note: CURLOPT_LOW_SPEED_TIME is in seconds, so we need to round up to the nearest second. [3]
-        # [1] https://unix.stackexchange.com/a/305311
-        # [2] https://github.com/yifeikong/curl_cffi/issues/156
-        # [3] https://curl.se/libcurl/c/CURLOPT_LOW_SPEED_TIME.html
-        session.curl.setopt(CurlOpt.LOW_SPEED_LIMIT, 1)  # 1 byte per second
-        session.curl.setopt(CurlOpt.LOW_SPEED_TIME, math.ceil(timeout))
-
         try:
             curl_response = session.request(
                 method=request.method,
@@ -198,7 +189,7 @@ class CurlCFFIRH(ImpersonateRequestHandler, InstanceStoreMixin):
                 data=request.data,
                 verify=self.verify,
                 max_redirects=5,
-                timeout=timeout,
+                timeout=(timeout, timeout),  # (connect timeout, read timeout)
                 impersonate=self._SUPPORTED_IMPERSONATE_TARGET_MAP.get(
                     self._get_request_target(request)),
                 interface=self.source_address,
