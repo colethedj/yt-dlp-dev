@@ -57,6 +57,17 @@ except ImportError:
     websockets = None
 
 try:
+    import websocket as websocket_client
+except ImportError:
+    websocket_client = None
+
+try:
+    # for websocket_client
+    import python_socks
+except ImportError:
+    python_socks = None
+
+try:
     import urllib3
 except ImportError:
     urllib3 = None

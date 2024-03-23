@@ -791,7 +791,9 @@ class TestRequestHandlerMisc:
     @pytest.mark.parametrize('handler,logger_name', [
         ('Requests', 'urllib3'),
         ('Websockets', 'websockets.client'),
-        ('Websockets', 'websockets.server')
+        ('Websockets', 'websockets.server'),
+        # note: doesn't test anything unless debug_printtraffic is enabled
+        ('WebsocketClient', 'websocket')
     ], indirect=['handler'])
     def test_remove_logging_handler(self, handler, logger_name):
         # Ensure any logging handlers, which may contain a YoutubeDL instance,

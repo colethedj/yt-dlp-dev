@@ -315,7 +315,7 @@ class RequestHandler(abc.ABC):
 
     def _validate(self, request):
         self._check_url_scheme(request)
-        self._check_proxies(request.proxies or self.proxies)
+        self._check_proxies(self._get_proxies(request))
         extensions = request.extensions.copy()
         self._check_extensions(extensions)
         if extensions:

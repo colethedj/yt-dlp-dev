@@ -6,7 +6,7 @@ import pytest
 from yt_dlp.networking import RequestHandler
 from yt_dlp.networking.common import _REQUEST_HANDLERS
 from yt_dlp.utils._utils import _YDLLogger as FakeLogger
-
+from .helper import get_params
 
 @pytest.fixture
 def handler(request):
@@ -18,7 +18,7 @@ def handler(request):
     else:
         pytest.skip(f'{RH_KEY} request handler is not available')
 
-    return functools.partial(handler, logger=FakeLogger)
+    return functools.partial(handler, logger=FakeLogger, verbose=get_params().get('debug_printtraffic', False))
 
 
 def validate_and_send(rh, req):
