@@ -13,7 +13,7 @@ import random
 import ssl
 
 from yt_dlp.cookies import YoutubeDLCookieJar
-from yt_dlp.dependencies import certifi
+from yt_dlp.dependencies import certifi, get_package_info
 from yt_dlp.networking import Response
 from yt_dlp.networking._helper import (
     InstanceStoreMixin,
@@ -88,7 +88,7 @@ class TestNetworkingUtils:
         with pytest.raises(ValueError, match='Unknown SOCKS proxy version: socks'):
             make_socks_proxy_opts('socks://127.0.0.1')
 
-    @pytest.mark.skipif(not certifi, reason='certifi is not installed')
+    @pytest.mark.skipif(not get_package_info(certifi).supported, reason='certifi is not installed')
     def test_load_certifi(self):
         context_certifi = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         context_certifi.load_verify_locations(cafile=certifi.where())

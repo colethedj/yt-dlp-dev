@@ -4054,12 +4054,11 @@ class YoutubeDL:
         ) or 'none'
         write_debug(f'exe versions: {exe_str}')
 
-        from .compat.compat_utils import get_package_info
-        from .dependencies import available_dependencies
+        from .dependencies import available_dependencies, get_package_info
 
-        write_debug('Optional libraries: %s' % (', '.join(sorted({
-            join_nonempty(*get_package_info(m)) for m in available_dependencies.values()
-        })) or 'none'))
+        write_debug('Optional libraries: %s' % (', '.join(sorted([
+            str(get_package_info(m)) for m in available_dependencies.values()
+        ])) or 'none'))
 
         write_debug(f'Proxy map: {self.proxies}')
         write_debug(f'Request Handlers: {", ".join(rh.RH_NAME for rh in self._request_director.handlers.values())}')

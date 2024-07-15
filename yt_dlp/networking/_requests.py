@@ -8,23 +8,19 @@ import re
 import socket
 import warnings
 
-from ..dependencies import brotli, requests, urllib3
-from ..utils import bug_reports_message, int_or_none, variadic
+from ..dependencies import brotli, requests, urllib3, get_package_info
+from ..utils import bug_reports_message, variadic
 from ..utils.networking import normalize_url
 
-if requests is None:
-    raise ImportError('requests module is not installed')
 
-if urllib3 is None:
-    raise ImportError('urllib3 module is not installed')
+requests_pkg_info = get_package_info(requests)
+urllib3_pkg_info = get_package_info(urllib3)
 
-urllib3_version = tuple(int_or_none(x, default=0) for x in urllib3.__version__.split('.'))
+if not urllib3_pkg_info.supported:
+    raise ImportError('urllib3 >= 1.26.17 not available')
 
-if urllib3_version < (1, 26, 17):
-    raise ImportError('Only urllib3 >= 1.26.17 is supported')
-
-if requests.__build__ < 0x023202:
-    raise ImportError('Only requests >= 2.32.2 is supported')
+if not requests_pkg_info.supported:
+    raise ImportError('requests >= 2.32.2 not available')
 
 import requests.adapters
 import requests.utils
@@ -118,7 +114,7 @@ This has been fixed in urllib3 2.0+.
 See: https://github.com/urllib3/urllib3/issues/517
 '''
 
-if urllib3_version < (2, 0, 0):
+if urllib3_pkg_info.version_tuple < (2, 0, 0):
     with contextlib.suppress(Exception):
         urllib3.util.IS_SECURETRANSPORT = urllib3.util.ssl_.IS_SECURETRANSPORT = True
 

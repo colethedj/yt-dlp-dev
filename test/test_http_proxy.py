@@ -15,7 +15,7 @@ import pytest
 from test.helper import http_server_port, verify_address_availability
 from test.test_networking import TEST_DIR
 from test.test_socks import IPv6ThreadingTCPServer
-from yt_dlp.dependencies import urllib3
+from yt_dlp.dependencies import urllib3, get_package_info
 from yt_dlp.networking import Request
 from yt_dlp.networking.exceptions import HTTPError, ProxyError, SSLError
 
@@ -352,7 +352,7 @@ class TestHTTPConnectProxy:
                 assert proxy_info['proxy'] == server_address
                 assert proxy_info['client_address'][0] == source_address
 
-    @pytest.mark.skipif(urllib3 is None, reason='requires urllib3 to test')
+    @pytest.mark.skipif(not get_package_info(urllib3).supported, reason='requires urllib3 to test')
     def test_https_connect_proxy(self, handler, ctx):
         with ctx.http_server(HTTPSConnectProxyHandler) as server_address:
             with handler(verify=False, proxies={ctx.REQUEST_PROTO: f'https://{server_address}'}) as rh:
@@ -361,7 +361,7 @@ class TestHTTPConnectProxy:
                 assert proxy_info['connect'] is True
                 assert 'Proxy-Authorization' not in proxy_info['headers']
 
-    @pytest.mark.skipif(urllib3 is None, reason='requires urllib3 to test')
+    @pytest.mark.skipif(not get_package_info(urllib3).supported, reason='requires urllib3 to test')
     def test_https_connect_verify_failed(self, handler, ctx):
         with ctx.http_server(HTTPSConnectProxyHandler) as server_address:
             with handler(verify=True, proxies={ctx.REQUEST_PROTO: f'https://{server_address}'}) as rh:
@@ -371,7 +371,7 @@ class TestHTTPConnectProxy:
                 with pytest.raises((ProxyError, SSLError)):
                     ctx.proxy_info_request(rh)
 
-    @pytest.mark.skipif(urllib3 is None, reason='requires urllib3 to test')
+    @pytest.mark.skipif(not get_package_info(urllib3).supported, reason='requires urllib3 to test')
     def test_https_connect_proxy_auth(self, handler, ctx):
         with ctx.http_server(HTTPSConnectProxyHandler, username='test', password='test') as server_address:
             with handler(verify=False, proxies={ctx.REQUEST_PROTO: f'https://test:test@{server_address}'}) as rh:

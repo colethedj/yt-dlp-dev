@@ -23,18 +23,11 @@ from .exceptions import (
     TransportError,
 )
 from .websocket import WebSocketRequestHandler, WebSocketResponse
-from ..dependencies import websockets
+from ..dependencies import websockets, get_package_info
 from ..socks import ProxyError as SocksProxyError
-from ..utils import int_or_none
 
-if not websockets:
-    raise ImportError('websockets is not installed')
-
-import websockets.version
-
-websockets_version = tuple(map(int_or_none, websockets.version.version.split('.')))
-if websockets_version < (12, 0):
-    raise ImportError('Only websockets>=12.0 is supported')
+if not get_package_info(websockets).supported:
+    raise ImportError('websockets>=12.0 is not installed')
 
 import websockets.sync.client
 from websockets.uri import parse_uri

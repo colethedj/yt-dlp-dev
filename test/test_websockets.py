@@ -22,7 +22,7 @@ import threading
 
 from yt_dlp import socks, traverse_obj
 from yt_dlp.cookies import YoutubeDLCookieJar
-from yt_dlp.dependencies import websockets
+from yt_dlp.dependencies import websockets, get_package_info
 from yt_dlp.networking import Request
 from yt_dlp.networking.exceptions import (
     CertificateVerifyError,
@@ -128,7 +128,7 @@ def ws_validate_and_send(rh, req):
             raise
 
 
-@pytest.mark.skipif(not websockets, reason='websockets must be installed to test websocket request handlers')
+@pytest.mark.skipif(not get_package_info(websockets).supported, reason='websockets must be installed to test websocket request handlers')
 @pytest.mark.parametrize('handler', ['Websockets'], indirect=True)
 class TestWebsSocketRequestHandlerConformance:
     @classmethod

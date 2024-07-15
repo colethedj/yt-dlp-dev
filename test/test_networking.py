@@ -36,7 +36,7 @@ from test.helper import (
     verify_address_availability,
 )
 from yt_dlp.cookies import YoutubeDLCookieJar
-from yt_dlp.dependencies import brotli, curl_cffi, requests, urllib3
+from yt_dlp.dependencies import brotli, curl_cffi, requests, urllib3, get_package_info
 from yt_dlp.networking import (
     HEADRequest,
     PUTRequest,
@@ -622,7 +622,7 @@ class TestHTTPRequestHandler(TestRequestHandlerBase):
             assert data == '<html><video src="/vid.mp4" /></html>'
 
     @pytest.mark.skip_handler('CurlCFFI', 'not applicable to curl-cffi')
-    @pytest.mark.skipif(not brotli, reason='brotli support is not installed')
+    @pytest.mark.skipif(not get_package_info(brotli).supported, reason='brotli support is not installed')
     def test_brotli(self, handler):
         with handler() as rh:
             res = validate_and_send(

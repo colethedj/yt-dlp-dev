@@ -38,7 +38,7 @@ from .exceptions import (
     SSLError,
     TransportError,
 )
-from ..dependencies import brotli
+from ..dependencies import brotli, get_package_info
 from ..socks import ProxyError as SocksProxyError
 from ..utils import update_url_query
 from ..utils.networking import normalize_url
@@ -46,7 +46,7 @@ from ..utils.networking import normalize_url
 SUPPORTED_ENCODINGS = ['gzip', 'deflate']
 CONTENT_DECODE_ERRORS = [zlib.error, OSError]
 
-if brotli:
+if get_package_info(brotli).supported:
     SUPPORTED_ENCODINGS.append('br')
     CONTENT_DECODE_ERRORS.append(brotli.error)
 
@@ -156,7 +156,7 @@ class HTTPHandler(urllib.request.AbstractHTTPHandler):
                 decoded_response = self.gz(decoded_response or resp.read())
             elif encoding == 'deflate':
                 decoded_response = self.deflate(decoded_response or resp.read())
-            elif encoding == 'br' and brotli:
+            elif encoding == 'br' and get_package_info(brotli).supported:
                 decoded_response = self.brotli(decoded_response or resp.read())
 
         if decoded_response is not None:
