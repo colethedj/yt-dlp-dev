@@ -1,14 +1,12 @@
 # flake8: noqa: F401
 """Imports all optional dependencies for the project.
 
-Internal attributes are added to the modules to provide additional information:
+Internal attributes may be added to the modules to provide additional information:
 
 - _yt_dlp__is_supported_version: bool representing whether the version of the dependency is supported
 - _yt_dlp__version_tuple: tuple representing the version of the dependency
 - _yt_dlp__version: str representing the version of the dependency
-
-Optional:
-"_yt_dlp__identifier" may be inserted into the module if it uses an ambiguous namespace
+- _yt_dlp__identifier: str representing the module name. useful if the module uses an ambiguous namespace
 
 """
 import collections as _collections
