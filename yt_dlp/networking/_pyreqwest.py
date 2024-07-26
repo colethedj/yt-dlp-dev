@@ -28,11 +28,10 @@ if pyreqwest_impersonate is None:
 ############################
 # MISSING SUPPORT:
 
-# Cookiejar sync (real cookie support that doesn't suck)
+# Cookiejar sync (real cookie support)
 # Verbose logging (connection_verbose in client)
 # Improved error handling
 # Why is Content-Encoding always an empty string in response headers?
-# Custom headers not being sent
 # Support for source_address
 # Exposed version attribute
 # Streaming support
@@ -104,7 +103,7 @@ class PyreqwestRH(ImpersonateRequestHandler, InstanceStoreMixin):
             pyreqwest_res = client.request(
                 method=request.method,
                 url=request.url,
-                headers=self._get_impersonate_headers(request),
+                headers=dict(self._get_impersonate_headers(request)),
                 content=request.data,
                 timeout=self._calculate_timeout(request),
             )
