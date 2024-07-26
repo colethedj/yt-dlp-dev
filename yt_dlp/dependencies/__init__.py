@@ -79,6 +79,11 @@ try:
 except ImportError:
     curl_cffi = None
 
+try:
+    import pyreqwest_impersonate
+except ImportError:
+    pyreqwest_impersonate = None
+
 from . import Cryptodome
 
 all_dependencies = {k: v for k, v in globals().items() if not k.startswith('_')}

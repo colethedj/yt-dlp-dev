@@ -18,6 +18,7 @@ from test.test_socks import IPv6ThreadingTCPServer
 from yt_dlp.dependencies import urllib3
 from yt_dlp.networking import Request
 from yt_dlp.networking.exceptions import HTTPError, ProxyError, SSLError
+from yt_dlp.utils.networking import HTTPHeaderDict
 
 
 class HTTPProxyAuthMixin:
@@ -246,7 +247,7 @@ def ctx(request):
 
 
 @pytest.mark.parametrize(
-    'handler', ['Urllib', 'Requests', 'CurlCFFI'], indirect=True)
+    'handler', ['Urllib', 'Requests', 'CurlCFFI', 'Pyreqwest'], indirect=True)
 @pytest.mark.parametrize('ctx', ['http'], indirect=True)  # pure http proxy can only support http
 class TestHTTPProxy:
     def test_http_no_auth(self, handler, ctx):
@@ -255,14 +256,14 @@ class TestHTTPProxy:
                 proxy_info = ctx.proxy_info_request(rh)
                 assert proxy_info['proxy'] == server_address
                 assert proxy_info['connect'] is False
-                assert 'Proxy-Authorization' not in proxy_info['headers']
+                assert 'Proxy-Authorization' not in HTTPHeaderDict(proxy_info['headers'])
 
     def test_http_auth(self, handler, ctx):
         with ctx.http_server(HTTPProxyHandler, username='test', password='test') as server_address:
             with handler(proxies={ctx.REQUEST_PROTO: f'http://test:test@{server_address}'}) as rh:
                 proxy_info = ctx.proxy_info_request(rh)
                 assert proxy_info['proxy'] == server_address
-                assert 'Proxy-Authorization' in proxy_info['headers']
+                assert 'proxy-authorization' in HTTPHeaderDict(proxy_info['headers'])
 
     def test_http_bad_auth(self, handler, ctx):
         with ctx.http_server(HTTPProxyHandler, username='test', password='test') as server_address:
@@ -289,7 +290,7 @@ class TestHTTPProxy:
                 proxy_info = ctx.proxy_info_request(rh)
                 assert proxy_info['proxy'] == server_address
                 assert proxy_info['connect'] is False
-                assert 'Proxy-Authorization' not in proxy_info['headers']
+                assert 'Proxy-Authorization' not in HTTPHeaderDict(proxy_info['headers'])
 
     @pytest.mark.skip_handler('Urllib', 'urllib does not support https proxies')
     def test_https_verify_failed(self, handler, ctx):
@@ -307,13 +308,14 @@ class TestHTTPProxy:
                 proxy_info = ctx.proxy_info_request(rh, target_domain='中文.tw')
                 assert proxy_info['proxy'] == server_address
                 assert proxy_info['path'].startswith('http://xn--fiq228c.tw')
-                assert proxy_info['headers']['Host'].split(':', 1)[0] == 'xn--fiq228c.tw'
+                assert HTTPHeaderDict(proxy_info['headers'])['Host'].split(':', 1)[0] == 'xn--fiq228c.tw'
 
 
 @pytest.mark.parametrize(
     'handler,ctx', [
         ('Requests', 'https'),
         ('CurlCFFI', 'https'),
+        ('Pyreqwest', 'https'),
     ], indirect=True)
 class TestHTTPConnectProxy:
     def test_http_connect_no_auth(self, handler, ctx):
@@ -322,14 +324,14 @@ class TestHTTPConnectProxy:
                 proxy_info = ctx.proxy_info_request(rh)
                 assert proxy_info['proxy'] == server_address
                 assert proxy_info['connect'] is True
-                assert 'Proxy-Authorization' not in proxy_info['headers']
+                assert 'Proxy-Authorization' not in HTTPHeaderDict(proxy_info['headers'])
 
     def test_http_connect_auth(self, handler, ctx):
         with ctx.http_server(HTTPConnectProxyHandler, username='test', password='test') as server_address:
             with handler(verify=False, proxies={ctx.REQUEST_PROTO: f'http://test:test@{server_address}'}) as rh:
                 proxy_info = ctx.proxy_info_request(rh)
                 assert proxy_info['proxy'] == server_address
-                assert 'Proxy-Authorization' in proxy_info['headers']
+                assert 'Proxy-Authorization' in HTTPHeaderDict(proxy_info['headers'])
 
     @pytest.mark.skip_handler(
         'Requests',
@@ -359,7 +361,7 @@ class TestHTTPConnectProxy:
                 proxy_info = ctx.proxy_info_request(rh)
                 assert proxy_info['proxy'] == server_address
                 assert proxy_info['connect'] is True
-                assert 'Proxy-Authorization' not in proxy_info['headers']
+                assert 'Proxy-Authorization' not in HTTPHeaderDict(proxy_info['headers'])
 
     @pytest.mark.skipif(urllib3 is None, reason='requires urllib3 to test')
     def test_https_connect_verify_failed(self, handler, ctx):
@@ -377,4 +379,4 @@ class TestHTTPConnectProxy:
             with handler(verify=False, proxies={ctx.REQUEST_PROTO: f'https://test:test@{server_address}'}) as rh:
                 proxy_info = ctx.proxy_info_request(rh)
                 assert proxy_info['proxy'] == server_address
-                assert 'Proxy-Authorization' in proxy_info['headers']
+                assert 'Proxy-Authorization' in HTTPHeaderDict(proxy_info['headers'])

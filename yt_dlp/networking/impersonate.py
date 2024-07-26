@@ -5,8 +5,8 @@ from abc import ABC
 from dataclasses import dataclass
 from typing import Any
 
-from .common import RequestHandler, register_preference
-from .exceptions import UnsupportedRequest
+from .common import RequestHandler, register_preference, Request, Response
+from .exceptions import UnsupportedRequest, HTTPError
 from ..compat.types import NoneType
 from ..utils import classproperty, join_nonempty
 from ..utils.networking import std_headers
@@ -132,6 +132,16 @@ class ImpersonateRequestHandler(RequestHandler, ABC):
                 if headers.get(k) == v:
                     headers.pop(k)
         return headers
+
+    def send(self, request: Request) -> Response:
+        target = self._get_request_target(request)
+        try:
+            response = super().send(request)
+        except HTTPError as e:
+            e.response.extensions['impersonate'] = target
+            raise
+        response.extensions['impersonate'] = target
+        return response
 
 
 @register_preference(ImpersonateRequestHandler)

@@ -58,6 +58,10 @@ curl-cffi = [
     "curl-cffi==0.5.10; os_name=='nt' and implementation_name=='cpython'",
     "curl-cffi>=0.5.10,!=0.6.*,<0.8; os_name!='nt' and implementation_name=='cpython'",
 ]
+pyreqwest-impersonate = [
+    "pyreqwest-impersonate>=0.5.3",
+]
+
 secretstorage = [
     "cffi",
     "secretstorage",

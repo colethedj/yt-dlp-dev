@@ -367,6 +367,7 @@ class TestSocks4Proxy:
         ('Requests', 'http'),
         ('Websockets', 'ws'),
         ('CurlCFFI', 'http'),
+        ('Pyreqwest', 'http'),
     ], indirect=True)
 class TestSocks5Proxy:
 

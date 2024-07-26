@@ -313,7 +313,7 @@ class TestRequestHandlerBase:
         cls.https_server_thread.start()
 
 
-@pytest.mark.parametrize('handler', ['Urllib', 'Requests', 'CurlCFFI'], indirect=True)
+@pytest.mark.parametrize('handler', ['Urllib', 'Requests', 'CurlCFFI', 'Pyreqwest'], indirect=True)
 class TestHTTPRequestHandler(TestRequestHandlerBase):
 
     def test_verify_cert(self, handler):
@@ -344,6 +344,7 @@ class TestHTTPRequestHandler(TestRequestHandlerBase):
             assert not issubclass(exc_info.type, CertificateVerifyError)
 
     @pytest.mark.skip_handler('CurlCFFI', 'legacy_ssl ignored by CurlCFFI')
+    @pytest.mark.skip_handler('Pyreqwest', 'legacy_ssl ignored by Pyreqwest')
     def test_legacy_ssl_extension(self, handler):
         # HTTPS server with old ciphers
         # XXX: is there a better way to test this than to create a new server?
@@ -629,8 +630,8 @@ class TestHTTPRequestHandler(TestRequestHandlerBase):
                 rh, Request(
                     f'http://127.0.0.1:{self.http_port}/content-encoding',
                     headers={'ytdl-encoding': 'br'}))
-            assert res.headers.get('Content-Encoding') == 'br'
             assert res.read() == b'<html><video src="/vid.mp4" /></html>'
+            assert res.headers.get('Content-Encoding') == 'br'
 
     def test_deflate(self, handler):
         with handler() as rh:
@@ -673,11 +674,11 @@ class TestHTTPRequestHandler(TestRequestHandlerBase):
     def test_read(self, handler):
         with handler() as rh:
             res = validate_and_send(
-                rh, Request(f'http://127.0.0.1:{self.http_port}/headers'))
+                rh, Request(f'http://127.0.0.1:{self.http_port}/video.html'))
             assert res.readable()
-            assert res.read(1) == b'H'
-            assert res.read(3) == b'ost'
-            assert res.read().decode().endswith('\n\n')
+            assert res.read(1) == b'<'
+            assert res.read(3) == b'htm'
+            assert res.read().decode().endswith('</html>')
             assert res.read() == b''
 
     def test_request_disable_proxy(self, handler):
@@ -773,7 +774,7 @@ class TestClientCertificate:
         })
 
 
-@pytest.mark.parametrize('handler', ['CurlCFFI'], indirect=True)
+@pytest.mark.parametrize('handler', ['CurlCFFI', 'Pyreqwest'], indirect=True)
 class TestHTTPImpersonateRequestHandler(TestRequestHandlerBase):
     def test_supported_impersonate_targets(self, handler):
         with handler(headers=std_headers) as rh:
@@ -1142,6 +1143,40 @@ class TestCurlCFFIRequestHandler(TestRequestHandlerBase):
         res4.close()
         assert res4.closed
         assert res4._buffer == b''
+
+
+@pytest.mark.parametrize('handler', ['Pyreqwest'], indirect=True)
+class TestPyreqwestRequestHandler(TestRequestHandlerBase):
+
+    @pytest.mark.parametrize('params,extensions', [
+        ({'impersonate': ImpersonateTarget('chrome', '100')}, {}),
+        ({'impersonate': ImpersonateTarget('chrome', '126')}, {'impersonate': ImpersonateTarget('chrome', '100')}),
+    ])
+    def test_impersonate(self, handler, params, extensions):
+        with handler(headers=std_headers, **params) as rh:
+            res = validate_and_send(
+                rh, Request(f'http://127.0.0.1:{self.http_port}/headers', extensions=extensions)).read().decode()
+            assert '"Chromium";v="100"' in res
+            # Check that user agent is added over ours
+            assert 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.75 Safari/537.36' in res
+
+    def test_headers(self, handler):
+        with handler(headers=std_headers) as rh:
+            # Ensure curl-impersonate overrides our standard headers (usually added
+            res = validate_and_send(
+                rh, Request(f'http://127.0.0.1:{self.http_port}/headers', extensions={
+                    'impersonate': ImpersonateTarget('safari')}, headers={'x-custom': 'test', 'sec-fetch-mode': 'custom'})).read().decode().lower()
+
+            assert std_headers['user-agent'].lower() not in res
+            assert std_headers['accept-language'].lower() not in res
+            # other than UA, custom headers that differ from std_headers should be kept
+            assert 'x-custom: test' in res
+            # but when not impersonating don't remove std_headers
+            res = validate_and_send(
+                rh, Request(f'http://127.0.0.1:{self.http_port}/headers', headers={'x-custom': 'test'})).read().decode().lower()
+            # std_headers should be present
+            for k, v in std_headers.items():
+                assert f'{k}: {v}'.lower() in res
 
 
 def run_validation(handler, error, req, **handler_kwargs):
