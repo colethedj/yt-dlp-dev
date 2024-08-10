@@ -69,6 +69,8 @@ from ..utils import (
 )
 
 STREAMING_DATA_CLIENT_NAME = '__yt_dlp_client'
+STREAMING_DATA_FULL_CLIENT_NAME = '__yt_dlp_full_client'
+
 # any clients starting with _ cannot be explicitly requested by the user
 INNERTUBE_CLIENTS = {
     'web': {
@@ -738,6 +740,10 @@ class YoutubeBaseInfoExtractor(InfoExtractor):
         if not self._PO_TOKEN_CACHE:
             self._PO_TOKEN_CACHE = {}
 
+        if client not in INNERTUBE_CLIENTS:
+            self.report_warning(f'Bad innertube client "{client}"')
+            return None
+
         # Cache poToken based on base client.
         # assuming the po token can work across base clients
         # (e.g. web:web_embedded:web_music:web_creator, android:android_music, ios:ios_music, etc.)
@@ -1364,10 +1370,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
     }
     _SUBTITLE_FORMATS = ('json3', 'srv1', 'srv2', 'srv3', 'ttml', 'vtt')
     _POTOKEN_EXPERIMENTS = ('51217476', '51217102')
-    _BROKEN_CLIENTS = {
-        short_client_name(client): client
-        for client in ('android', 'android_creator', 'android_music')
-    }
+    _BROKEN_CLIENTS = ('android', 'android_creator', 'android_music')
 
     _GEO_BYPASS = False
 
@@ -3788,7 +3791,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                 requested_clients.extend(allowed_clients)
             elif client not in allowed_clients:
                 self.report_warning(f'Skipping unsupported client {client}')
-            elif client in self._BROKEN_CLIENTS.values():
+            elif client in self._BROKEN_CLIENTS:
                 broken_clients.append(client)
             else:
                 requested_clients.append(client)
@@ -3877,7 +3880,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                 experiments = traverse_obj(pr, (
                     'responseContext', 'serviceTrackingParams', lambda _, v: v['service'] == 'GFEEDBACK',
                     'params', lambda _, v: v['key'] == 'e', 'value', {lambda x: x.split(',')}, ...))
-                if all(x in experiments for x in self._POTOKEN_EXPERIMENTS) and not self.get_po_token(client=client, visitor_data=self._get_visitor_data(player_ytcfg, master_ytcfg, initial_pr)):
+                if all(x in experiments for x in self._POTOKEN_EXPERIMENTS) and not self.get_po_token(client=client, visitor_data=self._extract_visitor_data(player_ytcfg, master_ytcfg, initial_pr)):
                     pr = None
                     # Generate a new session. Note this will have a new visitor ID and auth may not work correctly.
                     player_ytcfg = self._get_default_ytcfg(client)
@@ -3893,9 +3896,11 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                 # Save client name for introspection later
                 name = short_client_name(client)
                 sd = traverse_obj(pr, ('streamingData', {dict})) or {}
+                sd[STREAMING_DATA_FULL_CLIENT_NAME] = client
                 sd[STREAMING_DATA_CLIENT_NAME] = name
                 for f in traverse_obj(sd, (('formats', 'adaptiveFormats'), ..., {dict})):
                     f[STREAMING_DATA_CLIENT_NAME] = name
+                    f[STREAMING_DATA_FULL_CLIENT_NAME] = client
                 prs.append(pr)
 
             # tv_embedded can work around age-gate and age-verification IF the video is embeddable
@@ -4053,18 +4058,18 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                 self.report_warning(
                     f'{video_id}: Some formats are possibly damaged. They will be deprioritized', only_once=True)
 
-            client_name = fmt.get(STREAMING_DATA_CLIENT_NAME)
+            full_client_name = fmt.get(STREAMING_DATA_FULL_CLIENT_NAME)
 
-            po_token = self.get_po_token(client=client_name)
+            po_token = self.get_po_token(client=full_client_name)
             if po_token:
                 fmt_url = update_url_query(fmt_url, {'pot': po_token})
 
             # _BROKEN_CLIENTS return videoplayback URLs that expire after 30 seconds
             # Ref: https://github.com/yt-dlp/yt-dlp/issues/9554
-            is_broken = client_name in self._BROKEN_CLIENTS and not po_token
+            is_broken = full_client_name in self._BROKEN_CLIENTS and not po_token
             if is_broken:
                 self.report_warning(
-                    f'{video_id}: {self._BROKEN_CLIENTS[client_name]} client formats are broken '
+                    f'{video_id}: {full_client_name} client formats are broken '
                     'and may yield HTTP Error 403. They will be deprioritized', only_once=True)
 
             name = fmt.get('qualityLabel') or quality.replace('audio_quality_', '') or ''
@@ -4079,7 +4084,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                     try_get(fmt, lambda x: x['projectionType'].replace('RECTANGULAR', '').lower()),
                     try_get(fmt, lambda x: x['spatialAudioType'].replace('SPATIAL_AUDIO_TYPE_', '').lower()),
                     is_damaged and 'DAMAGED', is_broken and 'BROKEN',
-                    (self.get_param('verbose') or all_formats) and client_name,
+                    (self.get_param('verbose') or all_formats) and fmt.get(STREAMING_DATA_CLIENT_NAME),
                     delim=', '),
                 # Format 22 is likely to be damaged. See https://github.com/yt-dlp/yt-dlp/issues/3372
                 'source_preference': (-5 if itag == '22' else -1) + (100 if 'Premium' in name else 0),
