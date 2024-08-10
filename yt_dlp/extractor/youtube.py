@@ -649,8 +649,6 @@ class YoutubeBaseInfoExtractor(InfoExtractor):
 
         data = {'context': context} if context else {'context': self._extract_context(default_client=default_client)}
         data.update(query)
-        if self.po_token:
-            data.setdefault('serviceIntegrityDimensions', {})['poToken'] = self.po_token
         real_headers = self.generate_api_headers(default_client=default_client)
         real_headers.update({'content-type': 'application/json'})
         if headers:
@@ -724,9 +722,33 @@ class YoutubeBaseInfoExtractor(InfoExtractor):
     def is_authenticated(self):
         return bool(self._generate_sapisidhash_header())
 
-    @functools.cached_property
-    def po_token(self):
-        return self._configuration_arg('po_token', [None], ie_key=YoutubeIE, casesense=True)[0]
+    _PO_TOKEN_CACHE = None
+
+    def _retrieve_po_token(self, visitor_data=None, client='web'):
+        po_tokens = self._configuration_arg('po_token', [], ie_key=YoutubeIE, casesense=True)
+        for token_str in po_tokens:
+            if ':' in token_str:
+                po_token_client, po_token = token_str.split(':')
+            else:
+                po_token_client, po_token = 'web', token_str
+            if po_token_client == client:
+                return po_token
+
+    def get_po_token(self, visitor_data=None, client='web'):
+        if not self._PO_TOKEN_CACHE:
+            self._PO_TOKEN_CACHE = {}
+
+        # Cache poToken based on base client.
+        # assuming the po token can work across base clients
+        # (e.g. web:web_embedded:web_music:web_creator, android:android_music, ios:ios_music, etc.)
+        base_client = _split_innertube_client(client)[1]
+
+        if base_client in self._PO_TOKEN_CACHE:
+            return self._PO_TOKEN_CACHE[base_client]
+
+        po_token = self._retrieve_po_token(visitor_data=visitor_data, client=client)
+        self._PO_TOKEN_CACHE[base_client] = po_token
+        return po_token
 
     def extract_ytcfg(self, video_id, webpage):
         if not webpage:
@@ -3727,13 +3749,17 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
 
         session_index = self._extract_session_index(player_ytcfg, master_ytcfg)
         syncid = self._extract_account_syncid(player_ytcfg, master_ytcfg, initial_pr)
+        visitor_data = self._extract_visitor_data(player_ytcfg, master_ytcfg, initial_pr)
         sts = self._extract_signature_timestamp(video_id, player_url, master_ytcfg, fatal=False) if player_url else None
         headers = self.generate_api_headers(
-            ytcfg=player_ytcfg, account_syncid=syncid, session_index=session_index, default_client=client)
+            ytcfg=player_ytcfg, account_syncid=syncid, session_index=session_index, default_client=client, visitor_data=visitor_data)
 
         yt_query = {
             'videoId': video_id,
         }
+
+        if po_token := self.get_po_token(client=client, visitor_data=visitor_data):
+            yt_query.setdefault('serviceIntegrityDimensions', {})['poToken'] = po_token
 
         default_pp = traverse_obj(
             INNERTUBE_CLIENTS, (_split_innertube_client(client)[0], 'PLAYER_PARAMS', {str}))
@@ -3789,12 +3815,10 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
     def _extract_player_responses(self, clients, video_id, webpage, master_ytcfg, smuggled_data):
         initial_pr = ignore_initial_response = None
         if webpage:
-            if self.po_token:
-                ignore_initial_response = True
-            elif 'web' in clients:
+            if 'web' in clients:
                 experiments = traverse_obj(master_ytcfg, (
                     'WEB_PLAYER_CONTEXT_CONFIGS', ..., 'serializedExperimentIds', {lambda x: x.split(',')}, ...))
-                if all(x in experiments for x in self._POTOKEN_EXPERIMENTS):
+                if not self.get_po_token(client='web', visitor_data=self._extract_visitor_data(master_ytcfg)) and all(x in experiments for x in self._POTOKEN_EXPERIMENTS):
                     self.report_warning(
                         'Webpage contains broken formats (poToken experiment detected). Ignoring initial player response')
                     ignore_initial_response = True
@@ -3853,7 +3877,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                 experiments = traverse_obj(pr, (
                     'responseContext', 'serviceTrackingParams', lambda _, v: v['service'] == 'GFEEDBACK',
                     'params', lambda _, v: v['key'] == 'e', 'value', {lambda x: x.split(',')}, ...))
-                if all(x in experiments for x in self._POTOKEN_EXPERIMENTS) and not self.po_token:
+                if all(x in experiments for x in self._POTOKEN_EXPERIMENTS) and not self.get_po_token(client=client, visitor_data=self._get_visitor_data(player_ytcfg, master_ytcfg, initial_pr)):
                     pr = None
                     # Generate a new session. Note this will have a new visitor ID and auth may not work correctly.
                     player_ytcfg = self._get_default_ytcfg(client)
@@ -4018,9 +4042,6 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                             video_id=video_id, only_once=True)
                     continue
 
-            if self.po_token:
-                fmt_url = update_url_query(fmt_url, {'pot': self.po_token})
-
             tbr = float_or_none(fmt.get('averageBitrate') or fmt.get('bitrate'), 1000)
             format_duration = traverse_obj(fmt, ('approxDurationMs', {lambda x: float_or_none(x, 1000)}))
             # Some formats may have much smaller duration than others (possibly damaged during encoding)
@@ -4033,9 +4054,14 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                     f'{video_id}: Some formats are possibly damaged. They will be deprioritized', only_once=True)
 
             client_name = fmt.get(STREAMING_DATA_CLIENT_NAME)
+
+            po_token = self.get_po_token(client=client_name)
+            if po_token:
+                fmt_url = update_url_query(fmt_url, {'pot': po_token})
+
             # _BROKEN_CLIENTS return videoplayback URLs that expire after 30 seconds
             # Ref: https://github.com/yt-dlp/yt-dlp/issues/9554
-            is_broken = client_name in self._BROKEN_CLIENTS
+            is_broken = client_name in self._BROKEN_CLIENTS and not po_token
             if is_broken:
                 self.report_warning(
                     f'{video_id}: {self._BROKEN_CLIENTS[client_name]} client formats are broken '
