@@ -327,8 +327,13 @@ class UmpFD(FileDownloader):
                             self.report_error('PO Token is required')
                             return False
 
+                    # check if it is a known value in UMPPart
+                    elif part.type in [e.value for e in UMPPART]:
+                        print(f'Unhandled UMP Part: {UMPPART(part.type).name}, Size: {part.size} Data: {base64.b64encode(part.data)}')
+                        continue
+
                     else:
-                        print(f'Unknown part type: {part.type}, Size: {part.size} Data: {part.data}')
+                        print(f'Unknown UMP Part: {part.type}, Size: {part.size} Data: {base64.b64encode(part.data)}')
                         continue
 
             if ctx.stream is None:
@@ -430,7 +435,7 @@ class UMP:
             yield UMPPart(part_type, part_size, part_data)
 
 
-class UMPPART(enum.Enum):
+class UMPPART(enum.IntEnum):
     ONESIE_HEADER = 10
     ONESIE_DATA = 11
     MEDIA_HEADER = 20
