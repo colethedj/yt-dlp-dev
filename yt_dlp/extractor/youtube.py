@@ -4556,6 +4556,16 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
             for f in formats:
                 f['has_drm'] = True
 
+        ump_formats = []
+        for f in formats:
+            if f.get('protocol') in ('http', None):
+                format_copy = f.copy()
+                format_copy['protocol'] = 'yt_ump'
+                format_copy['url'] = update_url_query(format_copy['url'], {'ump': 1})
+                ump_formats.append(format_copy)
+
+        formats.extend(ump_formats)
+
         return live_broadcast_details, live_status, streaming_data, formats, subtitles
 
     def _real_extract(self, url):
