@@ -317,13 +317,16 @@ class UmpFD(FileDownloader):
                         break
                     elif part.type == UMPPART.STREAM_PROTECTION_STATUS.value:
                         sps_map = {
-                            'CAA=': 'Good',
-                            'CAE=': 'Attestation Pending',
-                            'CAM=': 'Attestation required',
+                            'CAE=': 'Good',
+                            'CAM=': 'Attestation Pending',
+                            'CAMQCg==': 'Attestation required',
                         }
                         sts_value = base64.b64encode(part.data).decode('utf-8')
                         print(f'[StreamProtectionStatus (po token required?)]:  {sps_map.get(sts_value, sts_value)}')
-                        continue
+                        if sts_value == 'CAMQCg==':
+                            self.report_error('PO Token is required')
+                            return False
+
                     else:
                         print(f'Unknown part type: {part.type}, Size: {part.size} Data: {part.data}')
                         continue
