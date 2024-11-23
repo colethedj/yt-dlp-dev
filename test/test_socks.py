@@ -3,6 +3,7 @@
 import multiprocessing
 import os
 import sys
+import threading
 import unittest
 
 import pytest
@@ -214,38 +215,46 @@ class SocksWebSocketTestRequestHandler(SocksTestRequestHandler):
     def handle(self):
         import websockets.sync.server
         protocol = websockets.ServerProtocol()
-        connection = websockets.sync.server.ServerConnection(socket=self.request, protocol=protocol, close_timeout=0.1)
+        connection = websockets.sync.server.ServerConnection(socket=self.request, protocol=protocol, close_timeout=10)
         connection.handshake()
         connection.send(json.dumps(self.socks_info))
         connection.close()
 
 
-def socks_server_process(server):
-    try:
-        server.serve_forever()
-    finally:
-        server.shutdown()
+def socks_server_process(socks_server_class, request_handler, bind_address, socks_server_kwargs, pipe: multiprocessing.Queue):
+    server_type = ThreadingTCPServer if '.' in bind_address else IPv6ThreadingTCPServer
+    server = server_type(
+        (bind_address, 0), functools.partial(socks_server_class, request_handler, socks_server_kwargs))
+    server_port = http_server_port(server)
+    server_thread = threading.Thread(target=server.serve_forever)
+    server_thread.daemon = True
+    server_thread.start()
+    if '.' not in bind_address:
+        pipe.put(f'[{bind_address}]:{server_port}')
+    else:
+        pipe.put(f'{bind_address}:{server_port}')
+
+    pipe.get()
+    server.shutdown()
+    server.server_close()
+    server_thread.join(2.0)
 
 
 @contextlib.contextmanager
 def socks_server(socks_server_class, request_handler, bind_ip=None, **socks_server_kwargs):
     server_process = server = None
+    pipe = multiprocessing.Queue()
     try:
         bind_address = bind_ip or '127.0.0.1'
-        server_type = ThreadingTCPServer if '.' in bind_address else IPv6ThreadingTCPServer
-        server = server_type(
-            (bind_address, 0), functools.partial(socks_server_class, request_handler, socks_server_kwargs))
-        server_process = multiprocessing.Process(target=server.serve_forever)
+        server_process = multiprocessing.Process(target=socks_server_process, args=(
+            socks_server_class, request_handler, bind_address, socks_server_kwargs, pipe))
         server_process.daemon = True
         server_process.start()
-        server_port = http_server_port(server)
-        if '.' not in bind_address:
-            yield f'[{bind_address}]:{server_port}'
-        else:
-            yield f'{bind_address}:{server_port}'
+        yield pipe.get()
     finally:
+        pipe.put('done')
+        server_process.join(2.0)
         server_process.kill()
-        server.socket.close()
 
 
 class SocksProxyTestContext(abc.ABC):
