@@ -220,9 +220,16 @@ class SocksWebSocketTestRequestHandler(SocksTestRequestHandler):
         connection.close()
 
 
+def socks_server_process(server):
+    try:
+        server.serve_forever()
+    finally:
+        server.shutdown()
+
+
 @contextlib.contextmanager
 def socks_server(socks_server_class, request_handler, bind_ip=None, **socks_server_kwargs):
-    server_process = None
+    server_process = server = None
     try:
         bind_address = bind_ip or '127.0.0.1'
         server_type = ThreadingTCPServer if '.' in bind_address else IPv6ThreadingTCPServer
@@ -238,6 +245,7 @@ def socks_server(socks_server_class, request_handler, bind_ip=None, **socks_serv
             yield f'{bind_address}:{server_port}'
     finally:
         server_process.kill()
+        server.socket.close()
 
 
 class SocksProxyTestContext(abc.ABC):
