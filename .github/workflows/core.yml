@@ -63,4 +63,4 @@ jobs:
       continue-on-error: False
       run: |
         python3 -m yt_dlp -v || true  # Print debug head
-        python3 ./devscripts/run_tests.py --pytest-args core
+        python3 ./devscripts/run_tests.py core
