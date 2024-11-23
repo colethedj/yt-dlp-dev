@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # Allow direct execution
+import multiprocessing
 import os
 import sys
-import threading
 import unittest
 
 import pytest
@@ -214,7 +214,7 @@ class SocksWebSocketTestRequestHandler(SocksTestRequestHandler):
     def handle(self):
         import websockets.sync.server
         protocol = websockets.ServerProtocol()
-        connection = websockets.sync.server.ServerConnection(socket=self.request, protocol=protocol, close_timeout=0)
+        connection = websockets.sync.server.ServerConnection(socket=self.request, protocol=protocol, close_timeout=0.1)
         connection.handshake()
         connection.send(json.dumps(self.socks_info))
         connection.close()
@@ -222,24 +222,22 @@ class SocksWebSocketTestRequestHandler(SocksTestRequestHandler):
 
 @contextlib.contextmanager
 def socks_server(socks_server_class, request_handler, bind_ip=None, **socks_server_kwargs):
-    server = server_thread = None
+    server_process = None
     try:
         bind_address = bind_ip or '127.0.0.1'
         server_type = ThreadingTCPServer if '.' in bind_address else IPv6ThreadingTCPServer
         server = server_type(
             (bind_address, 0), functools.partial(socks_server_class, request_handler, socks_server_kwargs))
+        server_process = multiprocessing.Process(target=server.serve_forever)
+        server_process.daemon = True
+        server_process.start()
         server_port = http_server_port(server)
-        server_thread = threading.Thread(target=server.serve_forever)
-        server_thread.daemon = True
-        server_thread.start()
         if '.' not in bind_address:
             yield f'[{bind_address}]:{server_port}'
         else:
             yield f'{bind_address}:{server_port}'
     finally:
-        server.shutdown()
-        server.server_close()
-        server_thread.join(2.0)
+        server_process.kill()
 
 
 class SocksProxyTestContext(abc.ABC):

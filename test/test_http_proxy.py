@@ -3,10 +3,10 @@ import base64
 import contextlib
 import functools
 import json
+import multiprocessing
 import os
 import random
 import ssl
-import threading
 from http.server import BaseHTTPRequestHandler
 from socketserver import ThreadingTCPServer
 
@@ -180,24 +180,22 @@ class HTTPSConnectProxyHandler(HTTPConnectProxyHandler):
 
 @contextlib.contextmanager
 def proxy_server(proxy_server_class, request_handler, bind_ip=None, **proxy_server_kwargs):
-    server = server_thread = None
+    server_process = None
     try:
         bind_address = bind_ip or '127.0.0.1'
         server_type = ThreadingTCPServer if '.' in bind_address else IPv6ThreadingTCPServer
         server = server_type(
             (bind_address, 0), functools.partial(proxy_server_class, request_handler=request_handler, **proxy_server_kwargs))
         server_port = http_server_port(server)
-        server_thread = threading.Thread(target=server.serve_forever)
-        server_thread.daemon = True
-        server_thread.start()
+        server_process = multiprocessing.Process(target=server.serve_forever)
+        server_process.daemon = True
+        server_process.start()
         if '.' not in bind_address:
             yield f'[{bind_address}]:{server_port}'
         else:
             yield f'{bind_address}:{server_port}'
     finally:
-        server.shutdown()
-        server.server_close()
-        server_thread.join(2.0)
+        server_process.kill()
 
 
 class HTTPProxyTestContext(abc.ABC):
