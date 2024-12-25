@@ -261,6 +261,7 @@ INNERTUBE_CLIENTS = {
         },
         'INNERTUBE_CONTEXT_CLIENT_NAME': 2,
         'SUPPORTS_COOKIES': True,
+        'REQUIRE_PO_TOKEN': True,
     },
     'tv': {
         'INNERTUBE_CONTEXT': {
@@ -1355,8 +1356,8 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
         '401': {'ext': 'mp4', 'height': 2160, 'format_note': 'DASH video', 'vcodec': 'av01.0.12M.08'},
     }
     _SUBTITLE_FORMATS = ('json3', 'srv1', 'srv2', 'srv3', 'ttml', 'vtt')
-    _DEFAULT_CLIENTS = ('ios', 'mweb')
-    _DEFAULT_AUTHED_CLIENTS = ('web_creator', 'mweb')
+    _DEFAULT_CLIENTS = ('ios', 'web_safari')
+    _DEFAULT_AUTHED_CLIENTS = ('web_creator', 'web_safari')
 
     _GEO_BYPASS = False
 
